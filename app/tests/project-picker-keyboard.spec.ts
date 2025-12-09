@@ -152,9 +152,9 @@ test.describe("Project Picker Keyboard Shortcuts", () => {
     await expect(shortcutIndicator).toHaveText("P");
   });
 
-  test("only first 5 projects are shown with hotkeys", async ({ page }) => {
-    // Setup with 7 projects
-    await setupMockMultipleProjects(page, 7);
+  test("all projects are shown, with hotkeys for first 9", async ({ page }) => {
+    // Setup with 10 projects
+    await setupMockMultipleProjects(page, 10);
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
@@ -165,16 +165,20 @@ test.describe("Project Picker Keyboard Shortcuts", () => {
     await pressShortcut(page, "p");
     await waitForProjectPickerDropdown(page);
 
-    // Only 5 hotkey indicators should be visible (1-5)
-    for (let i = 1; i <= 5; i++) {
+    // All 10 projects should be visible
+    for (let i = 1; i <= 10; i++) {
+      const projectOption = page.locator(`[data-testid="project-option-test-project-${i}"]`);
+      await expect(projectOption).toBeVisible();
+    }
+
+    // First 9 hotkey indicators should be visible (1-9)
+    for (let i = 1; i <= 9; i++) {
       expect(await isProjectHotkeyVisible(page, i)).toBe(true);
     }
 
-    // 6th and 7th should not exist
-    const hotkey6 = page.locator('[data-testid="project-hotkey-6"]');
-    const hotkey7 = page.locator('[data-testid="project-hotkey-7"]');
-    await expect(hotkey6).not.toBeVisible();
-    await expect(hotkey7).not.toBeVisible();
+    // 10th hotkey should not exist (no keyboard shortcut for it)
+    const hotkey10 = page.locator('[data-testid="project-hotkey-10"]');
+    await expect(hotkey10).not.toBeVisible();
   });
 
   test("clicking a project option also works", async ({ page }) => {

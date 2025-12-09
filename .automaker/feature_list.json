@@ -11,7 +11,27 @@
     "category": "Core",
     "description": "I want the ability to press P which will automatically select my projects drop down and show all my projects. And then for each one, put a hotkey in the left that says 12345 and selecting one of those with my keyboard should automatically select that project.\n",
     "steps": [],
-    "status": "in_progress",
-    "startedAt": "2025-12-09T17:11:14.402Z"
+    "status": "in_progress"
+  },
+  {
+    "id": "feature-1765301095506-cpy06q9u0",
+    "category": "Core",
+    "description": "It seems like there's only a limit of five of how many things show up in the project select drop down. I need to show everything.",
+    "steps": [],
+    "status": "verified"
+  },
+  {
+    "id": "feature-1765301127030-a4nnqp0ja",
+    "category": "Kanban",
+    "description": "In creating new cards in Kanban, I need the ability to drag and drop images into the description section, which will attach the image as context in store in the temp directory, so that later on when the agent runs, it can know where to fetch that image from.",
+    "steps": [],
+    "status": "in_progress"
+  },
+  {
+    "id": "feature-1765301184184-ttvhd8kkt",
+    "category": "Core",
+    "description": "-o should actually open the select folder prompt. Right now when you click o it goes to like the overview page. That's not the correct experience I'm looking for. Also just clicking on the top left open folder icon should do the same thing of opening the system prompt so they can select a project.",
+    "steps": [],
+    "status": "in_progress"
   }
 ]

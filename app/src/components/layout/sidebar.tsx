@@ -37,6 +37,9 @@ import {
   ACTION_SHORTCUTS,
   KeyboardShortcut,
 } from "@/hooks/use-keyboard-shortcuts";
+import { getElectronAPI } from "@/lib/electron";
+import { initializeProject } from "@/lib/project-init";
+import { toast } from "sonner";
 
 interface NavSection {
   label?: string;
@@ -56,6 +59,7 @@ export function Sidebar() {
     currentProject,
     currentView,
     sidebarOpen,
+    addProject,
     setCurrentProject,
     setCurrentView,
     toggleSidebar,
@@ -65,6 +69,56 @@ export function Sidebar() {
   // State for project picker dropdown
   const [isProjectPickerOpen, setIsProjectPickerOpen] = useState(false);
 
+  /**
+   * Opens the system folder selection dialog and initializes the selected project.
+   * Used by both the 'O' keyboard shortcut and the folder icon button.
+   */
+  const handleOpenFolder = useCallback(async () => {
+    const api = getElectronAPI();
+    const result = await api.openDirectory();
+
+    if (!result.canceled && result.filePaths[0]) {
+      const path = result.filePaths[0];
+      const name = path.split("/").pop() || "Untitled Project";
+
+      try {
+        // Initialize the .automaker directory structure
+        const initResult = await initializeProject(path);
+
+        if (!initResult.success) {
+          toast.error("Failed to initialize project", {
+            description: initResult.error || "Unknown error occurred",
+          });
+          return;
+        }
+
+        const project = {
+          id: `project-${Date.now()}`,
+          name,
+          path,
+          lastOpened: new Date().toISOString(),
+        };
+
+        addProject(project);
+        setCurrentProject(project);
+
+        if (initResult.createdFiles && initResult.createdFiles.length > 0) {
+          toast.success(initResult.isNewProject ? "Project initialized" : "Project updated", {
+            description: `Set up ${initResult.createdFiles.length} file(s) in .automaker`,
+          });
+        } else {
+          toast.success("Project opened", {
+            description: `Opened ${name}`,
+          });
+        }
+      } catch (error) {
+        console.error("[Sidebar] Failed to open project:", error);
+        toast.error("Failed to open project", {
+          description: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  }, [addProject, setCurrentProject]);
 
   const navSections: NavSection[] = [
     {
@@ -99,7 +153,7 @@ export function Sidebar() {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       const num = parseInt(event.key, 10);
-      if (num >= 1 && num <= 5) {
+      if (num >= 1 && num <= 9) {
         event.preventDefault();
         selectProjectByNumber(num);
       } else if (event.key === "Escape") {
@@ -122,11 +176,11 @@ export function Sidebar() {
       description: "Toggle sidebar",
     });
 
-    // Open project shortcut - always available
+    // Open project shortcut - opens the folder selection dialog directly
     shortcuts.push({
       key: ACTION_SHORTCUTS.openProject,
-      action: () => setCurrentView("welcome"),
-      description: "Open project (navigate to welcome view)",
+      action: () => handleOpenFolder(),
+      description: "Open folder selection dialog",
     });
 
     // Project picker shortcut - only when we have projects
@@ -161,7 +215,7 @@ export function Sidebar() {
     }
 
     return shortcuts;
-  }, [currentProject, setCurrentView, toggleSidebar, projects.length]);
+  }, [currentProject, setCurrentView, toggleSidebar, projects.length, handleOpenFolder]);
 
   // Register keyboard shortcuts
   useKeyboardShortcuts(navigationShortcuts);
@@ -241,9 +295,9 @@ export function Sidebar() {
                 <Plus className="w-4 h-4 flex-shrink-0" />
               </button>
               <button
-                onClick={() => setCurrentView("welcome")}
+                onClick={handleOpenFolder}
                 className="group flex items-center justify-center w-8 h-8 rounded-lg relative overflow-hidden transition-all text-zinc-400 hover:text-white hover:bg-white/5"
-                title={`Open Project (${ACTION_SHORTCUTS.openProject})`}
+                title={`Open Folder (${ACTION_SHORTCUTS.openProject})`}
                 data-testid="open-project-button"
               >
                 <FolderOpen className="w-4 h-4 flex-shrink-0" />
@@ -283,7 +337,7 @@ export function Sidebar() {
                 align="start"
                 data-testid="project-picker-dropdown"
               >
-                {projects.slice(0, 5).map((project, index) => (
+                {projects.map((project, index) => (
                   <DropdownMenuItem
                     key={project.id}
                     onClick={() => {
@@ -293,12 +347,14 @@ export function Sidebar() {
                     className="flex items-center gap-2 cursor-pointer text-zinc-300 hover:text-white hover:bg-zinc-700/50"
                     data-testid={`project-option-${project.id}`}
                   >
-                    <span
-                      className="flex items-center justify-center w-5 h-5 text-[10px] font-mono rounded bg-white/5 border border-white/10 text-zinc-400"
-                      data-testid={`project-hotkey-${index + 1}`}
-                    >
-                      {index + 1}
-                    </span>
+                    {index < 9 && (
+                      <span
+                        className="flex items-center justify-center w-5 h-5 text-[10px] font-mono rounded bg-white/5 border border-white/10 text-zinc-400"
+                        data-testid={`project-hotkey-${index + 1}`}
+                      >
+                        {index + 1}
+                      </span>
+                    )}
                     <Folder className="h-4 w-4" />
                     <span className="flex-1 truncate">{project.name}</span>
                     {currentProject?.id === project.id && (
