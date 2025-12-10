@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useAppStore, AIProfile, AgentModel, ThinkingLevel, ModelProvider } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
+import { HotkeyButton } from "@/components/ui/hotkey-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -236,11 +237,13 @@ function ProfileForm({
   onSave,
   onCancel,
   isEditing,
+  hotkeyActive,
 }: {
   profile: Partial<AIProfile>;
   onSave: (profile: Omit<AIProfile, "id">) => void;
   onCancel: () => void;
   isEditing: boolean;
+  hotkeyActive: boolean;
 }) {
   const [formData, setFormData] = useState({
     name: profile.name || "",
@@ -429,9 +432,14 @@ function ProfileForm({
         <Button variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit} data-testid="save-profile-button">
+        <HotkeyButton
+          onClick={handleSubmit}
+          hotkey={{ key: "Enter", cmdCtrl: true }}
+          hotkeyActive={hotkeyActive}
+          data-testid="save-profile-button"
+        >
           {isEditing ? "Save Changes" : "Create Profile"}
-        </Button>
+        </HotkeyButton>
       </DialogFooter>
     </div>
   );
@@ -545,13 +553,15 @@ export function ProfilesView() {
                 </p>
               </div>
             </div>
-            <Button onClick={() => setShowAddDialog(true)} data-testid="add-profile-button" className="relative">
+            <HotkeyButton
+              onClick={() => setShowAddDialog(true)}
+              hotkey={ACTION_SHORTCUTS.addProfile}
+              hotkeyActive={false}
+              data-testid="add-profile-button"
+            >
               <Plus className="w-4 h-4 mr-2" />
               New Profile
-              <span className="hidden lg:flex items-center justify-center ml-2 px-2 py-0.5 text-[10px] font-mono rounded bg-primary-foreground/20 border border-primary-foreground/30 text-primary-foreground">
-                {ACTION_SHORTCUTS.addProfile}
-              </span>
-            </Button>
+            </HotkeyButton>
           </div>
         </div>
       </div>
@@ -662,6 +672,7 @@ export function ProfilesView() {
             onSave={handleAddProfile}
             onCancel={() => setShowAddDialog(false)}
             isEditing={false}
+            hotkeyActive={showAddDialog}
           />
         </DialogContent>
       </Dialog>
@@ -682,6 +693,7 @@ export function ProfilesView() {
               onSave={handleUpdateProfile}
               onCancel={() => setEditingProfile(null)}
               isEditing={true}
+              hotkeyActive={!!editingProfile}
             />
           )}
         </DialogContent>

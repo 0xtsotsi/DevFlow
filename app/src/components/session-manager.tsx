@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { HotkeyButton } from "@/components/ui/hotkey-button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -241,19 +242,18 @@ export function SessionManager({
         <div className="flex items-center justify-between mb-4">
           <CardTitle>Agent Sessions</CardTitle>
           {activeTab === "active" && (
-            <Button
+            <HotkeyButton
               variant="default"
               size="sm"
               onClick={handleQuickCreateSession}
+              hotkey={ACTION_SHORTCUTS.newSession}
+              hotkeyActive={false}
               data-testid="new-session-button"
               title={`New Session (${ACTION_SHORTCUTS.newSession})`}
             >
               <Plus className="w-4 h-4 mr-1" />
               New
-              <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-mono rounded bg-primary-foreground/20 border border-primary-foreground/30 text-primary-foreground">
-                {ACTION_SHORTCUTS.newSession}
-              </span>
-            </Button>
+            </HotkeyButton>
           )}
         </div>
 

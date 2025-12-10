@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAppStore } from "@/store/app-store";
 import { getElectronAPI } from "@/lib/electron";
 import { Button } from "@/components/ui/button";
+import { HotkeyButton } from "@/components/ui/hotkey-button";
 import { Card } from "@/components/ui/card";
 import {
   Plus,
@@ -363,20 +364,16 @@ export function ContextView() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
+          <HotkeyButton
             size="sm"
             onClick={() => setIsAddDialogOpen(true)}
+            hotkey={ACTION_SHORTCUTS.addContextFile}
+            hotkeyActive={false}
             data-testid="add-context-file"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add File
-            <span
-              className="ml-2 px-1.5 py-0.5 text-[10px] font-mono rounded bg-secondary border border-border"
-              data-testid="shortcut-add-context-file"
-            >
-              {ACTION_SHORTCUTS.addContextFile}
-            </span>
-          </Button>
+          </HotkeyButton>
         </div>
       </div>
 
@@ -650,16 +647,18 @@ export function ContextView() {
             >
               Cancel
             </Button>
-            <Button
+            <HotkeyButton
               onClick={handleAddFile}
               disabled={
                 !newFileName.trim() ||
                 (newFileType === "image" && !uploadedImageData)
               }
+              hotkey={{ key: "Enter", cmdCtrl: true }}
+              hotkeyActive={isAddDialogOpen}
               data-testid="confirm-add-file"
             >
               Add File
-            </Button>
+            </HotkeyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

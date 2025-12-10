@@ -84,6 +84,22 @@ Note: `currentView` is NOT persisted - it's managed through actions.
 4. `auto_mode_feature_complete` event fires → feature removed from `runningAutoTasks`
 5. If `passes: true` → status becomes "verified", if `passes: false` → stays "in_progress"
 
+### Issue: waiting_approval features not draggable when skipTests=true
+**Problem:** Features in `waiting_approval` status couldn't be dragged to `verified` column, even though the code appeared to handle it.
+**Fix:** The order of condition checks in `handleDragEnd` matters. The `skipTests` check was catching `waiting_approval` features before the `waiting_approval` status check could handle them. Move the `waiting_approval` status check **before** the `skipTests` check in `board-view.tsx`:
+
+```typescript
+// Correct order in handleDragEnd:
+if (draggedFeature.status === "backlog") {
+  // ...
+} else if (draggedFeature.status === "waiting_approval") {
+  // Handle waiting_approval BEFORE skipTests check
+  // because waiting_approval features often have skipTests=true
+} else if (draggedFeature.skipTests) {
+  // Handle other skipTests features
+}
+```
+
 ## Best Practices Discovered
 
 ### Testing utilities are critical
@@ -107,3 +123,27 @@ The mock auto mode in `electron.ts` has predictable timing:
 - Total duration: ~2.4 seconds (300+500+300+300+500+500ms)
 - Plus 1.5s delay before auto-closing modals
 - Total: ~4 seconds from start to completion
+
+### Issue: HotkeyButton conflicting with useKeyboardShortcuts
+**Problem:** Adding `HotkeyButton` with a simple key (like "N") to buttons that already had keyboard shortcuts registered via `useKeyboardShortcuts` caused the hotkey to stop working. Both registered duplicate listeners, and the HotkeyButton's `stopPropagation()` call could interfere.
+**Fix:** When a simple single-key hotkey is already handled by `useKeyboardShortcuts`, set `hotkeyActive={false}` on the `HotkeyButton` so it only displays the indicator badge without registering a duplicate listener:
+
+```tsx
+// In views that already use useKeyboardShortcuts for the "N" key:
+<HotkeyButton
+  onClick={() => setShowAddDialog(true)}
+  hotkey={ACTION_SHORTCUTS.addFeature}
+  hotkeyActive={false}  // <-- Important! Prevents duplicate listener
+>
+  Add Feature
+</HotkeyButton>
+
+// HotkeyButton should only actively listen when it's the sole handler (e.g., Cmd+Enter in dialogs)
+<HotkeyButton
+  onClick={handleSubmit}
+  hotkey={{ key: "Enter", cmdCtrl: true }}
+  hotkeyActive={isDialogOpen}  // Active when dialog is open
+>
+  Submit
+</HotkeyButton>
+```
