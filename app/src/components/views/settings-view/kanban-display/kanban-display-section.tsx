@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { LayoutGrid, Minimize2, Square, Maximize2 } from "lucide-react";
-import type { KanbanDetailLevel } from "../types";
+import type { KanbanDetailLevel } from "../shared/types";
 
 interface KanbanDisplaySectionProps {
   detailLevel: KanbanDetailLevel;

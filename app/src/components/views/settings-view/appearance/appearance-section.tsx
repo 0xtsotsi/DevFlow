@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Palette } from "lucide-react";
 import { themeOptions } from "./config/theme-options";
-import type { Theme, Project } from "../types";
+import type { Theme, Project } from "../shared/types";
 
 interface AppearanceSectionProps {
   effectiveTheme: Theme;

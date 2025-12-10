@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Trash2, Folder } from "lucide-react";
-import type { Project } from "../types";
+import type { Project } from "../shared/types";
 
 interface DangerZoneSectionProps {
   project: Project | null;

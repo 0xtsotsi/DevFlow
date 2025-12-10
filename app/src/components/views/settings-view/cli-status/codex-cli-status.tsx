@@ -5,7 +5,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import type { CliStatus } from "../types";
+import type { CliStatus } from "../shared/types";
 
 interface CliStatusProps {
   status: CliStatus | null;
