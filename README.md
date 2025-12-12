@@ -45,16 +45,81 @@ export CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat01-..."
 npm run dev:electron
 ```
 
+## How to Run
+
+### Development Modes
+
+Automaker can be run in several modes:
+
+#### Electron Desktop App (Recommended)
+
+```bash
+# Standard development mode
+npm run dev:electron
+
+# With DevTools open automatically
+npm run dev:electron:debug
+
+# For WSL (Windows Subsystem for Linux)
+npm run dev:electron:wsl
+
+# For WSL with GPU acceleration
+npm run dev:electron:wsl:gpu
+```
+
+#### Web Browser Mode
+
+```bash
+# Run in web browser (http://localhost:3007)
+npm run dev:web
+# or
+npm run dev
+```
+
+### Building for Production
+
+```bash
+# Build Next.js app
+npm run build
+
+# Build Electron app for distribution
+npm run build:electron
+```
+
+### Running Production Build
+
+```bash
+# Start production Next.js server
+npm run start
+```
+
+### Testing
+
+```bash
+# Run tests headless
+npm run test
+
+# Run tests with browser visible
+npm run test:headed
+```
+
+### Linting
+
+```bash
+# Run ESLint
+npm run lint
+```
+
 ### Authentication Options
 
 Automaker supports multiple authentication methods (in order of priority):
 
-| Method | Environment Variable | Description |
-|--------|---------------------|-------------|
-| OAuth Token (env) | `CLAUDE_CODE_OAUTH_TOKEN` | From `claude setup-token` - uses your Claude subscription |
-| OAuth Token (stored) | — | Stored in app credentials file |
-| API Key (stored) | — | Anthropic API key stored in app |
-| API Key (env) | `ANTHROPIC_API_KEY` | Pay-per-use API key |
+| Method               | Environment Variable      | Description                                               |
+| -------------------- | ------------------------- | --------------------------------------------------------- |
+| OAuth Token (env)    | `CLAUDE_CODE_OAUTH_TOKEN` | From `claude setup-token` - uses your Claude subscription |
+| OAuth Token (stored) | —                         | Stored in app credentials file                            |
+| API Key (stored)     | —                         | Anthropic API key stored in app                           |
+| API Key (env)        | `ANTHROPIC_API_KEY`       | Pay-per-use API key                                       |
 
 **Recommended:** Use `CLAUDE_CODE_OAUTH_TOKEN` if you have a Claude subscription.
 
