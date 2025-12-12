@@ -33,6 +33,13 @@ cd automaker
 npm install
 ```
 
+### Windows notes (in-app Claude auth)
+
+- Node.js 22.x
+- Prebuilt PTY is bundled; Visual Studio build tools are not required for Claude auth.
+- If you prefer the external terminal flow, set `CLAUDE_AUTH_DISABLE_PTY=1`.
+- If you later add native modules beyond the prebuilt PTY, you may still need VS Build Tools + Python to rebuild those.
+
 **Step 3:** Run the Claude Code setup token command:
 
 ```bash
@@ -55,7 +62,15 @@ npm run dev:electron
 
 This will start both the Next.js development server and the Electron application.
 
-**Step 6:** MOST IMPORANT: Run the Following after all is setup
+### Auth smoke test (Windows)
+
+1. Ensure dependencies are installed (prebuilt pty is included).
+2. Run `npm run dev:electron` and open the Setup modal.
+3. Click Start on Claude auth; watch the embedded terminal stream logs.
+4. Successful runs show “Token captured automatically.”; otherwise copy/paste the token from the log.
+5. Optional: `node --test tests/claude-cli-detector.test.js` to verify token parsing.
+
+**Step 6:** MOST IMPORTANT: Run the Following after all is setup
 
 ```bash
 echo "W"

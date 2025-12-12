@@ -3,6 +3,22 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
+let runPtyCommand = null;
+try {
+  ({ runPtyCommand } = require("./pty-runner"));
+} catch (error) {
+  console.warn(
+    "[ClaudeCliDetector] node-pty unavailable, will fall back to external terminal:",
+    error?.message || error
+  );
+}
+
+const ANSI_REGEX =
+  // eslint-disable-next-line no-control-regex
+  /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b[@-_]|\u001b\][^\u0007]*\u0007/g;
+
+const stripAnsi = (text = "") => text.replace(ANSI_REGEX, "");
+
 /**
  * Claude CLI Detector
  *
@@ -458,6 +474,247 @@ class ClaudeCliDetector {
       ],
       note: "This token is from your Claude subscription and allows you to use Claude without API charges.",
     };
+  }
+
+  /**
+   * Extract OAuth token from command output
+   * Tries multiple patterns to find the token
+   * @param {string} output The command output
+   * @returns {string|null} Extracted token or null
+   */
+  static extractTokenFromOutput(output) {
+    // Pattern 1: CLAUDE_CODE_OAUTH_TOKEN=<token> or CLAUDE_CODE_OAUTH_TOKEN: <token>
+    const envMatch = output.match(
+      /CLAUDE_CODE_OAUTH_TOKEN[=:]\s*["']?([a-zA-Z0-9_\-\.]+)["']?/i
+    );
+    if (envMatch) return envMatch[1];
+
+    // Pattern 2: "Token: <token>" or "token: <token>"
+    const tokenLabelMatch = output.match(
+      /\btoken[:\s]+["']?([a-zA-Z0-9_\-\.]{40,})["']?/i
+    );
+    if (tokenLabelMatch) return tokenLabelMatch[1];
+
+    // Pattern 3: Look for token after success/authenticated message
+    const successMatch = output.match(
+      /(?:success|authenticated|generated|token is)[^\n]*\n\s*([a-zA-Z0-9_\-\.]{40,})/i
+    );
+    if (successMatch) return successMatch[1];
+
+    // Pattern 4: Standalone long alphanumeric string on its own line (last resort)
+    // This catches tokens that are printed on their own line
+    const lines = output.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Token should be 40+ chars, alphanumeric with possible hyphens/underscores/dots
+      if (/^[a-zA-Z0-9_\-\.]{40,}$/.test(trimmed)) {
+        return trimmed;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Run claude setup-token command to generate OAuth token
+   * Opens an external terminal window since Claude CLI requires TTY for its Ink-based UI
+   * @param {Function} onProgress Callback for progress updates
+   * @returns {Promise<Object>} Result indicating terminal was opened
+   */
+  static async runSetupToken(onProgress) {
+    const detection = this.detectClaudeInstallation();
+
+    if (!detection.installed) {
+      throw {
+        success: false,
+        error: "Claude CLI is not installed. Please install it first.",
+        requiresManualAuth: false,
+      };
+    }
+
+    const claudePath = detection.path;
+    const platform = process.platform;
+    const preferPty =
+      (platform === "win32" ||
+        platform === "darwin" ||
+        process.env.CLAUDE_AUTH_FORCE_PTY === "1") &&
+      process.env.CLAUDE_AUTH_DISABLE_PTY !== "1";
+
+    const send = (data) => {
+      if (onProgress && data) {
+        onProgress({ type: "stdout", data });
+      }
+    };
+
+    if (preferPty && runPtyCommand) {
+      try {
+        send("Starting in-app terminal session for Claude auth...\n");
+        send("If your browser opens, complete sign-in and return here.\n\n");
+
+        const ptyResult = await runPtyCommand(claudePath, ["setup-token"], {
+          cols: 120,
+          rows: 30,
+          onData: (chunk) => send(chunk),
+          env: {
+            FORCE_COLOR: "1",
+          },
+        });
+
+        const cleanedOutput = stripAnsi(ptyResult.output || "");
+        const token = this.extractTokenFromOutput(cleanedOutput);
+
+        if (ptyResult.success && token) {
+          send("\nCaptured token automatically.\n");
+          return {
+            success: true,
+            token,
+            requiresManualAuth: false,
+            terminalOpened: false,
+          };
+        }
+
+        if (ptyResult.success && !token) {
+          send(
+            "\nCLI completed but token was not detected automatically. You can copy it above or retry.\n"
+          );
+          return {
+            success: true,
+            requiresManualAuth: true,
+            terminalOpened: false,
+            error: "Could not capture token automatically",
+            output: cleanedOutput,
+          };
+        }
+
+        send(
+          `\nClaude CLI exited with code ${ptyResult.exitCode}. Falling back to manual copy.\n`
+        );
+        return {
+          success: false,
+          error: `Claude CLI exited with code ${ptyResult.exitCode}`,
+          requiresManualAuth: true,
+          output: cleanedOutput,
+        };
+      } catch (error) {
+        console.error("[ClaudeCliDetector] PTY auth failed, falling back:", error);
+        send(
+          `In-app terminal failed (${error?.message || "unknown error"}). Falling back to external terminal...\n`
+        );
+      }
+    }
+
+    // Fallback: external terminal window
+    if (preferPty && !runPtyCommand) {
+      send("In-app terminal unavailable (node-pty not loaded).");
+    } else if (!preferPty) {
+      send("Using system terminal for authentication on this platform.");
+    }
+    send("Opening system terminal for authentication...\n");
+
+    // Helper function to check if a command exists asynchronously
+    const commandExists = (cmd) => {
+      return new Promise((resolve) => {
+        require("child_process").exec(
+          `which ${cmd}`,
+          { timeout: 1000 },
+          (error) => {
+            resolve(!error);
+          }
+        );
+      });
+    };
+
+    // For Linux, find available terminal first (async)
+    let linuxTerminal = null;
+    if (platform !== "win32" && platform !== "darwin") {
+      const terminals = [
+        ["gnome-terminal", ["--", claudePath, "setup-token"]],
+        ["konsole", ["-e", claudePath, "setup-token"]],
+        ["xterm", ["-e", claudePath, "setup-token"]],
+        ["x-terminal-emulator", ["-e", `${claudePath} setup-token`]],
+      ];
+
+      for (const [term, termArgs] of terminals) {
+        const exists = await commandExists(term);
+        if (exists) {
+          linuxTerminal = { command: term, args: termArgs };
+          break;
+        }
+      }
+    }
+
+    return new Promise((resolve, reject) => {
+      // Open command in external terminal since Claude CLI requires TTY
+      let command, args;
+
+      if (platform === "win32") {
+        // Windows: Open new cmd window that stays open
+        command = "cmd";
+        args = ["/c", "start", "cmd", "/k", `"${claudePath}" setup-token`];
+      } else if (platform === "darwin") {
+        // macOS: Open Terminal.app
+        command = "osascript";
+        args = [
+          "-e",
+          `tell application "Terminal" to do script "${claudePath} setup-token"`,
+          "-e",
+          'tell application "Terminal" to activate',
+        ];
+      } else {
+        // Linux: Use the terminal we found earlier
+        if (!linuxTerminal) {
+          reject({
+            success: false,
+            error:
+              "Could not find a terminal emulator. Please run 'claude setup-token' manually in your terminal.",
+            requiresManualAuth: true,
+          });
+          return;
+        }
+        command = linuxTerminal.command;
+        args = linuxTerminal.args;
+      }
+
+      console.log(
+        "[ClaudeCliDetector] Spawning terminal:",
+        command,
+        args.join(" ")
+      );
+
+      const proc = spawn(command, args, {
+        detached: true,
+        stdio: "ignore",
+        shell: platform === "win32",
+      });
+
+      proc.unref();
+
+      proc.on("error", (error) => {
+        console.error("[ClaudeCliDetector] Failed to open terminal:", error);
+        reject({
+          success: false,
+          error: `Failed to open terminal: ${error.message}`,
+          requiresManualAuth: true,
+        });
+      });
+
+      // Give the terminal a moment to open
+      setTimeout(() => {
+        send("Terminal window opened!\n\n");
+        send("1. Complete the sign-in in your browser\n");
+        send("2. Copy the token from the terminal\n");
+        send("3. Paste it below\n");
+
+        // Resolve with manual auth required since we can't capture from external terminal
+        resolve({
+          success: true,
+          requiresManualAuth: true,
+          terminalOpened: true,
+          message:
+            "Terminal opened. Complete authentication and paste the token below.",
+        });
+      }, 500);
+    });
   }
 }
 
