@@ -1,12 +1,11 @@
-import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { createRootRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { FileBrowserProvider, useFileBrowser, setGlobalFileBrowser } from "@/contexts/file-browser-context";
 import { useAppStore } from "@/store/app-store";
-import { useSetupStore } from "@/store/setup-store";
 import { getElectronAPI } from "@/lib/electron";
 import { Toaster } from "sonner";
-import { themeOptions } from "@/config/theme-options";
+import { ThemeOption, themeOptions } from "@/config/theme-options";
 
 function RootLayoutContent() {
   const location = useLocation();
@@ -17,7 +16,7 @@ function RootLayoutContent() {
     previewTheme,
     getEffectiveTheme,
   } = useAppStore();
-  const { isFirstRun, setupComplete } = useSetupStore();
+  const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
   const [streamerPanelOpen, setStreamerPanelOpen] = useState(false);
   const { openFileBrowser } = useFileBrowser();
@@ -82,13 +81,20 @@ function RootLayoutContent() {
     testConnection();
   }, [setIpcConnected]);
 
+  // Restore to board view if a project was previously open
+  useEffect(() => {
+    if (isMounted && currentProject && location.pathname === "/") {
+      navigate({ to: "/board" });
+    }
+  }, [isMounted, currentProject, location.pathname, navigate]);
+
   // Apply theme class to document
   useEffect(() => {
     const root = document.documentElement;
     // Remove all theme classes dynamically from themeOptions
     const themeClasses = themeOptions
       .map((option) => option.value)
-      .filter((theme) => theme !== "system");
+      .filter((theme) => theme !== "system" as ThemeOption['value']);
     root.classList.remove(...themeClasses);
 
     if (effectiveTheme === "dark") {
