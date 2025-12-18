@@ -22,6 +22,22 @@ export function isAbortError(error: unknown): boolean {
 }
 
 /**
+ * Check if an error is a user-initiated cancellation
+ *
+ * @param errorMessage - The error message to check
+ * @returns True if the error is a user-initiated cancellation
+ */
+export function isCancellationError(errorMessage: string): boolean {
+  const lowerMessage = errorMessage.toLowerCase();
+  return (
+    lowerMessage.includes("cancelled") ||
+    lowerMessage.includes("canceled") ||
+    lowerMessage.includes("stopped") ||
+    lowerMessage.includes("aborted")
+  );
+}
+
+/**
  * Check if an error is an authentication/API key error
  *
  * @param errorMessage - The error message to check
@@ -39,7 +55,7 @@ export function isAuthenticationError(errorMessage: string): boolean {
 /**
  * Error type classification
  */
-export type ErrorType = "authentication" | "abort" | "execution" | "unknown";
+export type ErrorType = "authentication" | "cancellation" | "abort" | "execution" | "unknown";
 
 /**
  * Classified error information
@@ -49,6 +65,7 @@ export interface ErrorInfo {
   message: string;
   isAbort: boolean;
   isAuth: boolean;
+  isCancellation: boolean;
   originalError: unknown;
 }
 
@@ -62,12 +79,13 @@ export function classifyError(error: unknown): ErrorInfo {
   const message = error instanceof Error ? error.message : String(error || "Unknown error");
   const isAbort = isAbortError(error);
   const isAuth = isAuthenticationError(message);
+  const isCancellation = isCancellationError(message);
 
   let type: ErrorType;
   if (isAuth) {
     type = "authentication";
-  } else if (isAbort) {
-    type = "abort";
+  } else if (isCancellation || isAbort) {
+    type = "cancellation";
   } else if (error instanceof Error) {
     type = "execution";
   } else {
@@ -79,6 +97,7 @@ export function classifyError(error: unknown): ErrorInfo {
     message,
     isAbort,
     isAuth,
+    isCancellation,
     originalError: error,
   };
 }

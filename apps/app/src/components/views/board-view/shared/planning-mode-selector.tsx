@@ -9,30 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import type { PlanSpec } from "@/store/app-store";
 
 export type PlanningMode = 'skip' | 'lite' | 'spec' | 'full';
 
-// Parsed task from spec (for spec and full planning modes)
-export interface ParsedTask {
-  id: string;          // e.g., "T001"
-  description: string; // e.g., "Create user model"
-  filePath?: string;   // e.g., "src/models/user.ts"
-  phase?: string;      // e.g., "Phase 1: Foundation" (for full mode)
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
-}
-
-export interface PlanSpec {
-  status: 'pending' | 'generating' | 'generated' | 'approved' | 'rejected';
-  content?: string;
-  version: number;
-  generatedAt?: string;
-  approvedAt?: string;
-  reviewedByUser: boolean;
-  tasksCompleted?: number;
-  tasksTotal?: number;
-  currentTaskId?: string; // ID of the task currently being worked on
-  tasks?: ParsedTask[];   // Parsed tasks from the spec
-}
+// Re-export for backwards compatibility
+export type { ParsedTask, PlanSpec } from "@/store/app-store";
 
 interface PlanningModeSelectorProps {
   mode: PlanningMode;

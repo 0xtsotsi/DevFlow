@@ -19,7 +19,7 @@ import type { EventEmitter } from "../lib/events.js";
 import { buildPromptWithImages } from "../lib/prompt-builder.js";
 import { resolveModelString, DEFAULT_MODELS } from "../lib/model-resolver.js";
 import { createAutoModeOptions } from "../lib/sdk-options.js";
-import { isAbortError, classifyError } from "../lib/error-handler.js";
+import { classifyError } from "../lib/error-handler.js";
 import { resolveDependencies, areDependenciesSatisfied } from "../lib/dependency-resolver.js";
 import type { Feature } from "./feature-loader.js";
 import {
@@ -362,8 +362,10 @@ export class AutoModeService {
     // Run the loop in the background
     this.runAutoLoop().catch((error) => {
       console.error("[AutoMode] Loop error:", error);
+      const errorInfo = classifyError(error);
       this.emitAutoModeEvent("auto_mode_error", {
-        error: error.message,
+        error: errorInfo.message,
+        errorType: errorInfo.type,
       });
     });
   }
@@ -457,7 +459,10 @@ export class AutoModeService {
     featureId: string,
     useWorktrees = false,
     isAutoMode = false,
-    providedWorktreePath?: string
+    providedWorktreePath?: string,
+    options?: {
+      continuationPrompt?: string;
+    }
   ): Promise<void> {
     if (this.runningFeatures.has(featureId)) {
       throw new Error(`Feature ${featureId} is already running`);
@@ -531,18 +536,27 @@ export class AutoModeService {
       // Update feature status to in_progress
       await this.updateFeatureStatus(projectPath, featureId, "in_progress");
 
-      // Build the prompt with planning phase
-      const featurePrompt = this.buildFeaturePrompt(feature);
-      const planningPrefix = this.getPlanningPromptPrefix(feature);
-      const prompt = planningPrefix + featurePrompt;
+      // Build the prompt - use continuation prompt if provided (for recovery after plan approval)
+      let prompt: string;
+      if (options?.continuationPrompt) {
+        // Continuation prompt is used when recovering from a plan approval
+        // The plan was already approved, so skip the planning phase
+        prompt = options.continuationPrompt;
+        console.log(`[AutoMode] Using continuation prompt for feature ${featureId}`);
+      } else {
+        // Normal flow: build prompt with planning phase
+        const featurePrompt = this.buildFeaturePrompt(feature);
+        const planningPrefix = this.getPlanningPromptPrefix(feature);
+        prompt = planningPrefix + featurePrompt;
 
-      // Emit planning mode info
-      if (feature.planningMode && feature.planningMode !== 'skip') {
-        this.emitAutoModeEvent('planning_started', {
-          featureId: feature.id,
-          mode: feature.planningMode,
-          message: `Starting ${feature.planningMode} planning phase`
-        });
+        // Emit planning mode info
+        if (feature.planningMode && feature.planningMode !== 'skip') {
+          this.emitAutoModeEvent('planning_started', {
+            featureId: feature.id,
+            mode: feature.planningMode,
+            message: `Starting ${feature.planningMode} planning phase`
+          });
+        }
       }
 
       // Extract image paths from feature
@@ -602,7 +616,7 @@ export class AutoModeService {
         this.emitAutoModeEvent("auto_mode_error", {
           featureId,
           error: errorInfo.message,
-          errorType: errorInfo.isAuth ? "authentication" : "execution",
+          errorType: errorInfo.type,
           projectPath,
         });
       }
@@ -862,10 +876,12 @@ Address the follow-up instructions above. Review the previous work and make the 
         projectPath,
       });
     } catch (error) {
-      if (!isAbortError(error)) {
+      const errorInfo = classifyError(error);
+      if (!errorInfo.isCancellation) {
         this.emitAutoModeEvent("auto_mode_error", {
           featureId,
-          error: (error as Error).message,
+          error: errorInfo.message,
+          errorType: errorInfo.type,
           projectPath,
         });
       }
@@ -1109,9 +1125,11 @@ Format your response as a structured markdown document.`;
         projectPath,
       });
     } catch (error) {
+      const errorInfo = classifyError(error);
       this.emitAutoModeEvent("auto_mode_error", {
         featureId: analysisFeatureId,
-        error: (error as Error).message,
+        error: errorInfo.message,
+        errorType: errorInfo.type,
         projectPath,
       });
     }
@@ -1219,7 +1237,10 @@ Format your response as a structured markdown document.`;
             console.log(`[AutoMode] Starting recovery execution for feature ${featureId}`);
 
             // Start feature execution with the continuation prompt (async, don't await)
-            this.executeFeature(projectPathFromClient, featureId, true, false, continuationPrompt)
+            // Pass undefined for providedWorktreePath, use options for continuation prompt
+            this.executeFeature(projectPathFromClient, featureId, true, false, undefined, {
+              continuationPrompt,
+            })
               .catch((error) => {
                 console.error(`[AutoMode] Recovery execution failed for feature ${featureId}:`, error);
               });
@@ -2306,7 +2327,9 @@ ${context}
 ## Instructions
 Review the previous work and continue the implementation. If the feature appears complete, verify it works correctly.`;
 
-    return this.executeFeature(projectPath, featureId, useWorktrees, false, prompt);
+    return this.executeFeature(projectPath, featureId, useWorktrees, false, undefined, {
+      continuationPrompt: prompt,
+    });
   }
 
   /**

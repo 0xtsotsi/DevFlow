@@ -193,7 +193,7 @@ export type AutoModeEvent =
   | {
       type: "auto_mode_error";
       error: string;
-      errorType?: "authentication" | "execution";
+      errorType?: "authentication" | "cancellation" | "execution";
       featureId?: string;
       projectId?: string;
       projectPath?: string;
