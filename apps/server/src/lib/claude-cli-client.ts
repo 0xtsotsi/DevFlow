@@ -6,7 +6,7 @@
  * API key and CLI authentication modes.
  */
 
-import { spawn, type ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import { createLogger } from '@automaker/utils';
 import type { ProviderMessage } from '../providers/types.js';
 
@@ -240,7 +240,7 @@ export async function* streamCliQuery(options: CLIQueryOptions): AsyncGenerator<
       logger.error('[CLI]', error);
       reject(error);
     }
-  }).then((generator) => generator);
+  });
 }
 
 /**

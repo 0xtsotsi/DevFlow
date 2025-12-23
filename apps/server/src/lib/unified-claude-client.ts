@@ -140,17 +140,8 @@ export async function* executeUnifiedQuery(
         : {}),
     };
 
-    // Build prompt payload
-    let promptPayload: string | AsyncIterable<any>;
-
-    if (typeof prompt === 'string') {
-      promptPayload = prompt;
-    } else {
-      promptPayload = prompt;
-    }
-
     try {
-      const stream = query({ prompt: promptPayload, options: sdkOptions });
+      const stream = query({ prompt, options: sdkOptions });
 
       for await (const msg of stream) {
         yield msg as ProviderMessage;
