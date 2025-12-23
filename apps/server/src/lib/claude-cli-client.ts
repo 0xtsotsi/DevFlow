@@ -14,12 +14,16 @@ const logger = createLogger('CLIClient');
 
 /**
  * Options for CLI query execution
+ *
+ * Note: Multi-turn conversations are not currently supported by the CLI client.
+ * The maxTurns parameter is accepted for API compatibility but not implemented.
  */
 export interface CLIQueryOptions {
   prompt: string;
   model?: string;
   cwd?: string;
   systemPrompt?: string;
+  /** @deprecated Multi-turn not yet supported via CLI - parameter ignored */
   maxTurns?: number;
   abortController?: AbortController;
   timeout?: number;
