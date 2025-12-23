@@ -44,8 +44,21 @@ Binary file ${relativePath} added
 `;
     }
 
-    // Get file stats to check size
+    // Get file stats to check size and type
     const stats = await secureFs.stat(fullPath);
+
+    // Check if it's a directory (can happen with untracked directories from git status)
+    if (stats.isDirectory()) {
+      return `diff --git a/${relativePath} b/${relativePath}
+new file mode 040000
+index 0000000..0000000
+--- /dev/null
++++ b/${relativePath}
+@@ -0,0 +1 @@
++[Directory]
+`;
+    }
+
     if (stats.size > MAX_SYNTHETIC_DIFF_SIZE) {
       const sizeKB = Math.round(stats.size / 1024);
       return `diff --git a/${relativePath} b/${relativePath}
