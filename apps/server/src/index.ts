@@ -15,7 +15,7 @@ import dotenv from 'dotenv';
 
 import { createEventEmitter, type EventEmitter } from './lib/events.js';
 import { initAllowedPaths } from '@automaker/platform';
-import { authMiddleware, getAuthStatus } from './lib/auth.js';
+import { authMiddleware } from './lib/auth.js';
 import { createFsRoutes } from './routes/fs/index.js';
 import { createHealthRoutes } from './routes/health/index.js';
 import { createAgentRoutes } from './routes/agent/index.js';

@@ -8,13 +8,25 @@ import type {
   AgentModel,
   PlanningMode,
   AIProfile,
+  ThemeMode,
+  ThinkingLevel,
+  ModelProvider,
   BeadsIssue,
   BeadsIssueStatus,
   BeadsIssueType,
 } from '@automaker/types';
 
-// Re-export ThemeMode for convenience
-export type { ThemeMode };
+// Re-export types for convenience
+export type {
+  ThemeMode,
+  AgentModel,
+  ThinkingLevel,
+  AIProfile,
+  ModelProvider,
+  FeatureTextFilePath,
+  PlanningMode,
+  FeatureImagePath,
+};
 
 export type ViewMode =
   | 'welcome'
@@ -30,25 +42,6 @@ export type ViewMode =
   | 'running-agents'
   | 'terminal'
   | 'wiki';
-
-export type ThemeMode =
-  | 'light'
-  | 'dark'
-  | 'system'
-  | 'retro'
-  | 'dracula'
-  | 'nord'
-  | 'monokai'
-  | 'tokyonight'
-  | 'solarized'
-  | 'gruvbox'
-  | 'catppuccin'
-  | 'onedark'
-  | 'synthwave'
-  | 'red'
-  | 'cream'
-  | 'sunset'
-  | 'gray';
 
 export type KanbanCardDetailLevel = 'minimal' | 'standard' | 'detailed';
 
@@ -258,20 +251,40 @@ export interface FeatureImage {
 // Available models for feature execution
 export type ClaudeModel = 'opus' | 'sonnet' | 'haiku';
 
-export interface Feature extends Omit<
-  BaseFeature,
-  'steps' | 'imagePaths' | 'textFilePaths' | 'status'
-> {
+export interface Feature extends Omit<BaseFeature, 'imagePaths' | 'textFilePaths' | 'status'> {
   id: string;
   title?: string;
   titleGenerating?: boolean;
   category: string;
   description: string;
-  steps: string[]; // Required in UI (not optional)
+  passes?: boolean;
+  priority?: number;
+  steps?: string[]; // Optional to match BaseFeature
   status: 'backlog' | 'in_progress' | 'waiting_approval' | 'verified' | 'completed';
+  dependencies?: string[];
+  spec?: string;
+  model?: string;
   images?: FeatureImage[]; // UI-specific base64 images
   imagePaths?: FeatureImagePath[]; // Stricter type than base (no string | union)
   textFilePaths?: FeatureTextFilePath[]; // Text file attachments for context
+  branchName?: string;
+  skipTests?: boolean;
+  thinkingLevel?: string;
+  planningMode?: PlanningMode;
+  requirePlanApproval?: boolean;
+  planSpec?: {
+    status: 'pending' | 'generating' | 'generated' | 'approved' | 'rejected';
+    content?: string;
+    version: number;
+    generatedAt?: string;
+    approvedAt?: string;
+    reviewedByUser: boolean;
+    tasksCompleted?: number;
+    tasksTotal?: number;
+  };
+  error?: string;
+  summary?: string;
+  startedAt?: string;
   justFinishedAt?: string; // UI-specific: ISO timestamp when agent just finished
   prUrl?: string; // UI-specific: Pull request URL
 }
@@ -877,6 +890,11 @@ export interface AppActions {
   startWatchingBeads: (projectPath: string) => void;
   stopWatchingBeads: (projectPath: string) => void;
 
+  // Claude Usage Tracking actions
+  setClaudeRefreshInterval: (interval: number) => void;
+  setClaudeUsageLastUpdated: (timestamp: number) => void;
+  setClaudeUsage: (usage: ClaudeUsage | null) => void;
+
   // Reset
   reset: () => void;
 }
@@ -983,6 +1001,10 @@ const initialState: AppState = {
   currentBeadsView: 'issues' as const,
   beadsFilter: {},
   selectedBeadsIssue: null,
+
+  claudeRefreshInterval: 60,
+  claudeUsage: null,
+  claudeUsageLastUpdated: null,
 };
 
 export const useAppStore = create<AppState & AppActions>()(
@@ -2507,6 +2529,7 @@ export const useAppStore = create<AppState & AppActions>()(
         const current = get().terminalState;
         if (current.tabs.length === 0) {
           // Nothing to save, clear any existing layout
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { [projectPath]: _, ...rest } = get().terminalLayoutByProject;
           set({ terminalLayoutByProject: rest });
           return;
@@ -2564,6 +2587,7 @@ export const useAppStore = create<AppState & AppActions>()(
       },
 
       clearPersistedTerminalLayout: (projectPath) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [projectPath]: _, ...rest } = get().terminalLayoutByProject;
         set({ terminalLayoutByProject: rest });
       },

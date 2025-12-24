@@ -15,6 +15,7 @@ interface BeadsColumnProps {
   opacity?: number;
   showBorder?: boolean;
   hideScrollbar?: boolean;
+  itemIds?: string[];
 }
 
 export const BeadsColumn = memo(function BeadsColumn({
@@ -27,6 +28,7 @@ export const BeadsColumn = memo(function BeadsColumn({
   opacity = 100,
   showBorder = true,
   hideScrollbar = false,
+  itemIds = [],
 }: BeadsColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
@@ -75,7 +77,7 @@ export const BeadsColumn = memo(function BeadsColumn({
           'scroll-smooth'
         )}
       >
-        <SortableContext items={children} strategy={verticalListSortingStrategy}>
+        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
           {children}
         </SortableContext>
       </div>

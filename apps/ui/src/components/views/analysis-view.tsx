@@ -639,6 +639,7 @@ ${Object.entries(projectAnalysis.filesByExtension)
           category: detectedFeature.category,
           description: detectedFeature.description,
           status: 'backlog',
+          steps: [],
         });
       }
 

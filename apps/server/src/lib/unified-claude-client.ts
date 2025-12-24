@@ -9,7 +9,7 @@
  * of the application.
  */
 
-import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
+import { query, type Options, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { createLogger } from '@automaker/utils';
 import { getAuthStatus, getAuthConfig } from './claude-auth-manager.js';
 import { streamCliQuery, type CLIQueryOptions } from './claude-cli-client.js';
@@ -22,7 +22,7 @@ const logger = createLogger('UnifiedClient');
  * Options for unified query execution
  */
 export interface UnifiedQueryOptions {
-  prompt: string | AsyncIterable<any>;
+  prompt: string | AsyncIterable<ProviderMessage | SDKUserMessage>;
   model?: string;
   cwd?: string;
   systemPrompt?: string;
@@ -30,7 +30,7 @@ export interface UnifiedQueryOptions {
   allowedTools?: string[];
   mcpServers?: Record<string, unknown>;
   abortController?: AbortController;
-  conversationHistory?: Array<{ role: 'user' | 'assistant'; content: any }>;
+  conversationHistory?: Array<{ role: 'user' | 'assistant'; content: unknown }>;
   sdkSessionId?: string;
   forceAuthMethod?: ClaudeAuthMethod;
 }
@@ -51,7 +51,6 @@ export async function* executeUnifiedQuery(
     systemPrompt,
     maxTurns = 20,
     allowedTools = [],
-    mcpServers,
     abortController,
     conversationHistory,
     sdkSessionId,
@@ -91,8 +90,10 @@ export async function* executeUnifiedQuery(
       if (firstMsg?.message?.content) {
         const content = firstMsg.message.content;
         if (Array.isArray(content)) {
-          const textBlocks = content.filter((c: any) => c.type === 'text');
-          promptText = textBlocks.map((b: any) => b.text).join('');
+          const textBlocks = content.filter(
+            (c): c is { type: 'text'; text: string } => c.type === 'text'
+          );
+          promptText = textBlocks.map((b) => b.text).join('');
         } else {
           promptText = String(content);
         }
@@ -113,7 +114,9 @@ export async function* executeUnifiedQuery(
       abortController,
     };
 
-    yield* streamCliQuery(cliOptions);
+    const streamPromise = streamCliQuery(cliOptions);
+    const stream = await streamPromise;
+    yield* stream;
   } else {
     // Use Claude Agent SDK
     logger.info('[Unified] Routing to Claude Agent SDK');
@@ -145,7 +148,10 @@ export async function* executeUnifiedQuery(
     };
 
     try {
-      const stream = query({ prompt, options: sdkOptions });
+      const stream = query({
+        prompt: prompt as string | AsyncIterable<SDKUserMessage>,
+        options: sdkOptions,
+      });
 
       for await (const msg of stream) {
         yield msg as ProviderMessage;

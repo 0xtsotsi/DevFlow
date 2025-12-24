@@ -1,16 +1,7 @@
 import { useReactFlow, Panel } from '@xyflow/react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  Lock,
-  Unlock,
-  GitBranch,
-  ArrowRight,
-  ArrowDown,
-} from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Lock, Unlock, ArrowRight, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface GraphControlsProps {

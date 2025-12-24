@@ -119,7 +119,7 @@ export function createOpenInEditorHandler() {
             editorName: editor.name,
           },
         });
-      } catch (editorError) {
+      } catch {
         // If the detected editor fails, try opening in default file manager as fallback
         const platform = process.platform;
         let openCommand: string;

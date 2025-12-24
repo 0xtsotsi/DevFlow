@@ -70,7 +70,7 @@ export function AgentInfoPanel({
 
       try {
         const api = getElectronAPI();
-        const currentProject = (window as any).__currentProject;
+        const currentProject = (window as { __currentProject?: { path: string } }).__currentProject;
         if (!currentProject?.path) return;
 
         if (api.features) {

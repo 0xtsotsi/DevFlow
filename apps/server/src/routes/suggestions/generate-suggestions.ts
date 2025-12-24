@@ -100,19 +100,18 @@ The response will be automatically formatted as structured JSON.`;
       }
     } else if (msg.type === 'result' && msg.subtype === 'success') {
       // Check for structured output
-      const resultMsg = msg as any;
-      if (resultMsg.structured_output) {
-        structuredOutput = resultMsg.structured_output as {
-          suggestions: Array<Record<string, unknown>>;
-        };
+      if ('structured_output' in msg) {
+        structuredOutput = (
+          msg as { structured_output: { suggestions: Array<Record<string, unknown>> } }
+        ).structured_output;
         logger.debug('Received structured output:', structuredOutput);
       }
     } else if (msg.type === 'result') {
-      const resultMsg = msg as any;
-      if (resultMsg.subtype === 'error_max_structured_output_retries') {
+      const subtype = 'subtype' in msg ? (msg as { subtype?: string }).subtype : undefined;
+      if (subtype === 'error_max_structured_output_retries') {
         logger.error('Failed to produce valid structured output after retries');
         throw new Error('Could not produce valid suggestions output');
-      } else if (resultMsg.subtype === 'error_max_turns') {
+      } else if (subtype === 'error_max_turns') {
         logger.error('Hit max turns limit before completing suggestions generation');
         logger.warn(`Response text length: ${responseText.length} chars`);
         // Still try to parse what we have

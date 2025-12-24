@@ -16,7 +16,9 @@ describe('.gitignore Claude Code patterns', () => {
 
   describe('Claude Code pattern presence', () => {
     it('should contain Claude Code settings comment', () => {
-      expect(gitignoreContent).toContain('# Claude Code local settings (user-specific, do not commit)');
+      expect(gitignoreContent).toContain(
+        '# Claude Code local settings (user-specific, do not commit)'
+      );
     });
 
     it('should ignore .claude/settings.local.json', () => {
@@ -33,12 +35,10 @@ describe('.gitignore Claude Code patterns', () => {
 
     it('should have Claude Code section properly placed', () => {
       const lines = gitignoreContent.split('\n');
-      const commentIndex = lines.findIndex(line => 
-        line.includes('# Claude Code local settings')
-      );
-      
+      const commentIndex = lines.findIndex((line) => line.includes('# Claude Code local settings'));
+
       expect(commentIndex).toBeGreaterThan(-1);
-      
+
       // Should be followed by the actual patterns
       expect(lines[commentIndex + 1]).toContain('.claude/settings.local.json');
       expect(lines[commentIndex + 2]).toContain('.claude/*.local.json');
@@ -54,17 +54,15 @@ describe('.gitignore Claude Code patterns', () => {
         '.claude/session-env/',
       ];
 
-      claudePatterns.forEach(pattern => {
+      claudePatterns.forEach((pattern) => {
         expect(gitignoreContent).toContain(pattern);
       });
     });
 
     it('should have blank line before Claude section', () => {
       const lines = gitignoreContent.split('\n');
-      const commentIndex = lines.findIndex(line => 
-        line.includes('# Claude Code local settings')
-      );
-      
+      const commentIndex = lines.findIndex((line) => line.includes('# Claude Code local settings'));
+
       if (commentIndex > 0) {
         expect(lines[commentIndex - 1].trim()).toBe('');
       }
@@ -72,11 +70,11 @@ describe('.gitignore Claude Code patterns', () => {
 
     it('should not have trailing whitespace on Claude patterns', () => {
       const lines = gitignoreContent.split('\n');
-      const claudeLines = lines.filter(line => 
-        line.includes('.claude/') && !line.startsWith('#')
+      const claudeLines = lines.filter(
+        (line) => line.includes('.claude/') && !line.startsWith('#')
       );
-      
-      claudeLines.forEach(line => {
+
+      claudeLines.forEach((line) => {
         expect(line).not.toMatch(/\s+$/);
       });
     });
@@ -104,8 +102,8 @@ describe('.gitignore Claude Code patterns', () => {
   describe('pattern interaction', () => {
     it('should not conflict with other ignore patterns', () => {
       const lines = gitignoreContent.split('\n');
-      const claudePatterns = lines.filter(line => line.includes('.claude/'));
-      
+      const claudePatterns = lines.filter((line) => line.includes('.claude/'));
+
       // Should not have duplicate patterns
       const uniquePatterns = new Set(claudePatterns);
       expect(uniquePatterns.size).toBe(claudePatterns.length);
@@ -125,7 +123,7 @@ describe('.gitignore Claude Code patterns', () => {
         '# Environment files',
       ];
 
-      expectedSections.forEach(section => {
+      expectedSections.forEach((section) => {
         expect(gitignoreContent).toContain(section);
       });
     });
@@ -135,12 +133,12 @@ describe('.gitignore Claude Code patterns', () => {
     it('should ignore settings.local.json files', async () => {
       const testFile = '.claude/settings.local.json';
       const testContent = '{"test": true}';
-      
+
       try {
         // Create test file
         await fs.mkdir(path.dirname(testFile), { recursive: true });
         await fs.writeFile(testFile, testContent);
-        
+
         // Check if git would ignore it
         const { stdout } = await execAsync(`git check-ignore ${testFile}`);
         expect(stdout.trim()).toBe(testFile);
@@ -159,11 +157,11 @@ describe('.gitignore Claude Code patterns', () => {
     it('should ignore any .local.json in .claude directory', async () => {
       const testFile = '.claude/custom.local.json';
       const testContent = '{"custom": true}';
-      
+
       try {
         await fs.mkdir(path.dirname(testFile), { recursive: true });
         await fs.writeFile(testFile, testContent);
-        
+
         const { stdout } = await execAsync(`git check-ignore ${testFile}`);
         expect(stdout.trim()).toBe(testFile);
       } catch (error: any) {
@@ -178,11 +176,11 @@ describe('.gitignore Claude Code patterns', () => {
     it('should ignore session-env directory', async () => {
       const testDir = '.claude/session-env';
       const testFile = path.join(testDir, 'test.txt');
-      
+
       try {
         await fs.mkdir(testDir, { recursive: true });
         await fs.writeFile(testFile, 'test');
-        
+
         const { stdout } = await execAsync(`git check-ignore ${testFile}`);
         expect(stdout.trim()).toBe(testFile);
       } catch (error: any) {
@@ -196,7 +194,7 @@ describe('.gitignore Claude Code patterns', () => {
 
     it('should not ignore committed settings.json', async () => {
       const committedFile = '.claude/settings.json';
-      
+
       try {
         // This file should NOT be ignored (it's the committed config)
         await execAsync(`git check-ignore ${committedFile}`);
@@ -215,12 +213,9 @@ describe('.gitignore Claude Code patterns', () => {
 
   describe('security and privacy', () => {
     it('should protect local user settings from being committed', () => {
-      const sensitivePatterns = [
-        '.claude/settings.local.json',
-        '.claude/*.local.json',
-      ];
-      
-      sensitivePatterns.forEach(pattern => {
+      const sensitivePatterns = ['.claude/settings.local.json', '.claude/*.local.json'];
+
+      sensitivePatterns.forEach((pattern) => {
         expect(gitignoreContent).toContain(pattern);
       });
     });
@@ -249,15 +244,9 @@ describe('.gitignore Claude Code patterns', () => {
 
     it('should maintain backward compatibility', () => {
       // Existing patterns should still be present
-      const existingPatterns = [
-        'node_modules/',
-        'dist/',
-        '*.log',
-        '.env',
-        '.DS_Store',
-      ];
+      const existingPatterns = ['node_modules/', 'dist/', '*.log', '.env', '.DS_Store'];
 
-      existingPatterns.forEach(pattern => {
+      existingPatterns.forEach((pattern) => {
         expect(gitignoreContent).toContain(pattern);
       });
     });
@@ -267,7 +256,7 @@ describe('.gitignore Claude Code patterns', () => {
     it('should use correct wildcard syntax', () => {
       const wildcardPattern = '.claude/*.local.json';
       expect(gitignoreContent).toContain(wildcardPattern);
-      
+
       // Should use * not **/ for single directory level
       expect(wildcardPattern).not.toContain('**/');
     });
@@ -280,10 +269,10 @@ describe('.gitignore Claude Code patterns', () => {
 
     it('should not have redundant patterns', () => {
       const lines = gitignoreContent.split('\n');
-      const claudeLines = lines.filter(line => 
-        line.includes('.claude/') && !line.startsWith('#')
-      ).map(line => line.trim());
-      
+      const claudeLines = lines
+        .filter((line) => line.includes('.claude/') && !line.startsWith('#'))
+        .map((line) => line.trim());
+
       const uniqueLines = new Set(claudeLines);
       expect(uniqueLines.size).toBe(claudeLines.length);
     });
@@ -297,10 +286,8 @@ describe('.gitignore Claude Code patterns', () => {
 
     it('should explain why files are ignored', () => {
       const lines = gitignoreContent.split('\n');
-      const commentIndex = lines.findIndex(line => 
-        line.includes('# Claude Code local settings')
-      );
-      
+      const commentIndex = lines.findIndex((line) => line.includes('# Claude Code local settings'));
+
       expect(lines[commentIndex]).toContain('user-specific');
       expect(lines[commentIndex]).toContain('do not commit');
     });

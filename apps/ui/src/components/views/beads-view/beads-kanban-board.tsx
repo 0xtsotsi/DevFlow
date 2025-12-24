@@ -77,6 +77,7 @@ export const BeadsKanbanBoard = memo(function BeadsKanbanBoard({
                 opacity={columnOpacity}
                 showBorder={columnBorderEnabled}
                 hideScrollbar={hideScrollbar}
+                itemIds={columnIssues.map((i) => i.id)}
               >
                 {columnIssues.map((issue) => {
                   const { blockingCount, blockedCount } = getBlockingCounts(issue);
