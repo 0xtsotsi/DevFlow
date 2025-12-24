@@ -1047,6 +1047,13 @@ const initialState: AppState = {
   defaultRequirePlanApproval: false,
   defaultAIProfileId: null,
   pendingPlanApproval: null,
+
+  // Beads state
+  beadsByProject: {},
+  currentBeadsView: 'issues' as const,
+  beadsFilter: {},
+  selectedBeadsIssue: null,
+
   claudeRefreshInterval: 60,
   claudeUsage: null,
   claudeUsageLastUpdated: null,

@@ -610,6 +610,152 @@ bd create "Initial issue"
 - Beads UI runs independently and can be used alongside Automaker's built-in Kanban board
 - The default port (3000) may conflict with Automaker's web mode; use `--port` to specify an alternative
 
+## Beads UI Integration
+
+Automaker integrates with [beads-ui](https://github.com/mantoni/beads-ui), a local web UI for the Beads CLI that provides a visual interface for collaborating on issues with your coding agent.
+
+### What is Beads UI?
+
+Beads UI is a local web interface that works alongside the `bd` CLI tool to provide:
+
+- 📊 **Visual Issue Management** - View and manage issues in a clean web interface
+- 🔍 **Search & Filter** - Quickly find issues by status, labels, or text
+- 📋 **Multiple Views** - Switch between Issues list, Epics view, and Kanban board
+- ⚡ **Live Updates** - Real-time sync with your beads database
+- ⌨️ **Keyboard Navigation** - Efficient keyboard shortcuts for power users
+
+### Installation
+
+Beads UI is installed as a global npm package:
+
+```bash
+# Install beads-ui globally
+npm install -g beads-ui
+
+# Verify installation
+bdui --version
+```
+
+> **Note:** The `bd` CLI must be installed and accessible in your PATH. Beads UI respects the `BD_BIN` environment variable if you need to specify a custom path to the `bd` executable.
+
+### Starting Beads UI
+
+Launch the Beads UI web interface:
+
+```bash
+# Start Beads UI (default port: 3000)
+bdui start
+
+# Start and automatically open in browser
+bdui start --open
+
+# Start on custom port
+bdui start --port 3001
+
+# Start with custom beads database path
+bdui start --db /path/to/beads.db
+```
+
+### Stopping Beads UI
+
+Beads UI runs as a background daemon. To stop it:
+
+```bash
+# Stop the beads-ui service
+bdui stop
+
+# Check if beads-ui is running
+bdui status
+```
+
+### NPM Helper Scripts
+
+Automaker includes convenient npm scripts for common Beads UI operations:
+
+```bash
+# Start Beads UI (default port: 3000)
+npm run beads
+
+# Start Beads UI and automatically open in browser
+npm run beads:open
+
+# Stop the Beads UI service
+npm run beads:stop
+
+# Check if Beads UI is running
+npm run beads:status
+
+# List all issues using the bd CLI
+npm run beads:issues
+```
+
+These scripts provide shorthand commands for the most common Beads UI operations, making it easier to integrate Beads UI into your development workflow.
+
+### Using Beads UI with Automaker
+
+1. **Start Automaker** in development mode (`npm run dev`)
+2. **Launch Beads UI** in a separate terminal (`npm run beads:open`)
+3. **Access the UI** at `http://localhost:3000` (or your custom port)
+4. **View Issues** from your `.beads/beads.db` database in the web interface
+
+### View Modes
+
+Beads UI provides three different views:
+
+- **Issues View** - Traditional list of all issues with status indicators
+- **Epics View** - Group issues by epic/feature for high-level planning
+- **Board View** - Kanban-style board for visual workflow management
+
+Switch between views using the navigation menu or keyboard shortcuts.
+
+### Keyboard Shortcuts
+
+| Shortcut | Action                       |
+| -------- | ---------------------------- |
+| `?`      | Show keyboard shortcuts help |
+| `/`      | Focus search box             |
+| `c`      | Create new issue             |
+| `n`      | Next issue                   |
+| `p`      | Previous issue               |
+| `e`      | Edit selected issue          |
+| `s`      | Change issue status          |
+
+### Troubleshooting
+
+**Port already in use:**
+
+```bash
+# Use a different port
+bdui start --port 3001
+```
+
+**bd CLI not found:**
+
+```bash
+# Verify bd is installed
+which bd
+
+# Set custom path if needed
+export BD_BIN=/path/to/bd
+```
+
+**Database not found:**
+
+```bash
+# Ensure beads database exists
+ls -la .beads/beads.db
+
+# Create a new issue to initialize the database
+bd create "Initial issue"
+```
+
+### Integration Notes
+
+- Beads UI reads from the same `.beads/beads.db` database used by Automaker
+- Changes made via the `bd` CLI or Automaker will appear in Beads UI in real-time
+- Beads UI runs independently and can be used alongside Automaker's built-in Kanban board
+- The default port (3000) may conflict with Automaker's web mode; use `--port` to specify an alternative
+
 ## Tech Stack
 
 ### Frontend

@@ -1434,6 +1434,21 @@ export class HttpApiClient implements ElectronAPI {
     validate: (projectPath: string) => this.post('/api/beads/validate', { projectPath }),
   };
 
+  // Beads API
+  beads: BeadsAPI = {
+    list: (projectPath: string, filters?: ListBeadsIssuesFilters) =>
+      this.post('/api/beads/list', { projectPath, filters }),
+    create: (projectPath: string, input: CreateBeadsIssueInput) =>
+      this.post('/api/beads/create', { projectPath, issue: input }),
+    update: (projectPath: string, issueId: string, updates: UpdateBeadsIssueInput) =>
+      this.post('/api/beads/update', { projectPath, issueId, updates }),
+    delete: (projectPath: string, issueId: string) =>
+      this.post('/api/beads/delete', { projectPath, issueId }),
+    getReady: (projectPath: string, limit?: number) =>
+      this.post('/api/beads/ready', { projectPath, limit }),
+    validate: (projectPath: string) => this.post('/api/beads/validate', { projectPath }),
+  };
+
   // Workspace API
   workspace = {
     getConfig: (): Promise<{
