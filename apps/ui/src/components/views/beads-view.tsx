@@ -15,7 +15,7 @@ import { BeadsKanbanBoard } from './beads-view/beads-kanban-board';
 import { CreateIssueDialog } from './beads-view/dialogs/create-issue-dialog';
 import { EditIssueDialog } from './beads-view/dialogs/edit-issue-dialog';
 import { DeleteIssueDialog } from './beads-view/dialogs/delete-issue-dialog';
-import type { BeadsIssue, BeadsDependency } from '@automaker/types';
+import type { BeadsIssue, CreateBeadsIssueInput } from '@automaker/types';
 import { getElectronAPI } from '@/lib/electron';
 import { toast } from 'sonner';
 
@@ -39,12 +39,12 @@ export function BeadsView() {
   const { columnIssuesMap, stats } = useBeadsColumnIssues({
     issues,
     searchQuery,
-    currentProject,
+    _currentProject: currentProject,
   });
   const { handleCreateIssue, handleUpdateIssue, handleDeleteIssue, handleStatusChange } =
     useBeadsActions({
       currentProject,
-      loadIssues,
+      _loadIssues: loadIssues,
     });
   const { activeIssue, handleDragStart, handleDragEnd } = useBeadsDragDrop({
     issues,
@@ -95,8 +95,6 @@ export function BeadsView() {
   const handleConfirmDelete = useCallback(async () => {
     if (!selectedIssue || !currentProject) return false;
 
-    const { blockingCount } = getBlockingCounts(selectedIssue);
-
     const success = await handleDeleteIssue(selectedIssue.id, selectedIssue.title);
 
     if (success) {
@@ -105,7 +103,7 @@ export function BeadsView() {
     }
 
     return success;
-  }, [selectedIssue, currentProject, handleDeleteIssue, getBlockingCounts]);
+  }, [selectedIssue, currentProject, handleDeleteIssue]);
 
   // Handle start issue
   const handleStartIssue = useCallback(
@@ -162,7 +160,7 @@ export function BeadsView() {
 
   // Handle create issue from dialog
   const handleCreateFromDialog = useCallback(
-    async (input: any) => {
+    async (input: CreateBeadsIssueInput) => {
       const result = await handleCreateIssue(input);
       return result !== null;
     },

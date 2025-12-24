@@ -1,5 +1,13 @@
 import { memo } from 'react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+} from '@dnd-kit/core';
 import { BEADS_COLUMNS, type BeadsColumnId } from './constants';
 import { BeadsColumn } from './components/beads-column';
 import { BeadsCard } from './components/beads-card';
@@ -12,8 +20,8 @@ interface BeadsKanbanBoardProps {
   issues: BeadsIssue[];
   columnIssuesMap: Record<BeadsColumnId, BeadsIssue[]>;
   activeIssue: BeadsIssue | null;
-  handleDragStart: (event: any) => void;
-  handleDragEnd: (event: any) => void;
+  handleDragStart: (event: DragStartEvent) => void;
+  handleDragEnd: (event: DragEndEvent) => void;
   onEditIssue: (issue: BeadsIssue) => void;
   onDeleteIssue: (issue: BeadsIssue) => void;
   onStartIssue: (issue: BeadsIssue) => void;

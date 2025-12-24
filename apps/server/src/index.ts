@@ -15,7 +15,8 @@ import dotenv from 'dotenv';
 
 import { createEventEmitter, type EventEmitter } from './lib/events.js';
 import { initAllowedPaths } from '@automaker/platform';
-import { authMiddleware } from './lib/auth.js';
+import { authMiddleware, initializeAuth } from './lib/auth.js';
+import { apiLimiter, healthLimiter, beadsLimiter } from './lib/rate-limiter.js';
 import { createFsRoutes } from './routes/fs/index.js';
 import { createHealthRoutes } from './routes/health/index.js';
 import { createAgentRoutes } from './routes/agent/index.js';
@@ -58,6 +59,10 @@ const PORT = parseInt(process.env.PORT || '3008', 10);
 const DATA_DIR = process.env.DATA_DIR || './data';
 const ENABLE_REQUEST_LOGGING = process.env.ENABLE_REQUEST_LOGGING !== 'false'; // Default to true
 
+// ============================================================================
+// Security Initialization
+// ============================================================================
+
 // Check for required environment variables
 const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
 
@@ -81,6 +86,48 @@ if (!hasAnthropicKey) {
 // Initialize security
 initAllowedPaths();
 
+// Initialize authentication (validates production setup)
+initializeAuth();
+
+// ============================================================================
+// CORS Configuration
+// ============================================================================
+
+/**
+ * Validate and normalize CORS_ORIGIN
+ *
+ * Defaults to localhost for development, requires valid URL otherwise.
+ */
+function validateCorsOrigin(): string {
+  const corsOrigin = process.env.CORS_ORIGIN;
+
+  if (!corsOrigin) {
+    console.warn('[CORS] No CORS_ORIGIN set, using localhost default');
+    return 'http://localhost:3008';
+  }
+
+  // Allow wildcard for development
+  if (corsOrigin === '*') {
+    console.warn('[CORS] ⚠️  Using wildcard origin - not recommended for production');
+    return '*';
+  }
+
+  // Validate URL format
+  try {
+    new URL(corsOrigin);
+    console.log(`[CORS] ✓ Origin set to: ${corsOrigin}`);
+    return corsOrigin;
+  } catch {
+    throw new Error(`Invalid CORS_ORIGIN: ${corsOrigin} - must be a valid URL`);
+  }
+}
+
+const CORS_ORIGIN = validateCorsOrigin();
+
+// ============================================================================
+// Express App Setup
+// ============================================================================
+
 // Create Express app
 const app = express();
 
@@ -103,7 +150,7 @@ if (ENABLE_REQUEST_LOGGING) {
 }
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: CORS_ORIGIN,
     credentials: true,
   })
 );
@@ -126,13 +173,18 @@ const beadsService = new BeadsService();
   console.log('[Server] Agent service initialized');
 })();
 
-// Mount API routes - health is unauthenticated for monitoring
-app.use('/api/health', createHealthRoutes());
+// ============================================================================
+// API Routes
+// ============================================================================
 
-// Apply authentication to all other routes
+// Mount API routes - health is rate-limited but unauthenticated for monitoring
+app.use('/api/health', healthLimiter, createHealthRoutes());
+
+// Apply authentication and rate limiting to all other routes
 app.use('/api', authMiddleware);
 
-app.use('/api/fs', createFsRoutes(events));
+// General API routes with standard rate limiting
+app.use('/api/fs', apiLimiter, createFsRoutes(events));
 app.use('/api/agent', createAgentRoutes(agentService, events));
 app.use('/api/sessions', createSessionsRoutes(agentService));
 app.use('/api/features', createFeaturesRoutes(featureLoader));
@@ -152,7 +204,7 @@ app.use('/api/settings', createSettingsRoutes(settingsService));
 app.use('/api/claude', createClaudeRoutes(claudeUsageService));
 app.use('/api/github', createGitHubRoutes());
 app.use('/api/context', createContextRoutes());
-app.use('/api/beads', createBeadsRoutes(beadsService));
+app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
 
 // Create HTTP server
 const server = createServer(app);

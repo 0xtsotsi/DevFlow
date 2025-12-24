@@ -11,7 +11,7 @@ import type {
 
 interface UseBeadsActionsProps {
   currentProject: { path: string } | null;
-  loadIssues: () => Promise<void>;
+  _loadIssues: () => Promise<void>;
 }
 
 /**
@@ -25,7 +25,7 @@ interface UseBeadsActionsProps {
  * - `handleDeleteIssue`: deletes an issue and returns `true` on success, or `false` on failure.
  * - `handleStatusChange`: updates only the issue status and returns `true` on success, or `false` on failure.
  */
-export function useBeadsActions({ currentProject, loadIssues }: UseBeadsActionsProps) {
+export function useBeadsActions({ currentProject, _loadIssues }: UseBeadsActionsProps) {
   const { addBeadsIssue, updateBeadsIssue, removeBeadsIssue } = useAppStore();
 
   const handleCreateIssue = useCallback(

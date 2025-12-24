@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react';
+import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -9,7 +9,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Search, Filter } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { BeadsStats } from './hooks/use-beads-column-issues';
 
 interface BeadsHeaderProps {

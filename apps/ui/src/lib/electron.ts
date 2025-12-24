@@ -3,8 +3,6 @@ import type { SessionListItem, Message } from '@/types/electron';
 import type { ClaudeUsageResponse } from '@/store/app-store';
 import type {
   BeadsIssue,
-  BeadsIssueStatus,
-  BeadsIssueType,
   ListBeadsIssuesFilters,
   CreateBeadsIssueInput,
   UpdateBeadsIssueInput,

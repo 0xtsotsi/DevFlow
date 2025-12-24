@@ -10,6 +10,14 @@ import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
 import fsCallback from 'fs';
+import type {
+  BeadsIssue,
+  BeadsStats,
+  CreateBeadsIssueInput,
+  UpdateBeadsIssueInput,
+  ListBeadsIssuesFilters,
+} from '@automaker/types';
+import { safeJsonParse } from '../lib/json-parser.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -92,19 +100,7 @@ export class BeadsService {
   /**
    * List all issues in a project
    */
-  async listIssues(
-    projectPath: string,
-    filters?: {
-      status?: string[];
-      type?: string[];
-      labels?: string[];
-      priorityMin?: number;
-      priorityMax?: number;
-      titleContains?: string;
-      descContains?: string;
-      ids?: string[];
-    }
-  ): Promise<any[]> {
+  async listIssues(projectPath: string, filters?: ListBeadsIssuesFilters): Promise<BeadsIssue[]> {
     try {
       const args = ['list', '--json'];
 
@@ -135,7 +131,7 @@ export class BeadsService {
       }
 
       const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
-      const issues = JSON.parse(stdout);
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'listIssues');
       return issues;
     } catch (error) {
       // If beads not initialized, return empty array
@@ -149,12 +145,12 @@ export class BeadsService {
   /**
    * Get a single issue by ID
    */
-  async getIssue(projectPath: string, issueId: string): Promise<any> {
+  async getIssue(projectPath: string, issueId: string): Promise<BeadsIssue | null> {
     try {
       const { stdout } = await execFileAsync('bd', ['show', issueId, '--json'], {
         cwd: projectPath,
       });
-      const issue = JSON.parse(stdout);
+      const issue = safeJsonParse<BeadsIssue>(stdout, 'getIssue');
       return issue;
     } catch (error) {
       throw new Error(`Failed to get issue ${issueId}: ${error}`);
@@ -164,16 +160,7 @@ export class BeadsService {
   /**
    * Create a new issue
    */
-  async createIssue(
-    projectPath: string,
-    input: {
-      title: string;
-      description?: string;
-      type?: string;
-      priority?: number;
-      labels?: string[];
-    }
-  ): Promise<any> {
+  async createIssue(projectPath: string, input: CreateBeadsIssueInput): Promise<BeadsIssue> {
     try {
       const args = ['create', input.title, '--json'];
 
@@ -191,7 +178,7 @@ export class BeadsService {
       }
 
       const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
-      const issue = JSON.parse(stdout);
+      const issue = safeJsonParse<BeadsIssue>(stdout, 'createIssue');
       return issue;
     } catch (error) {
       throw new Error(`Failed to create issue: ${error}`);
@@ -204,15 +191,8 @@ export class BeadsService {
   async updateIssue(
     projectPath: string,
     issueId: string,
-    updates: {
-      title?: string;
-      description?: string;
-      status?: string;
-      type?: string;
-      priority?: number;
-      labels?: string[];
-    }
-  ): Promise<any> {
+    updates: UpdateBeadsIssueInput
+  ): Promise<BeadsIssue> {
     try {
       const args = ['update', issueId, '--json'];
 
@@ -236,7 +216,7 @@ export class BeadsService {
       }
 
       const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
-      const issue = JSON.parse(stdout);
+      const issue = safeJsonParse<BeadsIssue>(stdout, 'updateIssue');
       return issue;
     } catch (error) {
       throw new Error(`Failed to update issue ${issueId}: ${error}`);
@@ -290,14 +270,14 @@ export class BeadsService {
   /**
    * Get ready work (issues with no open blockers)
    */
-  async getReadyWork(projectPath: string, limit?: number): Promise<any[]> {
+  async getReadyWork(projectPath: string, limit?: number): Promise<BeadsIssue[]> {
     try {
       const args = ['ready', '--json'];
       if (limit) {
         args.push('--limit', String(limit));
       }
       const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
-      const issues = JSON.parse(stdout);
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'getReadyWork');
       return issues;
     } catch (error) {
       if (this.isNotInitializedError(error)) {
@@ -310,10 +290,10 @@ export class BeadsService {
   /**
    * Get statistics about the database
    */
-  async getStats(projectPath: string): Promise<any> {
+  async getStats(projectPath: string): Promise<BeadsStats> {
     try {
       const { stdout } = await execFileAsync('bd', ['stats', '--json'], { cwd: projectPath });
-      const stats = JSON.parse(stdout);
+      const stats = safeJsonParse<BeadsStats>(stdout, 'getStats');
       return stats;
     } catch (error) {
       if (this.isNotInitializedError(error)) {
@@ -322,6 +302,8 @@ export class BeadsService {
           openIssues: 0,
           inProgressIssues: 0,
           closedIssues: 0,
+          readyIssues: 0,
+          blockedIssues: 0,
         };
       }
       throw error;
@@ -336,6 +318,76 @@ export class BeadsService {
       await execFileAsync('bd', ['sync'], { cwd: projectPath });
     } catch (error) {
       throw new Error(`Failed to sync database: ${error}`);
+    }
+  }
+
+  /**
+   * Search issues by text query
+   */
+  async searchIssues(
+    projectPath: string,
+    query: string,
+    options?: {
+      limit?: number;
+      inComments?: boolean;
+    }
+  ): Promise<BeadsIssue[]> {
+    try {
+      const args = ['search', query, '--json'];
+      if (options?.limit) {
+        args.push('--limit', String(options.limit));
+      }
+      if (options?.inComments) {
+        args.push('--comments');
+      }
+
+      const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'searchIssues');
+      return issues;
+    } catch (error) {
+      if (this.isNotInitializedError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get blocked issues (issues with open blockers)
+   */
+  async getBlockedIssues(projectPath: string): Promise<BeadsIssue[]> {
+    try {
+      const { stdout } = await execFileAsync('bd', ['blocked', '--json'], {
+        cwd: projectPath,
+      });
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'getBlockedIssues');
+      return issues;
+    } catch (error) {
+      if (this.isNotInitializedError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get stale issues (not updated recently)
+   */
+  async getStaleIssues(projectPath: string, days?: number): Promise<BeadsIssue[]> {
+    try {
+      const args = ['stale', '--json'];
+      if (days) {
+        args.push('--days', String(days));
+      }
+
+      const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'getStaleIssues');
+      return issues;
+    } catch (error) {
+      if (this.isNotInitializedError(error)) {
+        return [];
+      }
+      throw error;
     }
   }
 
@@ -357,7 +409,12 @@ export class BeadsService {
           clearTimeout(watchTimeout);
         }
         watchTimeout = setTimeout(() => {
-          callback();
+          try {
+            callback();
+          } catch (error) {
+            // Log error but don't stop watching
+            console.error('[BeadsService] Error in watchDatabase callback:', error);
+          }
         }, 500);
       });
 
@@ -370,6 +427,7 @@ export class BeadsService {
       };
     } catch (error) {
       // If watching fails (e.g., database doesn't exist), return no-op cleanup
+      console.error('[BeadsService] Failed to watch database:', error);
       return () => {};
     }
   }
@@ -377,8 +435,8 @@ export class BeadsService {
   /**
    * Check if error is due to beads not being initialized
    */
-  private isNotInitializedError(error: any): boolean {
-    const errorMsg = error?.message || error?.toString() || '';
+  private isNotInitializedError(error: unknown): boolean {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     return (
       errorMsg.includes('no such file') ||
       errorMsg.includes('database not found') ||
