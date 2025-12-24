@@ -8,6 +8,22 @@ interface UseBeadsColumnIssuesProps {
   currentProject: { path: string } | null;
 }
 
+export interface BeadsStats {
+  total: number;
+  open: number;
+  inProgress: number;
+  closed: number;
+  blocked: number;
+}
+
+/**
+ * Organizes bead issues into board columns and provides a column selector and basic counts.
+ *
+ * @returns An object containing:
+ * - `columnIssuesMap`: a record mapping column IDs (`backlog`, `ready`, `in_progress`, `blocked`, `done`) to arrays of `BeadsIssue`. Each column's issues are ordered by priority (lower number = higher priority) and then by `createdAt` (older first).
+ * - `getColumnIssues`: a function `(columnId: BeadsColumnId) => BeadsIssue[]` that returns the issues for the given column.
+ * - `stats`: an object with issue counts `{ total, open, inProgress, closed, blocked }`.
+ */
 export function useBeadsColumnIssues({
   issues,
   searchQuery,
@@ -70,16 +86,18 @@ export function useBeadsColumnIssues({
 
       if (issue.status === 'closed') {
         map.done.push(issue);
-      } else if (issue.status === 'in_progress') {
-        map.in_progress.push(issue);
       } else if (blockers) {
-        // Open issues with blockers go to Blocked
+        // Issues with open blockers go to Blocked column, regardless of status
+        // This includes open, in_progress, and other statuses with blockers
         map.blocked.push(issue);
+      } else if (issue.status === 'in_progress') {
+        // In-progress issues without blockers
+        map.in_progress.push(issue);
       } else if (issue.status === 'open') {
         // Open issues without blockers go to Ready
         map.ready.push(issue);
       } else {
-        // Other cases go to backlog
+        // Other statuses without blockers go to backlog
         map.backlog.push(issue);
       }
     });

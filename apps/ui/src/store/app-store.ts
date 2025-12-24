@@ -147,6 +147,7 @@ export interface KeyboardShortcuts {
   settings: string;
   profiles: string;
   terminal: string;
+  beads: string;
 
   // UI shortcuts
   toggleSidebar: string;
@@ -179,6 +180,7 @@ export const DEFAULT_KEYBOARD_SHORTCUTS: KeyboardShortcuts = {
   settings: 'S',
   profiles: 'M',
   terminal: 'T',
+  beads: 'B',
 
   // UI
   toggleSidebar: '`',
@@ -2661,8 +2663,12 @@ export const useAppStore = create<AppState & AppActions>()(
 
       addBeadsIssue: (projectPath, issue) => {
         const beadsByProject = get().beadsByProject;
-        const current = beadsByProject[projectPath];
-        if (!current) return;
+        const current = beadsByProject[projectPath] || {
+          issues: [],
+          readyWork: [],
+          lastUpdated: 0,
+          isWatching: false,
+        };
 
         set({
           beadsByProject: {
@@ -2678,8 +2684,12 @@ export const useAppStore = create<AppState & AppActions>()(
 
       removeBeadsIssue: (projectPath, issueId) => {
         const beadsByProject = get().beadsByProject;
-        const current = beadsByProject[projectPath];
-        if (!current) return;
+        const current = beadsByProject[projectPath] || {
+          issues: [],
+          readyWork: [],
+          lastUpdated: 0,
+          isWatching: false,
+        };
 
         set({
           beadsByProject: {

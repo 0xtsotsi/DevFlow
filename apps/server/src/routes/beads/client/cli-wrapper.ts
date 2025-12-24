@@ -7,10 +7,11 @@
 
 import { spawn } from 'child_process';
 import { promisify } from 'util';
-import { exec as execCallback } from 'child_process';
+import { exec as execCallback, execFile as execFileCallback } from 'child_process';
 import { getBdBin } from '../common.js';
 
 const exec = promisify(execCallback);
+const execFile = promisify(execFileCallback);
 
 export interface BdOptions {
   cwd?: string;
@@ -27,11 +28,11 @@ export interface BdResult {
 /**
  * Execute bd CLI command using spawn (for long-running processes)
  */
-export function runBd(args: string[], options: BdOptions = {}): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const bdBin = getBdBin();
-    const spawnArgs = options.noDb ? ['--no-db', ...args] : args;
+export async function runBd(args: string[], options: BdOptions = {}): Promise<string> {
+  const bdBin = await getBdBin();
+  const spawnArgs = options.noDb ? ['--no-db', ...args] : args;
 
+  return new Promise((resolve, reject) => {
     const child = spawn(bdBin, spawnArgs, {
       cwd: options.cwd,
       env: { ...process.env, ...options.env },
@@ -69,14 +70,17 @@ export function runBd(args: string[], options: BdOptions = {}): Promise<string> 
 }
 
 /**
- * Execute bd CLI command using exec (for simple commands)
+ * Execute bd CLI command using execFile (safe alternative to shell-based exec)
+ *
+ * NOTE: Previously used exec() with shell command construction which was
+ * vulnerable to command injection. Changed to execFile() which takes arguments
+ * as a separate array and doesn't go through shell interpretation.
  */
-export function runBdExec(args: string[], options: BdOptions = {}): Promise<string> {
-  const bdBin = getBdBin();
+export async function runBdExec(args: string[], options: BdOptions = {}): Promise<string> {
+  const bdBin = await getBdBin();
   const spawnArgs = options.noDb ? ['--no-db', ...args] : args;
-  const cmd = `"${bdBin}" ${spawnArgs.map((arg) => `"${arg}"`).join(' ')}`;
 
-  return exec(cmd, {
+  return execFile(bdBin, spawnArgs, {
     cwd: options.cwd,
     env: { ...process.env, ...options.env },
   })

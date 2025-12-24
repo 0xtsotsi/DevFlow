@@ -9,11 +9,13 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
+import fsCallback from 'fs';
 
 const execFileAsync = promisify(execFile);
 
 export class BeadsService {
-  private watchTimeout?: NodeJS.Timeout;
+  // Note: watchTimeout removed from instance to prevent race conditions
+  // when watchDatabase is called multiple times on the same instance
 
   /**
    * Check if bd CLI is installed
@@ -58,9 +60,9 @@ export class BeadsService {
 
     try {
       await fs.access(dbPath);
-      return { installed: true, initialized: true, version };
+      return { installed: true, initialized: true, version: version ?? undefined };
     } catch {
-      return { installed: true, initialized: false, version };
+      return { installed: true, initialized: false, version: version ?? undefined };
     }
   }
 
@@ -266,8 +268,8 @@ export class BeadsService {
     type: 'blocks' | 'related' | 'parent' | 'discovered-from'
   ): Promise<void> {
     try {
-      const command = `bd dep add ${issueId} ${depId} --type ${type}`;
-      await execAsync(command, { cwd: projectPath });
+      const args = ['dep', 'add', issueId, depId, '--type', type];
+      await execFileAsync('bd', args, { cwd: projectPath });
     } catch (error) {
       throw new Error(`Failed to add dependency: ${error}`);
     }
@@ -278,8 +280,8 @@ export class BeadsService {
    */
   async removeDependency(projectPath: string, issueId: string, depId: string): Promise<void> {
     try {
-      const command = `bd dep remove ${issueId} ${depId}`;
-      await execAsync(command, { cwd: projectPath });
+      const args = ['dep', 'remove', issueId, depId];
+      await execFileAsync('bd', args, { cwd: projectPath });
     } catch (error) {
       throw new Error(`Failed to remove dependency: ${error}`);
     }
@@ -290,11 +292,11 @@ export class BeadsService {
    */
   async getReadyWork(projectPath: string, limit?: number): Promise<any[]> {
     try {
-      let command = 'bd ready --json';
+      const args = ['ready', '--json'];
       if (limit) {
-        command += ` --limit ${limit}`;
+        args.push('--limit', String(limit));
       }
-      const { stdout } = await execAsync(command, { cwd: projectPath });
+      const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
       const issues = JSON.parse(stdout);
       return issues;
     } catch (error) {
@@ -310,7 +312,7 @@ export class BeadsService {
    */
   async getStats(projectPath: string): Promise<any> {
     try {
-      const { stdout } = await execAsync('bd stats --json', { cwd: projectPath });
+      const { stdout } = await execFileAsync('bd', ['stats', '--json'], { cwd: projectPath });
       const stats = JSON.parse(stdout);
       return stats;
     } catch (error) {
@@ -331,7 +333,7 @@ export class BeadsService {
    */
   async sync(projectPath: string): Promise<void> {
     try {
-      await execAsync('bd sync', { cwd: projectPath });
+      await execFileAsync('bd', ['sync'], { cwd: projectPath });
     } catch (error) {
       throw new Error(`Failed to sync database: ${error}`);
     }
@@ -339,17 +341,22 @@ export class BeadsService {
 
   /**
    * Watch the database for changes
+   *
+   * Uses a local timeout variable (not instance property) to avoid race conditions
+   * when watchDatabase is called multiple times concurrently on the same instance.
    */
   async watchDatabase(projectPath: string, callback: () => void): Promise<() => void> {
     const dbPath = this.getDatabasePath(projectPath);
 
     try {
-      const watcher = fs.watch(dbPath, () => {
+      let watchTimeout: NodeJS.Timeout | undefined;
+
+      const watcher = fsCallback.watch(dbPath, () => {
         // Debounce rapid changes
-        if (this.watchTimeout) {
-          clearTimeout(this.watchTimeout);
+        if (watchTimeout) {
+          clearTimeout(watchTimeout);
         }
-        this.watchTimeout = setTimeout(() => {
+        watchTimeout = setTimeout(() => {
           callback();
         }, 500);
       });
@@ -357,8 +364,8 @@ export class BeadsService {
       // Return cleanup function
       return () => {
         watcher.close();
-        if (this.watchTimeout) {
-          clearTimeout(this.watchTimeout);
+        if (watchTimeout) {
+          clearTimeout(watchTimeout);
         }
       };
     } catch (error) {
