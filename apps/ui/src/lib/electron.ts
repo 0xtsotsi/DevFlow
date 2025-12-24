@@ -1,6 +1,14 @@
 // Type definitions for Electron IPC API
 import type { SessionListItem, Message } from '@/types/electron';
 import type { ClaudeUsageResponse } from '@/store/app-store';
+import type {
+  BeadsIssue,
+  BeadsIssueStatus,
+  BeadsIssueType,
+  ListBeadsIssuesFilters,
+  CreateBeadsIssueInput,
+  UpdateBeadsIssueInput,
+} from '@automaker/types';
 import { getJSON, setJSON, removeItem } from './storage';
 
 export interface FileEntry {
@@ -90,6 +98,57 @@ export interface RunningAgentsResult {
 
 export interface RunningAgentsAPI {
   getAll: () => Promise<RunningAgentsResult>;
+}
+
+// Beads API types
+export interface BeadsAPI {
+  list: (
+    projectPath: string,
+    filters?: ListBeadsIssuesFilters
+  ) => Promise<{
+    success: boolean;
+    issues?: BeadsIssue[];
+    error?: string;
+  }>;
+  create: (
+    projectPath: string,
+    input: CreateBeadsIssueInput
+  ) => Promise<{
+    success: boolean;
+    issue?: BeadsIssue;
+    error?: string;
+  }>;
+  update: (
+    projectPath: string,
+    issueId: string,
+    updates: UpdateBeadsIssueInput
+  ) => Promise<{
+    success: boolean;
+    issue?: BeadsIssue;
+    error?: string;
+  }>;
+  delete: (
+    projectPath: string,
+    issueId: string
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  getReady: (
+    projectPath: string,
+    limit?: number
+  ) => Promise<{
+    success: boolean;
+    issues?: BeadsIssue[];
+    error?: string;
+  }>;
+  validate: (projectPath: string) => Promise<{
+    success: boolean;
+    installed?: boolean;
+    initialized?: boolean;
+    version?: string;
+    error?: string;
+  }>;
 }
 
 // GitHub types
@@ -392,6 +451,7 @@ export interface ElectronAPI {
   features?: FeaturesAPI;
   runningAgents?: RunningAgentsAPI;
   github?: GitHubAPI;
+  beads?: BeadsAPI;
   enhancePrompt?: {
     enhance: (
       originalText: string,

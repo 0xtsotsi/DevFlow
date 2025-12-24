@@ -1,106 +1,47 @@
 /**
- * POST /api/beads/update - Update issue
+ * POST /update endpoint - Update an existing beads issue
  */
 
 import type { Request, Response } from 'express';
-import { logError } from '../common.js';
-import { runBd, type BdOptions } from '../client/cli-wrapper.js';
+import { BeadsService } from '../../../services/beads-service.js';
+import { getErrorMessage, logError } from '../common.js';
 
-export function createUpdateHandler() {
+export function createUpdateHandler(beadsService: BeadsService) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
-      const {
-        id,
-        status,
-        priority,
-        type,
-        title,
-        description,
-        addLabels,
-        removeLabels,
-        addDependencies,
-        removeDependencies,
-      } = req.body as {
-        id?: string;
-        status?: string;
-        priority?: number;
-        type?: string;
-        title?: string;
-        description?: string;
-        addLabels?: string[];
-        removeLabels?: string[];
-        addDependencies?: string[];
-        removeDependencies?: string[];
+      const { projectPath, issueId, updates } = req.body as {
+        projectPath: string;
+        issueId: string;
+        updates: {
+          title?: string;
+          description?: string;
+          status?: string;
+          type?: string;
+          priority?: number;
+          labels?: string[];
+        };
       };
 
-      if (!id) {
-        res.status(400).json({ success: false, error: 'Issue ID is required' });
+      if (!projectPath) {
+        res.status(400).json({ success: false, error: 'projectPath is required' });
         return;
       }
 
-      // Build command arguments
-      const args = ['update', id];
-
-      if (status) {
-        args.push('--status', status);
+      if (!issueId) {
+        res.status(400).json({ success: false, error: 'issueId is required' });
+        return;
       }
 
-      if (priority !== undefined) {
-        args.push('--priority', priority.toString());
+      if (!updates) {
+        res.status(400).json({ success: false, error: 'updates are required' });
+        return;
       }
 
-      if (type) {
-        args.push('--type', type);
-      }
-
-      if (title) {
-        args.push('--title', title);
-      }
-
-      if (description) {
-        args.push('--description', description);
-      }
-
-      if (addLabels && addLabels.length > 0) {
-        for (const label of addLabels) {
-          args.push('--add-label', label);
-        }
-      }
-
-      if (removeLabels && removeLabels.length > 0) {
-        for (const label of removeLabels) {
-          args.push('--remove-label', label);
-        }
-      }
-
-      if (addDependencies && addDependencies.length > 0) {
-        for (const dep of addDependencies) {
-          args.push('--add-dep', dep);
-        }
-      }
-
-      if (removeDependencies && removeDependencies.length > 0) {
-        for (const dep of removeDependencies) {
-          args.push('--remove-dep', dep);
-        }
-      }
-
-      const options: BdOptions = { noDb: true };
-
-      // Execute bd update command
-      await runBd(args, options);
-
-      // Fetch the updated issue details
-      const { fetchIssueDetail } = await import('../client/list-adapters.js');
-      const issue = await fetchIssueDetail(id, options);
-
-      res.json({
-        success: true,
-        data: issue,
-      });
+      const updatedIssue = await beadsService.updateIssue(projectPath, issueId, updates);
+      res.json({ success: true, issue: updatedIssue });
     } catch (error) {
       logError(error, 'Update issue failed');
-      res.status(500).json({ success: false, error: (error as Error).message });
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   };
 }

@@ -44,7 +44,12 @@
     "lint:lockfile": "! grep -q 'git+ssh://' package-lock.json || (echo 'Error: package-lock.json contains git+ssh:// URLs. Run: git config --global url.\"https://github.com/\".insteadOf \"git@github.com:\"' && exit 1)",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky && npm run build:packages"
+    "prepare": "husky && npm run build:packages",
+    "beads": "bdui start",
+    "beads:open": "bdui start --open",
+    "beads:stop": "bdui stop",
+    "beads:status": "bdui status",
+    "beads:issues": "bd issues"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,css,md,html,yml,yaml}": [

@@ -1,27 +1,26 @@
 /**
- * Beads routes - HTTP API for Beads issue tracking integration
+ * Beads routes - HTTP API for Beads issue tracker integration
  */
 
 import { Router } from 'express';
-import type { EventEmitter } from '../../lib/events.js';
-import { createConnectHandler } from './routes/connect.js';
-import { createReadyHandler } from './routes/ready.js';
+import { BeadsService } from '../../services/beads-service.js';
+import { validatePathParams } from '../../middleware/validate-paths.js';
 import { createListHandler } from './routes/list.js';
-import { createShowHandler } from './routes/show.js';
 import { createCreateHandler } from './routes/create.js';
 import { createUpdateHandler } from './routes/update.js';
-import { createSyncHandler } from './routes/sync.js';
+import { createDeleteHandler } from './routes/delete.js';
+import { createReadyWorkHandler } from './routes/ready.js';
+import { createValidateHandler } from './routes/validate.js';
 
-export function createBeadsRoutes(_events: EventEmitter): Router {
+export function createBeadsRoutes(beadsService: BeadsService): Router {
   const router = Router();
 
-  router.post('/connect', createConnectHandler());
-  router.get('/ready', createReadyHandler());
-  router.get('/list', createListHandler());
-  router.get('/show/:id', createShowHandler());
-  router.post('/create', createCreateHandler());
-  router.post('/update', createUpdateHandler());
-  router.post('/sync', createSyncHandler());
+  router.post('/list', validatePathParams('projectPath'), createListHandler(beadsService));
+  router.post('/create', validatePathParams('projectPath'), createCreateHandler(beadsService));
+  router.post('/update', validatePathParams('projectPath'), createUpdateHandler(beadsService));
+  router.post('/delete', validatePathParams('projectPath'), createDeleteHandler(beadsService));
+  router.post('/ready', validatePathParams('projectPath'), createReadyWorkHandler(beadsService));
+  router.post('/validate', createValidateHandler(beadsService));
 
   return router;
 }

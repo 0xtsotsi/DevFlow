@@ -22,10 +22,18 @@ import type {
   SpecRegenerationEvent,
   SuggestionType,
   GitHubAPI,
+  GitHubIssue,
+  GitHubPR,
+  BeadsAPI,
 } from './electron';
 import type { Message, SessionListItem } from '@/types/electron';
 import type { Feature, ClaudeUsageResponse } from '@/store/app-store';
 import type { WorktreeAPI, GitAPI, ModelDefinition, ProviderStatus } from '@/types/electron';
+import type {
+  ListBeadsIssuesFilters,
+  CreateBeadsIssueInput,
+  UpdateBeadsIssueInput,
+} from '@automaker/types';
 import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
 // Server URL - configurable via environment variable
@@ -755,6 +763,21 @@ export class HttpApiClient implements ElectronAPI {
     checkRemote: (projectPath: string) => this.post('/api/github/check-remote', { projectPath }),
     listIssues: (projectPath: string) => this.post('/api/github/issues', { projectPath }),
     listPRs: (projectPath: string) => this.post('/api/github/prs', { projectPath }),
+  };
+
+  // Beads API
+  beads: BeadsAPI = {
+    list: (projectPath: string, filters?: ListBeadsIssuesFilters) =>
+      this.post('/api/beads/list', { projectPath, filters }),
+    create: (projectPath: string, input: CreateBeadsIssueInput) =>
+      this.post('/api/beads/create', { projectPath, issue: input }),
+    update: (projectPath: string, issueId: string, updates: UpdateBeadsIssueInput) =>
+      this.post('/api/beads/update', { projectPath, issueId, updates }),
+    delete: (projectPath: string, issueId: string) =>
+      this.post('/api/beads/delete', { projectPath, issueId }),
+    getReady: (projectPath: string, limit?: number) =>
+      this.post('/api/beads/ready', { projectPath, limit }),
+    validate: (projectPath: string) => this.post('/api/beads/validate', { projectPath }),
   };
 
   // Workspace API

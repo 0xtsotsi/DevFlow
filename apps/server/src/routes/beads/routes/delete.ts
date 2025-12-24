@@ -1,17 +1,18 @@
 /**
- * POST /ready endpoint - Get ready work (issues with no open blockers)
+ * POST /delete endpoint - Delete a beads issue
  */
 
 import type { Request, Response } from 'express';
 import { BeadsService } from '../../../services/beads-service.js';
 import { getErrorMessage, logError } from '../common.js';
 
-export function createReadyWorkHandler(beadsService: BeadsService) {
+export function createDeleteHandler(beadsService: BeadsService) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
-      const { projectPath, limit } = req.body as {
+      const { projectPath, issueId, force } = req.body as {
         projectPath: string;
-        limit?: number;
+        issueId: string;
+        force?: boolean;
       };
 
       if (!projectPath) {
@@ -19,10 +20,15 @@ export function createReadyWorkHandler(beadsService: BeadsService) {
         return;
       }
 
-      const issues = await beadsService.getReadyWork(projectPath, limit);
-      res.json({ success: true, issues });
+      if (!issueId) {
+        res.status(400).json({ success: false, error: 'issueId is required' });
+        return;
+      }
+
+      await beadsService.deleteIssue(projectPath, issueId, force);
+      res.json({ success: true });
     } catch (error) {
-      logError(error, 'Get ready work failed');
+      logError(error, 'Delete issue failed');
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   };

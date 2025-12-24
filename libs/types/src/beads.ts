@@ -1,239 +1,166 @@
 /**
- * Beads Integration Types
+ * Beads Issue Tracker Type Definitions
  *
- * Type definitions for Beads issue tracking integration.
- * These types match Beads core Go structures.
+ * Types for integrating with the Beads CLI task management system.
+ * Beads provides dependency tracking, ready work detection, and
+ * hierarchical task management.
  */
 
 /**
- * Beads issue status enumeration
+ * Issue status in Beads
  */
-export enum BeadsStatus {
-  Open = 'open',
-  InProgress = 'in_progress',
-  Blocked = 'blocked',
-  Deferred = 'deferred',
-  Closed = 'closed',
+export type BeadsIssueStatus = 'open' | 'in_progress' | 'closed';
+
+/**
+ * Issue type in Beads
+ */
+export type BeadsIssueType = 'bug' | 'feature' | 'task' | 'epic' | 'chore';
+
+/**
+ * Issue priority (0=highest, 4=lowest)
+ */
+export type BeadsIssuePriority = 0 | 1 | 2 | 3 | 4;
+
+/**
+ * Dependency types in Beads
+ * - blocks: Hard blocker (must complete before)
+ * - related: Soft relationship (connected work)
+ * - parent: Hierarchical (epic -> feature -> task)
+ * - discovered-from: Discovered during work on another issue
+ */
+export type BeadsDependencyType = 'blocks' | 'related' | 'parent' | 'discovered-from';
+
+/**
+ * A Beads issue
+ */
+export interface BeadsIssue {
+  /** Issue ID (e.g., bd-a1b2 or bd-a1b2.1 for child issues) */
+  id: string;
+  /** Issue title */
+  title: string;
+  /** Detailed description */
+  description: string;
+  /** Current status */
+  status: BeadsIssueStatus;
+  /** Issue type */
+  type: BeadsIssueType;
+  /** Priority (0=highest, 4=lowest) */
+  priority: BeadsIssuePriority;
+  /** Labels for categorization */
+  labels: string[];
+  /** Dependencies on other issues */
+  dependencies: BeadsDependency[];
+  /** ISO timestamp of creation */
+  createdAt: string;
+  /** ISO timestamp of last update */
+  updatedAt: string;
+  /** ISO timestamp of closure (if closed) */
+  closedAt?: string;
+  /** Parent issue ID (for child issues) */
+  parentIssueId?: string;
+  /** Child issue IDs (for parent issues) */
+  childIssueIds?: string[];
+  /** Optional link to DevFlow feature */
+  featureId?: string;
 }
 
 /**
- * Beads issue type enumeration
- */
-export enum BeadsIssueType {
-  Bug = 'bug',
-  Feature = 'feature',
-  Task = 'task',
-  Epic = 'epic',
-  Chore = 'chore',
-}
-
-/**
- * Beads priority levels (0-4, where 0 is highest)
- */
-export type BeadsPriority = 0 | 1 | 2 | 3 | 4;
-
-/**
- * Dependency relationship types
- */
-export enum BeadsDependencyType {
-  Blocks = 'blocks',
-  BlockedBy = 'blocked-by',
-  DependsOn = 'depends-on',
-}
-
-/**
- * Issue dependency reference
+ * A dependency relationship
  */
 export interface BeadsDependency {
-  issue_id: string;
+  /** ID of the issue this depends on */
+  issueId: string;
+  /** Type of dependency */
   type: BeadsDependencyType;
 }
 
 /**
- * Core Beads issue structure
+ * Input for creating a new issue
  */
-export interface BeadsIssue {
-  id: string;
+export interface CreateBeadsIssueInput {
+  /** Issue title */
   title: string;
+  /** Detailed description */
   description: string;
-  status: BeadsStatus;
-  priority: BeadsPriority;
-  issue_type: BeadsIssueType;
-  labels: string[];
-  assignee?: string;
-  created_at: string;
-  updated_at: string;
-  closed_at?: string;
-  dependencies?: BeadsDependency[];
-  comments?: BeadsComment[];
-  [key: string]: unknown;
-}
-
-/**
- * Issue comment/timeline entry
- */
-export interface BeadsComment {
-  id: string;
-  issue_id: string;
-  author: string;
-  content: string;
-  created_at: string;
-  updated_at?: string;
-  comment_type?: 'user' | 'system' | 'ai';
-}
-
-/**
- * Work filter specification for querying issues
- */
-export interface BeadsWorkFilter {
-  status?: BeadsStatus | BeadsStatus[];
-  type?: BeadsIssueType | BeadsIssueType[];
-  priority?: BeadsPriority | BeadsPriority[];
+  /** Issue type */
+  type: BeadsIssueType;
+  /** Priority (0=highest, 4=lowest) */
+  priority: BeadsIssuePriority;
+  /** Optional labels */
   labels?: string[];
-  assignee?: string;
-  hasDependencies?: boolean;
-  blocking?: boolean;
-  blocked?: boolean;
-  tab?: 'issues' | 'epics';
+  /** Optional dependencies to add */
+  dependencies?: Array<{ issueId: string; type: BeadsDependencyType }>;
+  /** Optional parent issue ID (for subtasks) */
+  parentIssueId?: string;
 }
 
 /**
- * Beads integration settings for DevFlow
+ * Input for updating an existing issue
  */
-export interface BeadsIntegration {
-  enabled: boolean;
-  dbPath: string | null;
-  projectPath: string;
-  mode: 'database' | 'jsonl-only' | 'unknown';
-  autoSync: boolean;
-  syncBranch?: string;
-  lastSync?: string;
-}
-
-/**
- * Beads connection status
- */
-export interface BeadsConnectionStatus {
-  connected: boolean;
-  projectPath: string;
-  mode: 'database' | 'jsonl-only' | 'unknown';
-  hasDb: boolean;
-  hasJsonL: boolean;
-  dbPath: string | null;
-}
-
-/**
- * Beads filter settings for UI display
- */
-export interface BeadsFilters {
-  status?: BeadsStatus[];
-  type?: BeadsIssueType[];
-  priority?: BeadsPriority[];
-  labels?: string[];
-  assignee?: string;
-  searchQuery?: string;
-}
-
-/**
- * Beads view preferences
- */
-export interface BeadsViewSettings {
-  displayMode: 'compact' | 'detailed';
-  groupBy?: 'status' | 'type' | 'priority' | 'none';
-  sortBy?: 'priority' | 'created' | 'updated' | 'title';
-  sortOrder?: 'asc' | 'desc';
-  showDependencies: boolean;
-  showComments: boolean;
-}
-
-/**
- * Issue update operation
- */
-export type BeadsIssueUpdate =
-  | { status: BeadsStatus }
-  | { priority: BeadsPriority }
-  | { type: BeadsIssueType }
-  | { title: string }
-  | { description: string }
-  | { addLabels: string[] }
-  | { removeLabels: string[] }
-  | { addDependencies: string[] }
-  | { removeDependencies: string[] }
-  | { assignee: string };
-
-/**
- * Issue create parameters
- */
-export interface BeadsIssueCreate {
-  title: string;
+export interface UpdateBeadsIssueInput {
+  /** Updated title */
+  title?: string;
+  /** Updated description */
   description?: string;
+  /** Updated status */
+  status?: BeadsIssueStatus;
+  /** Updated type */
   type?: BeadsIssueType;
-  priority?: BeadsPriority;
+  /** Updated priority */
+  priority?: BeadsIssuePriority;
+  /** Updated labels */
   labels?: string[];
-  dependencies?: string[];
-  assignee?: string;
 }
 
 /**
- * API response wrapper
+ * Filters for listing issues
  */
-export interface BeadsApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
+export interface ListBeadsIssuesFilters {
+  /** Filter by status */
+  status?: BeadsIssueStatus[];
+  /** Filter by type */
+  type?: BeadsIssueType[];
+  /** Filter by labels (AND) */
+  labels?: string[];
+  /** Filter by priority range */
+  priorityMin?: BeadsIssuePriority;
+  priorityMax?: BeadsIssuePriority;
+  /** Search in title */
+  titleContains?: string;
+  /** Search in description */
+  descContains?: string;
+  /** Specific issue IDs */
+  ids?: string[];
+}
+
+/**
+ * Result of validating Beads installation
+ */
+export interface BeadsValidationResult {
+  /** Whether bd CLI is installed */
+  installed: boolean;
+  /** Whether beads is initialized in the project */
+  initialized: boolean;
+  /** Version of bd CLI (if installed) */
+  version?: string;
+  /** Error message if validation failed */
   error?: string;
 }
 
 /**
- * Issues list response
- */
-export interface BeadsIssuesListResponse {
-  issues: BeadsIssue[];
-  count: number;
-}
-
-/**
- * Ready issues response (work with no blockers)
- */
-export interface BeadsReadyResponse extends BeadsIssuesListResponse {
-  // Issues that have no blocking dependencies
-}
-
-/**
- * Delta update for real-time subscriptions
- */
-export interface BeadsDelta {
-  added: BeadsIssue[];
-  updated: BeadsIssue[];
-  removed: string[];
-}
-
-/**
- * Subscription snapshot
- */
-export interface BeadsSnapshot {
-  items: BeadsIssue[];
-  version?: number;
-}
-
-/**
- * WebSocket message types
- */
-export type BeadsWsMessage =
-  | { type: 'snapshot'; key: string; version: number; items: BeadsIssue[] }
-  | ({ type: 'list-delta'; key: string; version: number } & BeadsDelta)
-  | { type: 'upsert'; issue: BeadsIssue }
-  | { type: 'delete'; issueId: string }
-  | { type: 'error'; error: string };
-
-/**
- * Beads statistics
+ * Statistics about the Beads database
  */
 export interface BeadsStats {
-  total: number;
-  open: number;
-  inProgress: number;
-  blocked: number;
-  closed: number;
-  byType: Record<BeadsIssueType, number>;
-  byPriority: Record<BeadsPriority, number>;
+  /** Total number of issues */
+  totalIssues: number;
+  /** Number of open issues */
+  openIssues: number;
+  /** Number of in-progress issues */
+  inProgressIssues: number;
+  /** Number of closed issues */
+  closedIssues: number;
+  /** Number of ready issues (no blockers) */
+  readyIssues: number;
+  /** Number of blocked issues */
+  blockedIssues: number;
 }

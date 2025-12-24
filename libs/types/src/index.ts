@@ -82,24 +82,17 @@ export {
   getModelDisplayName,
 } from './model-display.js';
 
-// Beads integration types
+// Beads types
 export type {
   BeadsIssue,
-  BeadsComment,
+  BeadsIssueStatus,
+  BeadsIssueType,
+  BeadsIssuePriority,
+  BeadsDependencyType,
   BeadsDependency,
-  BeadsIntegration,
-  BeadsConnectionStatus,
-  BeadsFilters,
-  BeadsViewSettings,
-  BeadsIssueUpdate,
-  BeadsIssueCreate,
-  BeadsApiResponse,
-  BeadsIssuesListResponse,
-  BeadsReadyResponse,
-  BeadsDelta,
-  BeadsSnapshot,
-  BeadsWsMessage,
+  CreateBeadsIssueInput,
+  UpdateBeadsIssueInput,
+  ListBeadsIssuesFilters,
+  BeadsValidationResult,
   BeadsStats,
-  BeadsWorkFilter,
 } from './beads.js';
-export { BeadsStatus, BeadsIssueType, BeadsDependencyType, type BeadsPriority } from './beads.js';
