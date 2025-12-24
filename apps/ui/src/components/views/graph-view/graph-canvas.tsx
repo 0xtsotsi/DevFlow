@@ -142,9 +142,6 @@ function GraphCanvasInner({
       // No new nodes - just update data without changing positions
       setNodes((currentNodes) => {
         const positionMap = new Map(currentNodes.map((n) => [n.id, n.position]));
-        // Filter to only include nodes that still exist
-        const existingNodeIds = new Set(layoutedNodes.map((n) => n.id));
-
         return layoutedNodes.map((node) => ({
           ...node,
           position: positionMap.get(node.id) || node.position,
