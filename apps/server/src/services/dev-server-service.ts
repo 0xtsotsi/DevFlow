@@ -91,7 +91,7 @@ class DevServerService {
           // No process found on port, which is fine
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore errors - port might not have any process
       console.log(`[DevServerService] No process to kill on port ${port}`);
     }

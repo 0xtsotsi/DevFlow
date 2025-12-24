@@ -180,10 +180,12 @@ export class FeatureLoader {
       }
 
       // Read all feature directories
-      const entries = (await secureFs.readdir(featuresDir, {
+      const entries = await secureFs.readdir(featuresDir, {
         withFileTypes: true,
-      })) as any[];
-      const featureDirs = entries.filter((entry) => entry.isDirectory());
+      });
+      const featureDirs = (entries as Array<{ name: string; isDirectory: () => boolean }>).filter(
+        (entry) => entry.isDirectory()
+      );
 
       // Load each feature
       const features: Feature[] = [];

@@ -58,7 +58,7 @@ export async function openDirectoryPicker(): Promise<DirectoryPickerResult | nul
       }
     };
 
-    input.addEventListener('change', (e) => {
+    input.addEventListener('change', (_e) => {
       changeEventFired = true;
       if (focusTimeout) {
         clearTimeout(focusTimeout);
@@ -160,7 +160,7 @@ export async function openDirectoryPicker(): Promise<DirectoryPickerResult | nul
     // Try to show picker programmatically
     if ('showPicker' in HTMLInputElement.prototype) {
       try {
-        (input as any).showPicker();
+        (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
         console.log('[FilePicker] Using showPicker()');
       } catch (error) {
         console.log('[FilePicker] showPicker() failed, using click()', error);
@@ -263,7 +263,7 @@ export async function openFilePicker(options?: {
     // In practice, it may return a Promise in some implementations, but we'll handle errors via try/catch
     if ('showPicker' in HTMLInputElement.prototype) {
       try {
-        (input as any).showPicker();
+        (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
       } catch {
         // Fallback to click if showPicker fails
         input.click();

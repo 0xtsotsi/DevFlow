@@ -86,7 +86,6 @@ interface TerminalPanelProps {
 type XTerminal = InstanceType<typeof import('@xterm/xterm').Terminal>;
 type XFitAddon = InstanceType<typeof import('@xterm/addon-fit').FitAddon>;
 type XSearchAddon = InstanceType<typeof import('@xterm/addon-search').SearchAddon>;
-type XWebLinksAddon = InstanceType<typeof import('@xterm/addon-web-links').WebLinksAddon>;
 
 export function TerminalPanel({
   sessionId,
@@ -209,6 +208,7 @@ export function TerminalPanel({
   // Listen for system theme changes
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    // eslint-disable-next-line no-undef
     const handleChange = (e: MediaQueryListEvent) => {
       setSystemIsDark(e.matches);
     };
@@ -268,8 +268,9 @@ export function TerminalPanel({
     // - CSI sequences: \x1b[...letter
     // - OSC sequences: \x1b]...ST
     // - Other escape sequences: \x1b followed by various characters
-    // eslint-disable-next-line no-control-regex
+
     return text.replace(
+      // eslint-disable-next-line no-control-regex -- ANSI escape codes intentionally use control characters
       /\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[()][AB012]|\x1b[>=<]|\x1b[78HM]|\x1b#[0-9]|\x1b./g,
       ''
     );
@@ -555,6 +556,7 @@ export function TerminalPanel({
       searchAddonRef.current = searchAddon;
 
       // Create web links addon for clickable URLs with custom handler for Electron
+      // eslint-disable-next-line no-undef
       const webLinksAddon = new WebLinksAddon((_event: MouseEvent, uri: string) => {
         // Use Electron API to open external links in system browser
         const api = getElectronAPI();
@@ -584,6 +586,7 @@ export function TerminalPanel({
               | {
                   range: { start: { x: number; y: number }; end: { x: number; y: number } };
                   text: string;
+                  // eslint-disable-next-line no-undef
                   activate: (event: MouseEvent, text: string) => void;
                 }[]
               | undefined
@@ -599,6 +602,7 @@ export function TerminalPanel({
           const links: {
             range: { start: { x: number; y: number }; end: { x: number; y: number } };
             text: string;
+            // eslint-disable-next-line no-undef
             activate: (event: MouseEvent, text: string) => void;
           }[] = [];
 
@@ -618,8 +622,6 @@ export function TerminalPanel({
           while ((match = filePathRegex.exec(lineText)) !== null) {
             const fullMatch = match[1];
             const filePath = match[2];
-            const lineNum = match[3] ? parseInt(match[3], 10) : undefined;
-            const colNum = match[4] ? parseInt(match[4], 10) : undefined;
 
             // Skip common false positives (URLs, etc.)
             if (
@@ -640,6 +642,7 @@ export function TerminalPanel({
                 end: { x: endX, y: lineNumber },
               },
               text: fullMatch,
+              // eslint-disable-next-line no-undef
               activate: async (event: MouseEvent, text: string) => {
                 // Parse the path and line/column from the matched text
                 const pathMatch = text.match(/^([^\s:()]+)(?:[:(\s](\d+)(?:[:,)](\d+))?)?/);

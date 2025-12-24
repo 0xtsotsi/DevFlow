@@ -3,7 +3,6 @@
  */
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import path from 'path';
 import * as secureFs from '../../lib/secure-fs.js';
 import type { EventEmitter } from '../../lib/events.js';
 import {
@@ -117,14 +116,12 @@ ${getStructuredSpecPromptInstruction()}`;
   try {
     for await (const msg of stream) {
       messageCount++;
-      logger.info(
-        `Stream message #${messageCount}: type=${msg.type}, subtype=${(msg as any).subtype}`
-      );
+      const msgSubtype = 'subtype' in msg ? (msg as { subtype?: string }).subtype : undefined;
+      logger.info(`Stream message #${messageCount}: type=${msg.type}, subtype=${msgSubtype}`);
 
       if (msg.type === 'assistant') {
-        const msgAny = msg as any;
-        if (msgAny.message?.content) {
-          for (const block of msgAny.message.content) {
+        if (msg.message?.content) {
+          for (const block of msg.message.content) {
             if (block.type === 'text') {
               responseText += block.text;
               logger.info(
@@ -145,12 +142,15 @@ ${getStructuredSpecPromptInstruction()}`;
             }
           }
         }
-      } else if (msg.type === 'result' && (msg as any).subtype === 'success') {
+      } else if (
+        msg.type === 'result' &&
+        'subtype' in msg &&
+        (msg as { subtype?: string }).subtype === 'success'
+      ) {
         logger.info('Received success result');
         // Check for structured output - this is the reliable way to get spec data
-        const resultMsg = msg as any;
-        if (resultMsg.structured_output) {
-          structuredOutput = resultMsg.structured_output as SpecOutput;
+        if ('structured_output' in msg) {
+          structuredOutput = (msg as { structured_output: SpecOutput }).structured_output;
           logger.info('✅ Received structured output');
           logger.debug('Structured output:', JSON.stringify(structuredOutput, null, 2));
         } else {
@@ -158,7 +158,7 @@ ${getStructuredSpecPromptInstruction()}`;
         }
       } else if (msg.type === 'result') {
         // Handle error result types
-        const subtype = (msg as any).subtype;
+        const subtype = 'subtype' in msg ? (msg as { subtype?: string }).subtype : undefined;
         logger.info(`Result message: subtype=${subtype}`);
         if (subtype === 'error_max_turns') {
           logger.error('❌ Hit max turns limit!');

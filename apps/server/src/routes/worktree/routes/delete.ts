@@ -51,7 +51,7 @@ export function createDeleteHandler() {
         await execAsync(`git worktree remove "${worktreePath}" --force`, {
           cwd: projectPath,
         });
-      } catch (error) {
+      } catch {
         // Try with prune if remove fails
         await execAsync('git worktree prune', { cwd: projectPath });
       }

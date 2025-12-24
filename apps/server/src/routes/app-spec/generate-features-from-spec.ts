@@ -119,9 +119,10 @@ IMPORTANT: Do not ask for clarification. The specification is provided above. Ge
   try {
     for await (const msg of stream) {
       messageCount++;
+      const msgSubtype = 'subtype' in msg ? (msg as { subtype?: string }).subtype : undefined;
       logger.debug(
         `Feature stream message #${messageCount}:`,
-        JSON.stringify({ type: msg.type, subtype: (msg as any).subtype }, null, 2)
+        JSON.stringify({ type: msg.type, subtype: msgSubtype }, null, 2)
       );
 
       if (msg.type === 'assistant' && msg.message.content) {
@@ -136,9 +137,14 @@ IMPORTANT: Do not ask for clarification. The specification is provided above. Ge
             });
           }
         }
-      } else if (msg.type === 'result' && (msg as any).subtype === 'success') {
+      } else if (
+        msg.type === 'result' &&
+        'subtype' in msg &&
+        (msg as { subtype?: string }).subtype === 'success'
+      ) {
         logger.debug('Received success result for features');
-        responseText = (msg as any).result || responseText;
+        responseText =
+          ('result' in msg ? (msg as { result?: string }).result : undefined) || responseText;
       } else if ((msg as { type: string }).type === 'error') {
         logger.error('❌ Received error message from feature stream:');
         logger.error('Error message:', JSON.stringify(msg, null, 2));

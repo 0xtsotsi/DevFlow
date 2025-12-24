@@ -1,4 +1,12 @@
-import { DndContext, DragOverlay } from '@dnd-kit/core';
+import {
+  DndContext,
+  DragOverlay,
+  DragStartEvent,
+  DragEndEvent,
+  SensorDescriptor,
+  SensorOptions,
+  type CollisionDetection,
+} from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,10 +19,10 @@ import { useResponsiveKanban } from '@/hooks/use-responsive-kanban';
 import { COLUMNS, ColumnId } from './constants';
 
 interface KanbanBoardProps {
-  sensors: any;
-  collisionDetectionStrategy: (args: any) => any;
-  onDragStart: (event: any) => void;
-  onDragEnd: (event: any) => void;
+  sensors: SensorDescriptor<SensorOptions>[];
+  collisionDetectionStrategy: CollisionDetection;
+  onDragStart: (event: DragStartEvent) => void;
+  onDragEnd: (event: DragEndEvent) => void;
   activeFeature: Feature | null;
   getColumnFeatures: (columnId: ColumnId) => Feature[];
   backgroundImageStyle: React.CSSProperties;
@@ -68,7 +76,7 @@ export function KanbanBoard({
   onManualVerify,
   onMoveBackToInProgress,
   onFollowUp,
-  onCommit,
+  onCommit: _onCommit,
   onComplete,
   onImplement,
   onViewPlan,
