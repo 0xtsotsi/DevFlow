@@ -11,12 +11,7 @@
 
 import { ProviderFactory } from '../providers/provider-factory.js';
 import type { ExecuteOptions, Feature } from '@automaker/types';
-import {
-  buildPromptWithImages,
-  isAbortError,
-  classifyError,
-  loadContextFiles,
-} from '@automaker/utils';
+import { buildPromptWithImages, classifyError, loadContextFiles } from '@automaker/utils';
 import { resolveModelString, DEFAULT_MODELS } from '@automaker/model-resolver';
 import { resolveDependencies, areDependenciesSatisfied } from '@automaker/dependency-resolver';
 import { getFeatureDir, getAutomakerDir, getFeaturesDir } from '@automaker/platform';
@@ -295,12 +290,13 @@ function parseTaskLine(line: string, currentPhase?: string): ParsedTask | null {
 }
 
 // Feature type is imported from feature-loader.js
-// Extended type with planning fields for local use
-interface FeatureWithPlanning extends Feature {
-  planningMode?: PlanningMode;
-  planSpec?: PlanSpec;
-  requirePlanApproval?: boolean;
-}
+// Extended type with planning fields for local use - defined but not currently used
+// Will be needed when planning mode features are fully implemented
+// interface FeatureWithPlanning extends Feature {
+//   planningMode?: PlanningMode;
+//   planSpec?: PlanSpec;
+//   requirePlanApproval?: boolean;
+// }
 
 interface RunningFeature {
   featureId: string;
@@ -1710,7 +1706,6 @@ This helps parse your summary correctly in the output logs.`;
       systemPrompt?: string;
     }
   ): Promise<void> {
-    const finalProjectPath = options?.projectPath || projectPath;
     const planningMode = options?.planningMode || 'skip';
     const previousContent = options?.previousContent;
 
@@ -2190,14 +2185,11 @@ After generating the revised spec, output:
                     abortController,
                   });
 
-                  let taskOutput = '';
-
                   // Process task stream
                   for await (const msg of taskStream) {
                     if (msg.type === 'assistant' && msg.message?.content) {
                       for (const block of msg.message.content) {
                         if (block.type === 'text') {
-                          taskOutput += block.text || '';
                           responseText += block.text || '';
                           this.emitAutoModeEvent('auto_mode_progress', {
                             featureId,
@@ -2214,7 +2206,6 @@ After generating the revised spec, output:
                     } else if (msg.type === 'error') {
                       throw new Error(msg.error || `Error during task ${task.id}`);
                     } else if (msg.type === 'result' && msg.subtype === 'success') {
-                      taskOutput += msg.result || '';
                       responseText += msg.result || '';
                     }
                   }

@@ -473,8 +473,12 @@ export interface ElectronAPI {
       user: string | null;
       error?: string;
     }>;
-    onInstallProgress?: (callback: (progress: any) => void) => () => void;
-    onAuthProgress?: (callback: (progress: any) => void) => () => void;
+    onInstallProgress?: (
+      callback: (progress: { cli?: string; data?: string; type?: string }) => void
+    ) => () => void;
+    onAuthProgress?: (
+      callback: (progress: { cli?: string; data?: string; type?: string; status?: string }) => void
+    ) => () => void;
   };
   agent?: {
     start: (
@@ -548,16 +552,33 @@ export interface ElectronAPI {
       error?: string;
     }>;
   };
+  templates?: {
+    clone: (
+      repoUrl: string,
+      projectName: string,
+      parentDir: string
+    ) => Promise<{
+      success: boolean;
+      projectPath?: string;
+      error?: string;
+    }>;
+  };
+  isElectron?: boolean;
 }
 
 // Note: Window interface is declared in @/types/electron.d.ts
 // Do not redeclare here to avoid type conflicts
 
 // Mock data for web development
-const mockFeatures = [
+const mockFeatures: Feature[] = [
   {
+    id: 'mock-feature-1',
+    status: 'backlog',
     category: 'Core',
     description: 'Sample Feature',
+    title: 'Sample Feature',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     steps: ['Step 1', 'Step 2'],
     passes: false,
   },
@@ -579,7 +600,7 @@ export const isElectron = (): boolean => {
     return false;
   }
 
-  if ((window as any).isElectron === true) {
+  if ((window as { isElectron?: boolean }).isElectron === true) {
     return true;
   }
 
@@ -657,13 +678,14 @@ export const getCurrentApiMode = (): 'http' => {
 
 // Debug helpers
 if (typeof window !== 'undefined') {
-  (window as any).__checkApiMode = () => {
+  (window as { __checkApiMode?: () => void }).__checkApiMode = () => {
     console.log('Current API mode:', getCurrentApiMode());
     console.log('isElectron():', isElectron());
   };
 }
 
 // Mock API for development/fallback when no backend is available
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getMockElectronAPI = (): ElectronAPI => {
   return {
     ping: async () => 'pong (mock)',
@@ -1041,8 +1063,12 @@ interface SetupAPI {
     user: string | null;
     error?: string;
   }>;
-  onInstallProgress?: (callback: (progress: any) => void) => () => void;
-  onAuthProgress?: (callback: (progress: any) => void) => () => void;
+  onInstallProgress?: (
+    callback: (progress: { cli?: string; data?: string; type?: string }) => void
+  ) => () => void;
+  onAuthProgress?: (
+    callback: (progress: { cli?: string; data?: string; type?: string; status?: string }) => void
+  ) => () => void;
 }
 
 // Mock Setup API implementation
@@ -1085,7 +1111,7 @@ function createMockSetupAPI(): SetupAPI {
       };
     },
 
-    storeApiKey: async (provider: string, apiKey: string) => {
+    storeApiKey: async (provider: string, _apiKey: string) => {
       console.log('[Mock] Storing API key for:', provider);
       // In mock mode, we just pretend to store it (it's already in the app store)
       return { success: true };
@@ -1139,12 +1165,14 @@ function createMockSetupAPI(): SetupAPI {
       };
     },
 
-    onInstallProgress: (callback) => {
+    onInstallProgress: (
+      _callback: (progress: { cli?: string; data?: string; type?: string }) => void
+    ) => {
       // Mock progress events
       return () => {};
     },
 
-    onAuthProgress: (callback) => {
+    onAuthProgress: (_callback) => {
       // Mock auth events
       return () => {};
     },
@@ -1269,7 +1297,10 @@ function createMockWorktreeAPI(): WorktreeAPI {
       };
     },
 
-    createPR: async (worktreePath: string, options?: any) => {
+    createPR: async (
+      worktreePath: string,
+      options?: { title?: string; body?: string; draft?: boolean }
+    ) => {
       console.log('[Mock] Creating PR:', { worktreePath, options });
       return {
         success: true,
@@ -1579,7 +1610,7 @@ function createMockAutoModeAPI(): AutoModeAPI {
       return { success: true, passes: true };
     },
 
-    resumeFeature: async (projectPath: string, featureId: string, useWorktrees?: boolean) => {
+    resumeFeature: async (projectPath: string, featureId: string, _useWorktrees?: boolean) => {
       if (mockRunningFeatures.has(featureId)) {
         return {
           success: false,
@@ -1715,7 +1746,7 @@ function createMockAutoModeAPI(): AutoModeAPI {
       featureId: string,
       prompt: string,
       imagePaths?: string[],
-      worktreePath?: string
+      _worktreePath?: string
     ) => {
       if (mockRunningFeatures.has(featureId)) {
         return {
@@ -2261,7 +2292,7 @@ function emitSpecRegenerationEvent(event: SpecRegenerationEvent) {
 async function simulateSpecCreation(
   projectPath: string,
   projectOverview: string,
-  generateFeatures = true
+  _generateFeatures = true
 ) {
   mockSpecRegenerationPhase = 'initialization';
   emitSpecRegenerationEvent({
@@ -2484,7 +2515,7 @@ function createMockFeaturesAPI(): FeaturesAPI {
       console.log('[Mock] Getting all features for:', projectPath);
 
       // Check if test has set mock features via global variable
-      const testFeatures = (window as any).__mockFeatures;
+      const testFeatures = (window as { __mockFeatures?: Feature[] }).__mockFeatures;
       if (testFeatures !== undefined) {
         return { success: true, features: testFeatures };
       }

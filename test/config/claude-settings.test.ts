@@ -82,8 +82,8 @@ describe('.claude/settings.json validation', () => {
         'Grep(./**)',
         'Bash(*)',
       ];
-      
-      expectedPermissions.forEach(permission => {
+
+      expectedPermissions.forEach((permission) => {
         expect(settings.permissions.allow).toContain(permission);
       });
     });
@@ -98,8 +98,8 @@ describe('.claude/settings.json validation', () => {
         'mcp__puppeteer__puppeteer_hover',
         'mcp__puppeteer__puppeteer_evaluate',
       ];
-      
-      puppeteerPermissions.forEach(permission => {
+
+      puppeteerPermissions.forEach((permission) => {
         expect(settings.permissions.allow).toContain(permission);
       });
     });
@@ -165,13 +165,13 @@ describe('.claude/settings.json validation', () => {
 
     it('should use correct plugin reference format', () => {
       const pluginKeys = Object.keys(settings.enabledPlugins);
-      pluginKeys.forEach(key => {
+      pluginKeys.forEach((key) => {
         expect(key).toMatch(/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+$/);
       });
     });
 
     it('should have all plugin values as boolean', () => {
-      Object.values(settings.enabledPlugins).forEach(value => {
+      Object.values(settings.enabledPlugins).forEach((value) => {
         expect(typeof value).toBe('boolean');
       });
     });
@@ -180,7 +180,7 @@ describe('.claude/settings.json validation', () => {
   describe('configuration completeness', () => {
     it('should have all required top-level keys', () => {
       const requiredKeys = ['sandbox', 'permissions', 'extraKnownMarketplaces', 'enabledPlugins'];
-      requiredKeys.forEach(key => {
+      requiredKeys.forEach((key) => {
         expect(settings).toHaveProperty(key);
       });
     });
@@ -188,7 +188,7 @@ describe('.claude/settings.json validation', () => {
     it('should not have unexpected top-level keys', () => {
       const expectedKeys = ['sandbox', 'permissions', 'extraKnownMarketplaces', 'enabledPlugins'];
       const actualKeys = Object.keys(settings);
-      actualKeys.forEach(key => {
+      actualKeys.forEach((key) => {
         expect(expectedKeys).toContain(key);
       });
     });
@@ -200,9 +200,7 @@ describe('.claude/settings.json validation', () => {
     });
 
     it('should have restricted write permissions pattern', () => {
-      const writePerms = settings.permissions.allow.filter((p: string) => 
-        p.startsWith('Write(')
-      );
+      const writePerms = settings.permissions.allow.filter((p: string) => p.startsWith('Write('));
       writePerms.forEach((perm: string) => {
         expect(perm).toMatch(/^Write\(.+\)$/);
       });
@@ -216,7 +214,7 @@ describe('.claude/settings.json validation', () => {
         'Write(/sys/**)',
         'Write(/var/**)',
       ];
-      dangerousPatterns.forEach(pattern => {
+      dangerousPatterns.forEach((pattern) => {
         expect(settings.permissions.allow).not.toContain(pattern);
       });
     });
@@ -244,14 +242,14 @@ describe('.claude/settings.json validation', () => {
 
   describe('marketplace and plugin consistency', () => {
     it('should have matching marketplace for enabled plugins', () => {
-      Object.keys(settings.enabledPlugins).forEach(pluginKey => {
+      Object.keys(settings.enabledPlugins).forEach((pluginKey) => {
         const [, marketplace] = pluginKey.split('@');
         expect(settings.extraKnownMarketplaces).toHaveProperty(marketplace);
       });
     });
 
     it('should not enable non-existent plugins', () => {
-      Object.keys(settings.enabledPlugins).forEach(pluginKey => {
+      Object.keys(settings.enabledPlugins).forEach((pluginKey) => {
         const [, marketplace] = pluginKey.split('@');
         expect(marketplace).toBeTypeOf('string');
         expect(marketplace.length).toBeGreaterThan(0);
@@ -284,7 +282,7 @@ describe('.claude/settings.json validation', () => {
     it('should have valid GitHub repository format', () => {
       const marketplace = settings.extraKnownMarketplaces['minimal-claude-marketplace'];
       const repo = marketplace.source.repo;
-      
+
       // Should be in format: owner/repo
       const parts = repo.split('/');
       expect(parts.length).toBe(2);
@@ -295,7 +293,7 @@ describe('.claude/settings.json validation', () => {
     it('should not have invalid characters in repository name', () => {
       const marketplace = settings.extraKnownMarketplaces['minimal-claude-marketplace'];
       const repo = marketplace.source.repo;
-      
+
       // GitHub repo names should only contain alphanumeric, hyphen, underscore
       expect(repo).toMatch(/^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/);
     });
@@ -317,7 +315,7 @@ describe('.claude/settings.json validation', () => {
       // Should be extensible
       const testMarketplace = { ...settings.extraKnownMarketplaces };
       testMarketplace['test-marketplace'] = {
-        source: { source: 'github', repo: 'test/repo' }
+        source: { source: 'github', repo: 'test/repo' },
       };
       expect(Object.keys(testMarketplace).length).toBeGreaterThan(
         Object.keys(settings.extraKnownMarketplaces).length

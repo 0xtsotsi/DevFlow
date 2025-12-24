@@ -15,7 +15,7 @@ import dotenv from 'dotenv';
 
 import { createEventEmitter, type EventEmitter } from './lib/events.js';
 import { initAllowedPaths } from '@automaker/platform';
-import { authMiddleware, getAuthStatus } from './lib/auth.js';
+import { authMiddleware } from './lib/auth.js';
 import { createFsRoutes } from './routes/fs/index.js';
 import { createHealthRoutes } from './routes/health/index.js';
 import { createAgentRoutes } from './routes/agent/index.js';
@@ -48,6 +48,7 @@ import { createClaudeRoutes } from './routes/claude/index.js';
 import { ClaudeUsageService } from './services/claude-usage-service.js';
 import { createGitHubRoutes } from './routes/github/index.js';
 import { createContextRoutes } from './routes/context/index.js';
+import { createBeadsRoutes } from './routes/beads/index.js';
 
 // Load environment variables
 dotenv.config();
@@ -149,6 +150,7 @@ app.use('/api/settings', createSettingsRoutes(settingsService));
 app.use('/api/claude', createClaudeRoutes(claudeUsageService));
 app.use('/api/github', createGitHubRoutes());
 app.use('/api/context', createContextRoutes());
+app.use('/api/beads', createBeadsRoutes(events));
 
 // Create HTTP server
 const server = createServer(app);

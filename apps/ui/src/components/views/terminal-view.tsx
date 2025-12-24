@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Terminal as TerminalIcon,
   Plus,
@@ -217,7 +217,6 @@ export function TerminalView() {
     reorderTerminalTabs,
     moveTerminalToTab,
     setTerminalPanelFontSize,
-    setTerminalTabLayout,
     toggleTerminalMaximized,
     saveTerminalLayout,
     getPersistedTerminalLayout,
@@ -498,6 +497,7 @@ export function TerminalView() {
         // sendBeacon doesn't support DELETE method, so we'll use a sync XMLHttpRequest
         // which is more reliable during page unload than fetch
         try {
+          // eslint-disable-next-line no-undef
           const xhr = new XMLHttpRequest();
           xhr.open('DELETE', url, false); // synchronous
           if (terminalState.authToken) {

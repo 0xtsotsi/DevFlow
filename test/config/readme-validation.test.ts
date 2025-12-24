@@ -22,7 +22,7 @@ describe('README.md Claude Code Plugin documentation', () => {
     it('should be placed before "How to Run" section', () => {
       const claudeIndex = readmeContent.indexOf('### Claude Code Plugin Setup');
       const howToRunIndex = readmeContent.indexOf('## How to Run');
-      
+
       expect(claudeIndex).toBeGreaterThan(-1);
       expect(howToRunIndex).toBeGreaterThan(-1);
       expect(claudeIndex).toBeLessThan(howToRunIndex);
@@ -35,7 +35,9 @@ describe('README.md Claude Code Plugin documentation', () => {
     });
 
     it('should use proper markdown link syntax', () => {
-      expect(readmeContent).toMatch(/\[minimal-claude\]\(https:\/\/github\.com\/KenKaiii\/minimal-claude\)/);
+      expect(readmeContent).toMatch(
+        /\[minimal-claude\]\(https:\/\/github\.com\/KenKaiii\/minimal-claude\)/
+      );
     });
 
     it('should describe plugin purpose', () => {
@@ -43,7 +45,7 @@ describe('README.md Claude Code Plugin documentation', () => {
         readmeContent.indexOf('### Claude Code Plugin Setup'),
         readmeContent.indexOf('## How to Run')
       );
-      
+
       expect(section).toContain('code quality automation');
     });
   });
@@ -69,13 +71,9 @@ describe('README.md Claude Code Plugin documentation', () => {
     });
 
     it('should use consistent command formatting', () => {
-      const commands = [
-        '/setup-code-quality',
-        '/setup-claude-md',
-        '/setup-commits',
-      ];
+      const commands = ['/setup-code-quality', '/setup-claude-md', '/setup-commits'];
 
-      commands.forEach(command => {
+      commands.forEach((command) => {
         // Commands should be formatted as list items with inline code
         const pattern = new RegExp(`- \`${command}\``);
         expect(readmeContent).toMatch(pattern);
@@ -97,7 +95,7 @@ describe('README.md Claude Code Plugin documentation', () => {
         readmeContent.indexOf('### Claude Code Plugin Setup'),
         readmeContent.indexOf('## How to Run')
       );
-      
+
       expect(section).toContain('in this repository');
     });
   });
@@ -118,7 +116,7 @@ describe('README.md Claude Code Plugin documentation', () => {
         readmeContent.indexOf('**Available Commands:**'),
         readmeContent.indexOf('The plugin installs')
       );
-      
+
       const listItems = section.match(/^- /gm);
       expect(listItems).not.toBeNull();
       expect(listItems!.length).toBeGreaterThanOrEqual(3);
@@ -132,7 +130,7 @@ describe('README.md Claude Code Plugin documentation', () => {
         '`claude`',
       ];
 
-      commands.forEach(command => {
+      commands.forEach((command) => {
         expect(readmeContent).toContain(command);
       });
     });
@@ -150,7 +148,7 @@ describe('README.md Claude Code Plugin documentation', () => {
         readmeContent.indexOf('### Claude Code Plugin Setup'),
         readmeContent.indexOf('## How to Run')
       );
-      
+
       // Check for malformed links like ](url) or [text](
       expect(section).not.toMatch(/\]\([^)]*$/);
       expect(section).not.toMatch(/\[[^\]]*$/);
@@ -170,11 +168,11 @@ describe('README.md Claude Code Plugin documentation', () => {
           readmeContent.indexOf('### Claude Code Plugin Setup'),
           readmeContent.indexOf('## How to Run')
         );
-        
+
         expect(section).toContain(command);
-        
+
         // At least one keyword should be present in the description
-        const hasKeyword = keywords.some(keyword => 
+        const hasKeyword = keywords.some((keyword) =>
           section.toLowerCase().includes(keyword.toLowerCase())
         );
         expect(hasKeyword).toBe(true);
@@ -186,7 +184,7 @@ describe('README.md Claude Code Plugin documentation', () => {
         readmeContent.indexOf('### Claude Code Plugin Setup'),
         readmeContent.indexOf('## How to Run')
       );
-      
+
       expect(section.toLowerCase()).toContain('code quality');
     });
   });
@@ -196,15 +194,15 @@ describe('README.md Claude Code Plugin documentation', () => {
       const claudeIndex = readmeContent.indexOf('### Claude Code Plugin Setup');
       const commandsIndex = readmeContent.indexOf('**Available Commands:**');
       const installIndex = readmeContent.indexOf('The plugin installs automatically');
-      
+
       expect(claudeIndex).toBeLessThan(commandsIndex);
       expect(commandsIndex).toBeLessThan(installIndex);
     });
 
     it('should have blank lines around section', () => {
       const lines = readmeContent.split('\n');
-      const sectionIndex = lines.findIndex(line => line.includes('### Claude Code Plugin Setup'));
-      
+      const sectionIndex = lines.findIndex((line) => line.includes('### Claude Code Plugin Setup'));
+
       if (sectionIndex > 0) {
         expect(lines[sectionIndex - 1].trim()).toBe('');
       }
@@ -224,7 +222,7 @@ describe('README.md Claude Code Plugin documentation', () => {
       const quickStartIndex = readmeContent.indexOf('### Quick Start');
       const claudePluginIndex = readmeContent.indexOf('### Claude Code Plugin Setup');
       const howToRunIndex = readmeContent.indexOf('## How to Run');
-      
+
       // Should be after Quick Start but before How to Run
       expect(claudePluginIndex).toBeGreaterThan(quickStartIndex);
       expect(claudePluginIndex).toBeLessThan(howToRunIndex);
@@ -237,7 +235,7 @@ describe('README.md Claude Code Plugin documentation', () => {
         readmeContent.indexOf('### Claude Code Plugin Setup'),
         readmeContent.indexOf('## How to Run')
       );
-      
+
       expect(section).toContain('automatically');
     });
 
@@ -246,7 +244,7 @@ describe('README.md Claude Code Plugin documentation', () => {
         readmeContent.indexOf('### Claude Code Plugin Setup'),
         readmeContent.indexOf('## How to Run')
       );
-      
+
       expect(section).toMatch(/when you run[s]?\s+`claude`/i);
     });
 
@@ -255,9 +253,9 @@ describe('README.md Claude Code Plugin documentation', () => {
         readmeContent.indexOf('### Claude Code Plugin Setup'),
         readmeContent.indexOf('## How to Run')
       );
-      
+
       // Section should be focused and not overly verbose
-      const lineCount = section.split('\n').filter(l => l.trim()).length;
+      const lineCount = section.split('\n').filter((l) => l.trim()).length;
       expect(lineCount).toBeLessThan(15);
       expect(lineCount).toBeGreaterThan(8);
     });
@@ -265,13 +263,9 @@ describe('README.md Claude Code Plugin documentation', () => {
 
   describe('completeness', () => {
     it('should cover all three main commands', () => {
-      const commands = [
-        '/setup-code-quality',
-        '/setup-claude-md',
-        '/setup-commits',
-      ];
+      const commands = ['/setup-code-quality', '/setup-claude-md', '/setup-commits'];
 
-      commands.forEach(command => {
+      commands.forEach((command) => {
         expect(readmeContent).toContain(command);
       });
     });
@@ -281,7 +275,7 @@ describe('README.md Claude Code Plugin documentation', () => {
         readmeContent.indexOf('**Available Commands:**'),
         readmeContent.indexOf('The plugin installs')
       );
-      
+
       // Each command should have a description (indicated by " - ")
       const descriptions = section.match(/ - /g);
       expect(descriptions).not.toBeNull();

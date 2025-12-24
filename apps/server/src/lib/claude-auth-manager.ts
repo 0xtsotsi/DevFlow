@@ -9,7 +9,7 @@
  */
 
 import { createLogger } from '@automaker/utils';
-import { detectClaudeCLI, checkCLIAuth, type CLIDetectionResult } from './claude-cli.js';
+import { detectClaudeCLI, checkCLIAuth } from './claude-cli.js';
 import type { ClaudeAuthMethod, ClaudeAuthStatus, ClaudeAuthConfig } from '../types/auth-types.js';
 
 const logger = createLogger('ClaudeAuth');

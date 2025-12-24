@@ -9,7 +9,6 @@ import {
   Terminal,
   CircleDot,
   GitPullRequest,
-  Zap,
 } from 'lucide-react';
 import type { NavSection, NavItem } from '../types';
 import type { KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts';
@@ -230,7 +229,8 @@ export function useNavigation({
           if (item.shortcut) {
             shortcutsList.push({
               key: item.shortcut,
-              action: () => navigate({ to: `/${item.id}` as const }),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              action: () => navigate({ to: `/${item.id}` as any }),
               description: `Navigate to ${item.label}`,
             });
           }

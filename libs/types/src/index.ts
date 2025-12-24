@@ -81,3 +81,25 @@ export {
   THINKING_LEVEL_LABELS,
   getModelDisplayName,
 } from './model-display.js';
+
+// Beads integration types
+export type {
+  BeadsIssue,
+  BeadsComment,
+  BeadsDependency,
+  BeadsIntegration,
+  BeadsConnectionStatus,
+  BeadsFilters,
+  BeadsViewSettings,
+  BeadsIssueUpdate,
+  BeadsIssueCreate,
+  BeadsApiResponse,
+  BeadsIssuesListResponse,
+  BeadsReadyResponse,
+  BeadsDelta,
+  BeadsSnapshot,
+  BeadsWsMessage,
+  BeadsStats,
+  BeadsWorkFilter,
+} from './beads.js';
+export { BeadsStatus, BeadsIssueType, BeadsDependencyType, type BeadsPriority } from './beads.js';

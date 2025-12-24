@@ -79,7 +79,10 @@ export function ClaudeSetupStep({ onNext, onBack, onSkip }: ClaudeSetupStepProps
     []
   );
 
-  const getStoreState = useCallback(() => useSetupStore.getState().claudeCliStatus, []);
+  const getStoreState = useCallback(() => {
+    const status = useSetupStore.getState().claudeCliStatus;
+    return status || { installed: false };
+  }, []);
 
   // Use custom hooks
   const { isChecking, checkStatus } = useCliStatus({
@@ -266,12 +269,6 @@ export function ClaudeSetupStep({ onNext, onBack, onSkip }: ClaudeSetupStepProps
   const isCliVerified = cliVerificationStatus === 'verified';
   const isApiKeyVerified = apiKeyVerificationStatus === 'verified';
   const isReady = isCliVerified || isApiKeyVerified;
-
-  const getAuthMethodLabel = () => {
-    if (isApiKeyVerified) return 'API Key';
-    if (isCliVerified) return 'Claude CLI';
-    return null;
-  };
 
   // Helper to get status badge for CLI
   const getCliStatusBadge = () => {
