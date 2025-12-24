@@ -6,7 +6,6 @@
  */
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import path from 'path';
 import * as secureFs from '../../lib/secure-fs.js';
 import type { EventEmitter } from '../../lib/events.js';
 import {

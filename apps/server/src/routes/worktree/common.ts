@@ -5,13 +5,10 @@
 import { createLogger } from '@automaker/utils';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import path from 'path';
 import { getErrorMessage as getErrorMessageShared, createLogError } from '../common.js';
-import { FeatureLoader } from '../../services/feature-loader.js';
 
 const logger = createLogger('Worktree');
 export const execAsync = promisify(exec);
-const featureLoader = new FeatureLoader();
 
 // ============================================================================
 // Constants

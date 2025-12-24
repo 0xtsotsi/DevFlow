@@ -158,7 +158,7 @@ export function EditFeatureDialog({
 
     const selectedModel = (editingFeature.model ?? 'opus') as ModelAlias;
     const normalizedThinking: ThinkingLevel = modelSupportsThinking(selectedModel)
-      ? (editingFeature.thinkingLevel ?? 'none')
+      ? ((editingFeature.thinkingLevel ?? 'none') as ThinkingLevel)
       : 'none';
 
     // Use current branch if toggle is on
@@ -498,7 +498,7 @@ export function EditFeatureDialog({
                 />
                 {editModelAllowsThinking && (
                   <ThinkingLevelSelector
-                    selectedLevel={editingFeature.thinkingLevel ?? 'none'}
+                    selectedLevel={(editingFeature.thinkingLevel ?? 'none') as ThinkingLevel}
                     onLevelSelect={(level) =>
                       setEditingFeature({
                         ...editingFeature,

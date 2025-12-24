@@ -540,8 +540,8 @@ const grayTheme: TerminalTheme = {
   searchActiveMatchBorder: '#b0d0f0',
 };
 
-// Theme mapping
-const terminalThemes: Record<ThemeMode, TerminalTheme> = {
+// Theme mapping - partial record with fallbacks for undefined themes
+const terminalThemes: Partial<Record<ThemeMode, TerminalTheme>> = {
   light: lightTheme,
   dark: darkTheme,
   system: darkTheme, // Will be resolved at runtime
@@ -559,6 +559,23 @@ const terminalThemes: Record<ThemeMode, TerminalTheme> = {
   cream: creamTheme,
   sunset: sunsetTheme,
   gray: grayTheme,
+  // Fallback themes for new ThemeMode values that don't have dedicated terminal themes yet
+  forest: darkTheme,
+  ocean: darkTheme,
+  solarizedlight: lightTheme,
+  github: lightTheme,
+  paper: lightTheme,
+  rose: lightTheme,
+  mint: lightTheme,
+  lavender: lightTheme,
+  sand: lightTheme,
+  sky: lightTheme,
+  peach: lightTheme,
+  snow: lightTheme,
+  sepia: lightTheme,
+  gruvboxlight: lightTheme,
+  nordlight: lightTheme,
+  blossom: lightTheme,
 };
 
 /**

@@ -43,7 +43,6 @@ export function WorktreePanel({
 
   const {
     isStartingDevServer,
-    getWorktreeKey,
     isDevServerRunning,
     getDevServerInfo,
     handleStartDevServer,

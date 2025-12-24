@@ -5,6 +5,7 @@ This document describes the comprehensive test suite for the configuration chang
 ## Overview
 
 The test suite validates three key configuration files that were modified in the current branch:
+
 1. `.claude/settings.json` - Claude Code plugin configuration
 2. `.gitignore` - Git ignore patterns for Claude Code local settings
 3. `README.md` - Documentation for Claude Code Plugin setup
@@ -90,7 +91,7 @@ Validation of `.gitignore` patterns for Claude Code local settings.
 - **Claude Code Pattern Presence** (5 tests)
   - Comment presence
   - Specific file patterns (settings.local.json)
-  - Wildcard patterns (*.local.json)
+  - Wildcard patterns (\*.local.json)
   - Directory patterns (session-env/)
   - Section structure validation
 
@@ -110,7 +111,7 @@ Validation of `.gitignore` patterns for Claude Code local settings.
 
 - **Git Behavior Validation** (4 tests)
   - settings.local.json ignored
-  - Custom *.local.json files ignored
+  - Custom \*.local.json files ignored
   - session-env/ directory ignored
   - Committed settings.json NOT ignored
 
@@ -195,12 +196,14 @@ Validation of README.md documentation for Claude Code Plugin.
 ## Running the Tests
 
 ### Run All Configuration Tests
+
 ```bash
 # From repository root
 npx vitest test/config
 ```
 
 ### Run Specific Test File
+
 ```bash
 # Claude settings tests
 npx vitest test/config/claude-settings.test.ts
@@ -213,11 +216,13 @@ npx vitest test/config/readme-validation.test.ts
 ```
 
 ### Run with Coverage
+
 ```bash
 npx vitest test/config --coverage
 ```
 
 ### Run in Watch Mode
+
 ```bash
 npx vitest test/config --watch
 ```
@@ -253,6 +258,7 @@ All tests should pass when run against the current branch. If any tests fail, it
 ## Dependencies
 
 The tests use:
+
 - **Vitest**: Testing framework
 - **Node.js fs/promises**: File system operations
 - **child_process**: Git command execution

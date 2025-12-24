@@ -5,6 +5,7 @@ This directory contains comprehensive unit tests for repository configuration fi
 ## Overview
 
 Tests validate configuration files changed in the current branch:
+
 - `.claude/settings.json` - Claude Code plugin configuration
 - `.gitignore` - Git ignore patterns for local Claude settings
 - `README.md` - Claude Code Plugin documentation
@@ -12,12 +13,15 @@ Tests validate configuration files changed in the current branch:
 ## Test Files
 
 ### `config/claude-settings.test.ts` (60 tests)
+
 Validates JSON structure, sandbox settings, permissions, marketplace configuration, plugin enablement, security settings, and formatting.
 
 ### `config/gitignore-validation.test.ts` (45 tests)
+
 Validates gitignore patterns, actual git behavior (using `git check-ignore`), security implications, and documentation quality.
 
 ### `config/readme-validation.test.ts` (46 tests)
+
 Validates documentation presence, accuracy, markdown formatting, link validity, and content completeness.
 
 ## Running Tests
@@ -61,6 +65,7 @@ npx vitest test/config --watch
 ## Test Categories
 
 ### Security Tests
+
 - Sandbox enablement
 - Permission restrictions
 - System directory protection
@@ -68,17 +73,20 @@ npx vitest test/config --watch
 - Session data protection
 
 ### Structure Tests
+
 - JSON validity and structure
 - Gitignore syntax
 - Markdown formatting
 - Required fields presence
 
 ### Behavior Tests
+
 - Git ignore pattern functionality
 - File reading and parsing
 - Configuration consistency
 
 ### Content Tests
+
 - Documentation accuracy
 - Command descriptions
 - Link validity
@@ -97,6 +105,7 @@ When modifying configuration files:
 ## Integration
 
 These tests complement the existing test suite:
+
 - Server tests: `apps/server/tests/`
 - Package tests: `libs/*/tests/`
 - UI tests: `apps/ui/tests/`

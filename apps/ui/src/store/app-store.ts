@@ -38,25 +38,6 @@ export type ViewMode =
   | 'wiki'
   | 'ideation';
 
-export type ThemeMode =
-  | 'light'
-  | 'dark'
-  | 'system'
-  | 'retro'
-  | 'dracula'
-  | 'nord'
-  | 'monokai'
-  | 'tokyonight'
-  | 'solarized'
-  | 'gruvbox'
-  | 'catppuccin'
-  | 'onedark'
-  | 'synthwave'
-  | 'red'
-  | 'cream'
-  | 'sunset'
-  | 'gray';
-
 export type KanbanCardDetailLevel = 'minimal' | 'standard' | 'detailed';
 
 export type BoardViewMode = 'kanban' | 'graph';
@@ -271,10 +252,7 @@ export interface FeatureImage {
 // Available models for feature execution
 export type ClaudeModel = 'opus' | 'sonnet' | 'haiku';
 
-export interface Feature extends Omit<
-  BaseFeature,
-  'steps' | 'imagePaths' | 'textFilePaths' | 'status'
-> {
+export interface Feature extends Omit<BaseFeature, 'imagePaths' | 'textFilePaths' | 'status'> {
   id: string;
   title?: string;
   titleGenerating?: boolean;
@@ -285,6 +263,24 @@ export interface Feature extends Omit<
   images?: FeatureImage[]; // UI-specific base64 images
   imagePaths?: FeatureImagePath[]; // Stricter type than base (no string | union)
   textFilePaths?: FeatureTextFilePath[]; // Text file attachments for context
+  branchName?: string;
+  skipTests?: boolean;
+  thinkingLevel?: string;
+  planningMode?: PlanningMode;
+  requirePlanApproval?: boolean;
+  planSpec?: {
+    status: 'pending' | 'generating' | 'generated' | 'approved' | 'rejected';
+    content?: string;
+    version: number;
+    generatedAt?: string;
+    approvedAt?: string;
+    reviewedByUser: boolean;
+    tasksCompleted?: number;
+    tasksTotal?: number;
+  };
+  error?: string;
+  summary?: string;
+  startedAt?: string;
   justFinishedAt?: string; // UI-specific: ISO timestamp when agent just finished
   prUrl?: string; // UI-specific: Pull request URL
 }
@@ -2689,6 +2685,7 @@ export const useAppStore = create<AppState & AppActions>()(
         const current = get().terminalState;
         if (current.tabs.length === 0) {
           // Nothing to save, clear any existing layout
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { [projectPath]: _, ...rest } = get().terminalLayoutByProject;
           set({ terminalLayoutByProject: rest });
           return;
@@ -2746,6 +2743,7 @@ export const useAppStore = create<AppState & AppActions>()(
       },
 
       clearPersistedTerminalLayout: (projectPath) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [projectPath]: _, ...rest } = get().terminalLayoutByProject;
         set({ terminalLayoutByProject: rest });
       },

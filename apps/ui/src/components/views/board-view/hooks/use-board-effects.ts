@@ -5,12 +5,15 @@ import { createLogger } from '@automaker/utils/logger';
 
 const logger = createLogger('BoardEffects');
 
+import type { Feature } from '@/store/app-store';
+import type { FeatureSuggestion } from '@/lib/electron';
+
 interface UseBoardEffectsProps {
   currentProject: { path: string; id: string } | null;
   specCreatingForProject: string | null;
   setSpecCreatingForProject: (path: string | null) => void;
   checkContextExists: (featureId: string) => Promise<boolean>;
-  features: any[];
+  features: Feature[];
   isLoading: boolean;
   featuresWithContext: Set<string>;
   setFeaturesWithContext: (set: Set<string>) => void;
@@ -34,10 +37,12 @@ export function useBoardEffects({
   // Make current project available globally for modal
   useEffect(() => {
     if (currentProject) {
-      (window as any).__currentProject = currentProject;
+      (window as { __currentProject?: { path: string; id: string } | null }).__currentProject =
+        currentProject;
     }
     return () => {
-      (window as any).__currentProject = null;
+      (window as { __currentProject?: { path: string; id: string } | null }).__currentProject =
+        null;
     };
   }, [currentProject]);
 

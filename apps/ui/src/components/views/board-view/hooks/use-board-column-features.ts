@@ -44,7 +44,6 @@ export function useBoardColumnFeatures({
 
     // Determine the effective worktree path and branch for filtering
     // If currentWorktreePath is null, we're on the main worktree
-    const effectiveWorktreePath = currentWorktreePath || projectPath;
     // Use the branch name from the selected worktree
     // If we're selecting main (currentWorktreePath is null), currentWorktreeBranch
     // should contain the main branch's actual name, defaulting to "main"
@@ -148,16 +147,16 @@ export function useBoardColumnFeatures({
         const blocked: Feature[] = [];
 
         for (const f of orderedFeatures) {
-          if (getBlockingDependencies(f, allFeatures).length > 0) {
-            blocked.push(f);
+          if (getBlockingDependencies(f as Feature, allFeatures as Feature[]).length > 0) {
+            blocked.push(f as Feature);
           } else {
-            unblocked.push(f);
+            unblocked.push(f as Feature);
           }
         }
 
         map.backlog = [...unblocked, ...blocked];
       } else {
-        map.backlog = orderedFeatures;
+        map.backlog = orderedFeatures as Feature[];
       }
     }
 

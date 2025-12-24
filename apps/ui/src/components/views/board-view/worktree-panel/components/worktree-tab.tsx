@@ -1,3 +1,4 @@
+import { type ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Globe, Loader2, CircleDot, GitPullRequest } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -87,7 +88,7 @@ export function WorktreeTab({
   onStopDevServer,
   onOpenDevServerUrl,
 }: WorktreeTabProps) {
-  let prBadge: JSX.Element | null = null;
+  let prBadge: ReactElement | null = null;
   if (worktree.pr) {
     const prState = worktree.pr.state?.toLowerCase() ?? 'open';
     const prStateClasses = (() => {

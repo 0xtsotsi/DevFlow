@@ -199,7 +199,7 @@ export function NewProjectModal({
 
   // Use platform-specific path separator
   const pathSep =
-    typeof window !== 'undefined' && (window as any).electronAPI
+    typeof window !== 'undefined' && window.electronAPI
       ? navigator.platform.indexOf('Win') !== -1
         ? '\\'
         : '/'

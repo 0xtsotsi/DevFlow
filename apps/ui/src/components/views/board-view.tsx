@@ -6,6 +6,8 @@ import {
   useSensors,
   rectIntersection,
   pointerWithin,
+  type CollisionDetection,
+  type Collision,
 } from '@dnd-kit/core';
 import { useAppStore, Feature } from '@/store/app-store';
 import { getElectronAPI } from '@/lib/electron';
@@ -84,7 +86,6 @@ export function BoardView() {
     setCurrentWorktree,
     getWorktrees,
     setWorktrees,
-    useWorktrees,
     enableDependencyBlocking,
     isPrimaryWorktreeBranch,
     getPrimaryWorktreeBranch,
@@ -286,7 +287,7 @@ export function BoardView() {
     return hookFeatures.reduce(
       (counts, feature) => {
         if (feature.status !== 'completed') {
-          const branch = feature.branchName ?? 'main';
+          const branch = (feature.branchName as string | undefined) ?? 'main';
           counts[branch] = (counts[branch] || 0) + 1;
         }
         return counts;
@@ -296,11 +297,11 @@ export function BoardView() {
   }, [hookFeatures]);
 
   // Custom collision detection that prioritizes columns over cards
-  const collisionDetectionStrategy = useCallback((args: any) => {
+  const collisionDetectionStrategy: CollisionDetection = useCallback((args) => {
     // First, check if pointer is within a column
     const pointerCollisions = pointerWithin(args);
-    const columnCollisions = pointerCollisions.filter((collision: any) =>
-      COLUMNS.some((col) => col.id === collision.id)
+    const columnCollisions = pointerCollisions.filter((collision: Collision) =>
+      COLUMNS.some((col) => col.id === String(collision.id))
     );
 
     // If we found a column collision, use that
@@ -392,7 +393,6 @@ export function BoardView() {
     handleOpenFollowUp,
     handleSendFollowUp,
     handleCommitFeature,
-    handleMergeFeature,
     handleCompleteFeature,
     handleUnarchiveFeature,
     handleViewOutput,
@@ -693,7 +693,7 @@ export function BoardView() {
         const backlogFeatures = currentFeatures.filter((f) => {
           if (f.status !== 'backlog') return false;
 
-          const featureBranch = f.branchName;
+          const featureBranch = f.branchName as string | undefined;
 
           // Features without branchName are considered unassigned (show only on primary worktree)
           if (!featureBranch) {
@@ -720,7 +720,9 @@ export function BoardView() {
 
         // Sort by priority (lower number = higher priority, priority 1 is highest)
         const sortedBacklog = [...backlogFeatures].sort(
-          (a, b) => (a.priority || 999) - (b.priority || 999)
+          (a, b) =>
+            ((a.priority as number | undefined) || 999) -
+            ((b.priority as number | undefined) || 999)
         );
 
         // Filter out features with blocking dependencies if dependency blocking is enabled
@@ -866,7 +868,7 @@ export function BoardView() {
             planSpec: {
               status: 'approved',
               content: editedPlan || pendingPlanApproval.planContent,
-              version: currentFeature?.planSpec?.version || 1,
+              version: (currentFeature?.planSpec as { version?: number } | undefined)?.version || 1,
               approvedAt: new Date().toISOString(),
               reviewedByUser: true,
             },
@@ -923,7 +925,7 @@ export function BoardView() {
             planSpec: {
               status: 'rejected',
               content: pendingPlanApproval.planContent,
-              version: currentFeature?.planSpec?.version || 1,
+              version: (currentFeature?.planSpec as { version?: number } | undefined)?.version || 1,
               reviewedByUser: true,
             },
           });
@@ -952,7 +954,8 @@ export function BoardView() {
   // Handle opening approval dialog from feature card button
   const handleOpenApprovalDialog = useCallback(
     (feature: Feature) => {
-      if (!feature.planSpec?.content || !currentProject) return;
+      const planSpec = feature.planSpec as { content?: string } | undefined;
+      if (!planSpec?.content || !currentProject) return;
 
       // Determine the planning mode for approval (skip should never have a plan requiring approval)
       const mode = feature.planningMode;
@@ -963,7 +966,7 @@ export function BoardView() {
       setPendingPlanApproval({
         featureId: feature.id,
         projectPath: currentProject.path,
-        planContent: feature.planSpec.content,
+        planContent: planSpec.content,
         planningMode: approvalMode,
       });
     },
@@ -1043,7 +1046,7 @@ export function BoardView() {
         branchCardCounts={branchCardCounts}
         features={hookFeatures.map((f) => ({
           id: f.id,
-          branchName: f.branchName,
+          branchName: f.branchName as string | undefined,
         }))}
       />
 
@@ -1280,17 +1283,20 @@ export function BoardView() {
       />
 
       {/* View Plan Dialog (read-only) */}
-      {viewPlanFeature && viewPlanFeature.planSpec?.content && (
-        <PlanApprovalDialog
-          open={true}
-          onOpenChange={(open) => !open && setViewPlanFeature(null)}
-          feature={viewPlanFeature}
-          planContent={viewPlanFeature.planSpec.content}
-          onApprove={() => setViewPlanFeature(null)}
-          onReject={() => setViewPlanFeature(null)}
-          viewOnly={true}
-        />
-      )}
+      {viewPlanFeature &&
+        (viewPlanFeature.planSpec as { content?: string } | undefined)?.content && (
+          <PlanApprovalDialog
+            open={true}
+            onOpenChange={(open) => !open && setViewPlanFeature(null)}
+            feature={viewPlanFeature}
+            planContent={
+              (viewPlanFeature.planSpec as { content?: string } | undefined)?.content || ''
+            }
+            onApprove={() => setViewPlanFeature(null)}
+            onReject={() => setViewPlanFeature(null)}
+            viewOnly={true}
+          />
+        )}
 
       {/* Create Worktree Dialog */}
       <CreateWorktreeDialog

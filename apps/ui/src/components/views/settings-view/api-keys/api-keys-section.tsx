@@ -44,7 +44,7 @@ export function ApiKeysSection() {
       } else {
         toast.error(result.error || 'Failed to delete API key');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete API key');
     } finally {
       setIsDeletingAnthropicKey(false);

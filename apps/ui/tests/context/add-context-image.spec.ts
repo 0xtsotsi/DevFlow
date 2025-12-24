@@ -8,6 +8,7 @@ import { test, expect } from '@playwright/test';
 import { Buffer } from 'buffer';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Buffer } from 'buffer';
 import {
   resetContextDirectory,
   setupProjectWithFixture,

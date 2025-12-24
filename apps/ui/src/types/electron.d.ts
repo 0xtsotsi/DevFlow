@@ -463,7 +463,35 @@ export interface AutoModeAPI {
   onEvent: (callback: (event: AutoModeEvent) => void) => () => void;
 }
 
+export interface FeaturesAPI {
+  getAll: (
+    projectPath: string
+  ) => Promise<{ success: boolean; features?: unknown[]; error?: string }>;
+  get: (
+    projectPath: string,
+    featureId: string
+  ) => Promise<{ success: boolean; feature?: unknown; error?: string }>;
+  create: (
+    projectPath: string,
+    feature: unknown
+  ) => Promise<{ success: boolean; feature?: unknown; error?: string }>;
+  update: (
+    projectPath: string,
+    featureId: string,
+    updates: unknown
+  ) => Promise<{ success: boolean; feature?: unknown; error?: string }>;
+  delete: (projectPath: string, featureId: string) => Promise<{ success: boolean; error?: string }>;
+  getAgentOutput: (
+    projectPath: string,
+    featureId: string
+  ) => Promise<{ success: boolean; content?: string | null; error?: string }>;
+  generateTitle: (
+    description: string
+  ) => Promise<{ success: boolean; title?: string; error?: string }>;
+}
+
 export interface ElectronAPI {
+  isElectron?: boolean;
   ping: () => Promise<string>;
   getApiKey?: () => Promise<string | null>;
   quit?: () => Promise<void>;
@@ -592,6 +620,64 @@ export interface ElectronAPI {
 
   // Spec Regeneration APIs
   specRegeneration: SpecRegenerationAPI;
+
+  // Claude CLI APIs
+  claude?: {
+    getUsage: () => Promise<
+      | {
+          sessionTokensUsed: number;
+          sessionLimit: number;
+          sessionPercentage: number;
+          sessionResetTime: string;
+          sessionResetText: string;
+          weeklyTokensUsed: number;
+          weeklyLimit: number;
+          weeklyPercentage: number;
+          weeklyResetTime: string;
+          weeklyResetText: string;
+          sonnetWeeklyTokensUsed: number;
+          sonnetWeeklyPercentage: number;
+          sonnetResetText: string;
+          costUsed: number | null;
+          costLimit: number | null;
+          costCurrency: string | null;
+          lastUpdated: string;
+          userTimezone: string;
+        }
+      | { error: string; message?: string }
+    >;
+  };
+
+  // Template APIs
+  templates?: {
+    clone: (
+      repoUrl: string,
+      projectName: string,
+      parentDir: string
+    ) => Promise<{
+      success: boolean;
+      projectPath?: string;
+      error?: string;
+    }>;
+  };
+
+  // Features API
+  features?: FeaturesAPI;
+
+  // Setup APIs
+  setup?: {
+    verifyClaudeAuth: (authType: string) => Promise<{
+      success: boolean;
+      authenticated?: boolean;
+      error?: string;
+    }>;
+    getApiKeys: () => Promise<{
+      success: boolean;
+      hasAnthropicKey?: boolean;
+      hasGoogleKey?: boolean;
+      error?: string;
+    }>;
+  };
 }
 
 export interface WorktreeInfo {

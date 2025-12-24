@@ -18,6 +18,26 @@ interface TaskInfo {
   phase?: string;
 }
 
+interface PlanSpecTask {
+  id: string;
+  description: string;
+  filePath?: string;
+  phase?: string;
+}
+
+interface PlanSpec {
+  tasks?: PlanSpecTask[];
+  currentTaskId?: string;
+  tasksCompleted?: number;
+  status?: 'pending' | 'generating' | 'generated' | 'approved' | 'rejected';
+  content?: string;
+  version?: number;
+  generatedAt?: string;
+  approvedAt?: string;
+  reviewedByUser?: boolean;
+  tasksTotal?: number;
+}
+
 interface TaskProgressPanelProps {
   featureId: string;
   projectPath?: string;
@@ -35,7 +55,7 @@ export function TaskProgressPanel({
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const [, setCurrentTaskId] = useState<string | null>(null);
 
   // Load initial tasks from feature's planSpec
   const loadInitialTasks = useCallback(async () => {
@@ -52,13 +72,14 @@ export function TaskProgressPanel({
       }
 
       const result = await api.features.get(projectPath, featureId);
-      if (result.success && result.feature?.planSpec?.tasks) {
-        const planTasks = result.feature.planSpec.tasks;
-        const currentId = result.feature.planSpec.currentTaskId;
-        const completedCount = result.feature.planSpec.tasksCompleted || 0;
+      const planSpec = result.feature?.planSpec as PlanSpec | undefined;
+      if (result.success && planSpec?.tasks) {
+        const planTasks = planSpec.tasks;
+        const currentId = planSpec.currentTaskId;
+        const completedCount = planSpec.tasksCompleted || 0;
 
         // Convert planSpec tasks to TaskInfo with proper status
-        const initialTasks: TaskInfo[] = planTasks.map((t: any, index: number) => ({
+        const initialTasks: TaskInfo[] = planTasks.map((t, index: number) => ({
           id: t.id,
           description: t.description,
           filePath: t.filePath,
@@ -233,7 +254,7 @@ export function TaskProgressPanel({
             <div className="absolute left-[2.35rem] top-4 bottom-8 w-px bg-linear-to-b from-border/80 via-border/40 to-transparent" />
 
             <div className="space-y-5">
-              {tasks.map((task, index) => {
+              {tasks.map((task) => {
                 const isActive = task.status === 'in_progress';
                 const isCompleted = task.status === 'completed';
                 const isPending = task.status === 'pending';

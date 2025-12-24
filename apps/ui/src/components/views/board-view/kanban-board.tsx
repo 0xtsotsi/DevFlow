@@ -12,10 +12,10 @@ import { getColumnsWithPipeline, type Column, type ColumnId } from './constants'
 import type { PipelineConfig } from '@automaker/types';
 
 interface KanbanBoardProps {
-  sensors: any;
-  collisionDetectionStrategy: (args: any) => any;
-  onDragStart: (event: any) => void;
-  onDragEnd: (event: any) => void;
+  sensors: SensorDescriptor<SensorOptions>[];
+  collisionDetectionStrategy: CollisionDetection;
+  onDragStart: (event: DragStartEvent) => void;
+  onDragEnd: (event: DragEndEvent) => void;
   activeFeature: Feature | null;
   getColumnFeatures: (columnId: ColumnId) => Feature[];
   backgroundImageStyle: React.CSSProperties;
@@ -70,7 +70,7 @@ export function KanbanBoard({
   onManualVerify,
   onMoveBackToInProgress,
   onFollowUp,
-  onCommit,
+  onCommit: _onCommit,
   onComplete,
   onImplement,
   onViewPlan,

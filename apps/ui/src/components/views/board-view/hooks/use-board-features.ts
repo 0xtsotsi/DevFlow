@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useAppStore, Feature } from '@/store/app-store';
+import { useAppStore, type Feature } from '@/store/app-store';
 import { getElectronAPI } from '@/lib/electron';
 import { toast } from 'sonner';
 import { createLogger } from '@automaker/utils/logger';
@@ -59,15 +59,27 @@ export function useBoardFeatures({ currentProject }: UseBoardFeaturesProps) {
       const result = await api.features.getAll(currentProject.path);
 
       if (result.success && result.features) {
-        const featuresWithIds = result.features.map((f: any, index: number) => ({
-          ...f,
-          id: f.id || `feature-${index}-${Date.now()}`,
-          status: f.status || 'backlog',
-          startedAt: f.startedAt, // Preserve startedAt timestamp
-          // Ensure model and thinkingLevel are set for backward compatibility
-          model: f.model || 'opus',
-          thinkingLevel: f.thinkingLevel || 'none',
-        }));
+        const featuresWithIds = result.features.map(
+          (
+            f: {
+              id?: string;
+              status?: string;
+              startedAt?: string;
+              model?: string;
+              thinkingLevel?: string;
+              [key: string]: unknown;
+            },
+            index: number
+          ) => ({
+            ...f,
+            id: f.id || `feature-${index}-${Date.now()}`,
+            status: f.status || 'backlog',
+            startedAt: f.startedAt, // Preserve startedAt timestamp
+            // Ensure model and thinkingLevel are set for backward compatibility
+            model: f.model || 'opus',
+            thinkingLevel: f.thinkingLevel || 'none',
+          })
+        ) as Feature[];
         // Successfully loaded features - now safe to set them
         setFeatures(featuresWithIds);
 

@@ -51,9 +51,11 @@ export function logAuthStatus(context: string): void {
  */
 export function logError(error: unknown, context: string): void {
   logger.error(`❌ ${context}:`);
-  logger.error('Error name:', (error as any)?.name);
-  logger.error('Error message:', (error as Error)?.message);
-  logger.error('Error stack:', (error as Error)?.stack);
+  if (error && typeof error === 'object') {
+    logger.error('Error name:', 'name' in error ? error.name : undefined);
+    logger.error('Error message:', 'message' in error ? (error as Error).message : undefined);
+    logger.error('Error stack:', 'stack' in error ? (error as Error).stack : undefined);
+  }
   logger.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
 }
 

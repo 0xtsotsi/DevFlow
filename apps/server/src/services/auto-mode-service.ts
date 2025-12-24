@@ -163,12 +163,13 @@ function parseTaskLine(line: string, currentPhase?: string): ParsedTask | null {
 }
 
 // Feature type is imported from feature-loader.js
-// Extended type with planning fields for local use
-interface FeatureWithPlanning extends Feature {
-  planningMode?: PlanningMode;
-  planSpec?: PlanSpec;
-  requirePlanApproval?: boolean;
-}
+// Extended type with planning fields for local use - defined but not currently used
+// Will be needed when planning mode features are fully implemented
+// interface FeatureWithPlanning extends Feature {
+//   planningMode?: PlanningMode;
+//   planSpec?: PlanSpec;
+//   requirePlanApproval?: boolean;
+// }
 
 interface RunningFeature {
   featureId: string;
@@ -1985,7 +1986,6 @@ This helps parse your summary correctly in the output logs.`;
       thinkingLevel?: ThinkingLevel;
     }
   ): Promise<void> {
-    const finalProjectPath = options?.projectPath || projectPath;
     const planningMode = options?.planningMode || 'skip';
     const previousContent = options?.previousContent;
 

@@ -5,7 +5,7 @@
  * with the provider architecture.
  */
 
-import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
+import { query, type Options, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { BaseProvider } from './base-provider.js';
 import { classifyError, getUserFriendlyErrorMessage, createLogger } from '@automaker/utils';
 
@@ -16,6 +16,7 @@ import type {
   ProviderMessage,
   InstallationStatus,
   ModelDefinition,
+  ContentBlock,
 } from './types.js';
 
 // Explicit allowlist of environment variables to pass to the SDK.
@@ -107,7 +108,7 @@ export class ClaudeProvider extends BaseProvider {
     };
 
     // Build prompt payload
-    let promptPayload: string | AsyncIterable<any>;
+    let promptPayload: string | AsyncIterable<SDKUserMessage>;
 
     if (Array.isArray(prompt)) {
       // Multi-part prompt (with images)
@@ -117,11 +118,11 @@ export class ClaudeProvider extends BaseProvider {
           session_id: '',
           message: {
             role: 'user' as const,
-            content: prompt,
+            content: prompt as ContentBlock[],
           },
           parent_tool_use_id: null,
         };
-        yield multiPartPrompt;
+        yield multiPartPrompt as SDKUserMessage;
       })();
     } else {
       // Simple text prompt

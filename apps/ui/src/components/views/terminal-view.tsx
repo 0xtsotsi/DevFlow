@@ -223,7 +223,6 @@ export function TerminalView() {
     reorderTerminalTabs,
     moveTerminalToTab,
     setTerminalPanelFontSize,
-    setTerminalTabLayout,
     toggleTerminalMaximized,
     saveTerminalLayout,
     getPersistedTerminalLayout,
@@ -494,6 +493,7 @@ export function TerminalView() {
       sessionIds.forEach((sessionId) => {
         const url = `${serverUrl}/api/terminal/sessions/${sessionId}`;
         try {
+          // eslint-disable-next-line no-undef
           const xhr = new XMLHttpRequest();
           xhr.open('DELETE', url, false); // synchronous
           xhr.withCredentials = true; // Include cookies for session auth

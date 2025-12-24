@@ -322,7 +322,7 @@ export function InterviewView() {
       const api = getElectronAPI();
       // Use platform-specific path separator
       const pathSep =
-        typeof window !== 'undefined' && (window as any).electronAPI
+        typeof window !== 'undefined' && window.electronAPI
           ? navigator.platform.indexOf('Win') !== -1
             ? '\\'
             : '/'
@@ -349,6 +349,7 @@ export function InterviewView() {
         description: 'Initial project setup',
         status: 'backlog' as const,
         skipTests: true,
+        steps: [],
       };
 
       if (!api.features) {

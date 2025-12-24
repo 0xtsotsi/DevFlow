@@ -17,7 +17,7 @@ export function SpecView() {
   const { isLoading, specExists, isGenerationRunning, loadSpec } = useSpecLoading();
 
   // Save state
-  const { isSaving, hasChanges, saveSpec, handleChange, setHasChanges } = useSpecSave();
+  const { isSaving, hasChanges, saveSpec, handleChange } = useSpecSave();
 
   // Generation state and handlers
   const {

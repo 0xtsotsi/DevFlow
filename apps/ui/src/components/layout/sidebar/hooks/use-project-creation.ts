@@ -130,6 +130,9 @@ export function useProjectCreation({
       setIsCreatingProject(true);
       try {
         const api = getElectronAPI();
+        if (!api?.templates) {
+          throw new Error('Templates API not available');
+        }
 
         // Clone template repository
         const cloneResult = await api.templates.clone(template.repoUrl, projectName, parentDir);
@@ -202,6 +205,9 @@ export function useProjectCreation({
       setIsCreatingProject(true);
       try {
         const api = getElectronAPI();
+        if (!api?.templates) {
+          throw new Error('Templates API not available');
+        }
 
         // Clone custom repository
         const cloneResult = await api.templates.clone(repoUrl, projectName, parentDir);
