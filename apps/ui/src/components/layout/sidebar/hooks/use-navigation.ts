@@ -3,6 +3,7 @@ import type { NavigateOptions } from '@tanstack/react-router';
 import {
   FileText,
   LayoutGrid,
+  ListTodo,
   Bot,
   BookOpen,
   UserCircle,
@@ -28,6 +29,7 @@ interface UseNavigationProps {
     context: string;
     profiles: string;
     board: string;
+    beads: string;
     agent: string;
     terminal: string;
     settings: string;
@@ -143,6 +145,12 @@ export function useNavigation({
         label: 'Kanban Board',
         icon: LayoutGrid,
         shortcut: shortcuts.board,
+      },
+      {
+        id: 'beads',
+        label: 'Beads',
+        icon: ListTodo,
+        shortcut: shortcuts.beads,
       },
       {
         id: 'agent',

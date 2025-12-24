@@ -27,6 +27,7 @@ export type ViewMode =
   | 'setup'
   | 'spec'
   | 'board'
+  | 'beads'
   | 'agent'
   | 'settings'
   | 'interview'
