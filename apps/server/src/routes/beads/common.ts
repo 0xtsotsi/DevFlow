@@ -4,15 +4,21 @@
 
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { platform } from 'os';
 
 const execFileAsync = promisify(execFile);
 
 /**
  * Get the path to the bd CLI binary
+ *
+ * Cross-platform implementation that uses 'which' on Unix/Linux/macOS
+ * and 'where' on Windows to locate the bd CLI executable.
  */
 export async function getBdBin(): Promise<string> {
   try {
-    const { stdout } = await execFileAsync('which', ['bd']);
+    // Use 'where' on Windows, 'which' on Unix/Linux/macOS
+    const command = platform() === 'win32' ? 'where' : 'which';
+    const { stdout } = await execFileAsync(command, ['bd']);
     return stdout.trim();
   } catch {
     throw new Error('bd CLI not found in PATH');
