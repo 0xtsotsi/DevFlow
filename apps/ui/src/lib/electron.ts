@@ -231,6 +231,57 @@ export interface RunningAgentsAPI {
   getAll: () => Promise<RunningAgentsResult>;
 }
 
+// Beads API types
+export interface BeadsAPI {
+  list: (
+    projectPath: string,
+    filters?: ListBeadsIssuesFilters
+  ) => Promise<{
+    success: boolean;
+    issues?: BeadsIssue[];
+    error?: string;
+  }>;
+  create: (
+    projectPath: string,
+    input: CreateBeadsIssueInput
+  ) => Promise<{
+    success: boolean;
+    issue?: BeadsIssue;
+    error?: string;
+  }>;
+  update: (
+    projectPath: string,
+    issueId: string,
+    updates: UpdateBeadsIssueInput
+  ) => Promise<{
+    success: boolean;
+    issue?: BeadsIssue;
+    error?: string;
+  }>;
+  delete: (
+    projectPath: string,
+    issueId: string
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  getReady: (
+    projectPath: string,
+    limit?: number
+  ) => Promise<{
+    success: boolean;
+    issues?: BeadsIssue[];
+    error?: string;
+  }>;
+  validate: (projectPath: string) => Promise<{
+    success: boolean;
+    installed?: boolean;
+    initialized?: boolean;
+    version?: string;
+    error?: string;
+  }>;
+}
+
 // GitHub types
 export interface GitHubLabel {
   name: string;
@@ -601,6 +652,7 @@ export interface ElectronAPI {
   features?: FeaturesAPI;
   runningAgents?: RunningAgentsAPI;
   github?: GitHubAPI;
+  beads?: BeadsAPI;
   enhancePrompt?: {
     enhance: (
       originalText: string,

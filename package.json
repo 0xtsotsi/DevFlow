@@ -51,7 +51,12 @@
     "lint:lockfile": "node scripts/lint-lockfile.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky && npm run build:packages"
+    "prepare": "husky && npm run build:packages",
+    "beads": "bdui start",
+    "beads:open": "bdui start --open",
+    "beads:stop": "bdui stop",
+    "beads:status": "bdui status",
+    "beads:issues": "bd issues"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,css,md,html,yml,yaml}": [

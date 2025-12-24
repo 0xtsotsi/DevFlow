@@ -38,6 +38,11 @@ import type {
 import type { Message, SessionListItem } from '@/types/electron';
 import type { Feature, ClaudeUsageResponse } from '@/store/app-store';
 import type { WorktreeAPI, GitAPI, ModelDefinition, ProviderStatus } from '@/types/electron';
+import type {
+  ListBeadsIssuesFilters,
+  CreateBeadsIssueInput,
+  UpdateBeadsIssueInput,
+} from '@automaker/types';
 import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
 const logger = createLogger('HttpClient');
@@ -1408,6 +1413,21 @@ export class HttpApiClient implements ElectronAPI {
       this.subscribeToEvent('issue-validation:event', callback as EventCallback),
     getIssueComments: (projectPath: string, issueNumber: number, cursor?: string) =>
       this.post('/api/github/issue-comments', { projectPath, issueNumber, cursor }),
+  };
+
+  // Beads API
+  beads: BeadsAPI = {
+    list: (projectPath: string, filters?: ListBeadsIssuesFilters) =>
+      this.post('/api/beads/list', { projectPath, filters }),
+    create: (projectPath: string, input: CreateBeadsIssueInput) =>
+      this.post('/api/beads/create', { projectPath, ...input }),
+    update: (projectPath: string, issueId: string, updates: UpdateBeadsIssueInput) =>
+      this.post('/api/beads/update', { projectPath, issueId, ...updates }),
+    delete: (projectPath: string, issueId: string) =>
+      this.post('/api/beads/delete', { projectPath, issueId }),
+    getReady: (projectPath: string, limit?: number) =>
+      this.post('/api/beads/ready', { projectPath, limit }),
+    validate: (projectPath: string) => this.post('/api/beads/validate', { projectPath }),
   };
 
   // Workspace API
