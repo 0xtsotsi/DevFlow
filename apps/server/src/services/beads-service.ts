@@ -14,7 +14,8 @@ import fsCallback from 'fs';
 const execFileAsync = promisify(execFile);
 
 export class BeadsService {
-  private watchTimeout?: NodeJS.Timeout;
+  // Note: watchTimeout removed from instance to prevent race conditions
+  // when watchDatabase is called multiple times on the same instance
 
   /**
    * Check if bd CLI is installed
@@ -340,17 +341,22 @@ export class BeadsService {
 
   /**
    * Watch the database for changes
+   *
+   * Uses a local timeout variable (not instance property) to avoid race conditions
+   * when watchDatabase is called multiple times concurrently on the same instance.
    */
   async watchDatabase(projectPath: string, callback: () => void): Promise<() => void> {
     const dbPath = this.getDatabasePath(projectPath);
 
     try {
+      let watchTimeout: NodeJS.Timeout | undefined;
+
       const watcher = fsCallback.watch(dbPath, () => {
         // Debounce rapid changes
-        if (this.watchTimeout) {
-          clearTimeout(this.watchTimeout);
+        if (watchTimeout) {
+          clearTimeout(watchTimeout);
         }
-        this.watchTimeout = setTimeout(() => {
+        watchTimeout = setTimeout(() => {
           callback();
         }, 500);
       });
@@ -358,8 +364,8 @@ export class BeadsService {
       // Return cleanup function
       return () => {
         watcher.close();
-        if (this.watchTimeout) {
-          clearTimeout(this.watchTimeout);
+        if (watchTimeout) {
+          clearTimeout(watchTimeout);
         }
       };
     } catch (error) {

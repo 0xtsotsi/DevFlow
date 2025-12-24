@@ -86,16 +86,18 @@ export function useBeadsColumnIssues({
 
       if (issue.status === 'closed') {
         map.done.push(issue);
-      } else if (issue.status === 'in_progress') {
-        map.in_progress.push(issue);
       } else if (blockers) {
-        // Open issues with blockers go to Blocked
+        // Issues with open blockers go to Blocked column, regardless of status
+        // This includes open, in_progress, and other statuses with blockers
         map.blocked.push(issue);
+      } else if (issue.status === 'in_progress') {
+        // In-progress issues without blockers
+        map.in_progress.push(issue);
       } else if (issue.status === 'open') {
         // Open issues without blockers go to Ready
         map.ready.push(issue);
       } else {
-        // Other cases go to backlog
+        // Other statuses without blockers go to backlog
         map.backlog.push(issue);
       }
     });

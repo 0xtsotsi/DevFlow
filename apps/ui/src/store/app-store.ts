@@ -2663,8 +2663,12 @@ export const useAppStore = create<AppState & AppActions>()(
 
       addBeadsIssue: (projectPath, issue) => {
         const beadsByProject = get().beadsByProject;
-        const current = beadsByProject[projectPath];
-        if (!current) return;
+        const current = beadsByProject[projectPath] || {
+          issues: [],
+          readyWork: [],
+          lastUpdated: 0,
+          isWatching: false,
+        };
 
         set({
           beadsByProject: {
@@ -2680,8 +2684,12 @@ export const useAppStore = create<AppState & AppActions>()(
 
       removeBeadsIssue: (projectPath, issueId) => {
         const beadsByProject = get().beadsByProject;
-        const current = beadsByProject[projectPath];
-        if (!current) return;
+        const current = beadsByProject[projectPath] || {
+          issues: [],
+          readyWork: [],
+          lastUpdated: 0,
+          isWatching: false,
+        };
 
         set({
           beadsByProject: {
