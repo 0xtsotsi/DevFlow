@@ -3,12 +3,16 @@
  * Used across all GitHub CLI detection points to ensure consistency
  */
 
+import path from 'path';
+
 /**
  * Get extended PATH for GitHub CLI detection
  * @returns Enhanced PATH string with common GitHub CLI installation locations
  */
 export function getGitHubCliExtendedPath(): string {
   const isWindows = process.platform === 'win32';
+  const isMac = process.platform === 'darwin';
+  const isLinux = process.platform === 'linux';
 
   const additionalPaths: string[] = [];
 
