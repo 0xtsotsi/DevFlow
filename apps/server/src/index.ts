@@ -204,6 +204,7 @@ app.use('/api', authMiddleware);
 
 // General API routes with standard rate limiting
 app.use('/api/fs', apiLimiter, createFsRoutes(events));
+<<<<<<< HEAD
 app.use('/api/agent', apiLimiter, createAgentRoutes(agentService, events));
 app.use('/api/sessions', apiLimiter, createSessionsRoutes(agentService));
 app.use('/api/features', apiLimiter, createFeaturesRoutes(featureLoader));
@@ -227,6 +228,27 @@ app.use(
   createGitHubRoutes({ prWatcherService, pollerService: gitHubIssuePollerService })
 );
 app.use('/api/context', apiLimiter, createContextRoutes());
+=======
+app.use('/api/agent', createAgentRoutes(agentService, events));
+app.use('/api/sessions', createSessionsRoutes(agentService));
+app.use('/api/features', createFeaturesRoutes(featureLoader));
+app.use('/api/auto-mode', createAutoModeRoutes(autoModeService));
+app.use('/api/enhance-prompt', createEnhancePromptRoutes());
+app.use('/api/worktree', createWorktreeRoutes());
+app.use('/api/git', createGitRoutes());
+app.use('/api/setup', strictLimiter, createSetupRoutes());
+app.use('/api/suggestions', createSuggestionsRoutes(events));
+app.use('/api/models', createModelsRoutes());
+app.use('/api/spec-regeneration', createSpecRegenerationRoutes(events));
+app.use('/api/running-agents', createRunningAgentsRoutes(autoModeService));
+app.use('/api/workspace', createWorkspaceRoutes());
+app.use('/api/templates', createTemplatesRoutes());
+app.use('/api/terminal', createTerminalRoutes());
+app.use('/api/settings', strictLimiter, createSettingsRoutes(settingsService));
+app.use('/api/claude', createClaudeRoutes(claudeUsageService));
+app.use('/api/github', createGitHubRoutes());
+app.use('/api/context', createContextRoutes());
+>>>>>>> bc08e6c (fix(beads): Address code review feedback from PR #11)
 app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
 
 // Create HTTP server
