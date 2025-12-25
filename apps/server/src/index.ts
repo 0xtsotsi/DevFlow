@@ -12,6 +12,7 @@ import morgan from 'morgan';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
 import dotenv from 'dotenv';
+import path from 'path';
 
 import { createEventEmitter, type EventEmitter } from './lib/events.js';
 import { initAllowedPaths } from '@automaker/platform';
@@ -53,7 +54,10 @@ import { createBeadsRoutes } from './routes/beads/index.js';
 import { BeadsService } from './services/beads-service.js';
 
 // Load environment variables
-dotenv.config();
+// Try loading from project root (for development) and current directory
+const projectRoot = process.env.INIT_CWD || process.cwd();
+dotenv.config({ path: path.join(projectRoot, '.env') });
+dotenv.config(); // Fallback to default behavior (loads from cwd)
 
 const PORT = parseInt(process.env.PORT || '3008', 10);
 const DATA_DIR = process.env.DATA_DIR || './data';
