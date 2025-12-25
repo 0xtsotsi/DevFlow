@@ -71,6 +71,10 @@ const PORT = parseInt(process.env.PORT || '3008', 10);
 const DATA_DIR = process.env.DATA_DIR || './data';
 const ENABLE_REQUEST_LOGGING = process.env.ENABLE_REQUEST_LOGGING !== 'false'; // Default to true
 
+// ============================================================================
+// Security Initialization
+// ============================================================================
+
 // Check for required environment variables
 const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
 
@@ -93,6 +97,48 @@ if (!hasAnthropicKey) {
 
 // Initialize security
 initAllowedPaths();
+
+// Initialize authentication (validates production setup)
+initializeAuth();
+
+// ============================================================================
+// CORS Configuration
+// ============================================================================
+
+/**
+ * Validate and normalize CORS_ORIGIN
+ *
+ * Defaults to localhost for development, requires valid URL otherwise.
+ */
+function validateCorsOrigin(): string {
+  const corsOrigin = process.env.CORS_ORIGIN;
+
+  if (!corsOrigin) {
+    console.warn('[CORS] No CORS_ORIGIN set, using localhost default');
+    return 'http://localhost:3008';
+  }
+
+  // Allow wildcard for development
+  if (corsOrigin === '*') {
+    console.warn('[CORS] ⚠️  Using wildcard origin - not recommended for production');
+    return '*';
+  }
+
+  // Validate URL format
+  try {
+    new URL(corsOrigin);
+    console.log(`[CORS] ✓ Origin set to: ${corsOrigin}`);
+    return corsOrigin;
+  } catch {
+    throw new Error(`Invalid CORS_ORIGIN: ${corsOrigin} - must be a valid URL`);
+  }
+}
+
+const CORS_ORIGIN = validateCorsOrigin();
+
+// ============================================================================
+// Express App Setup
+// ============================================================================
 
 // Create Express app
 const app = express();
@@ -192,7 +238,10 @@ app.use('/api', requireJsonContentType);
 app.use('/api/health', createHealthRoutes());
 app.use('/api/auth', createAuthRoutes());
 
-// Apply authentication to all other routes
+// Mount API routes - health is rate-limited but unauthenticated for monitoring
+app.use('/api/health', healthLimiter, createHealthRoutes());
+
+// Apply authentication and rate limiting to all other routes
 app.use('/api', authMiddleware);
 
 // Protected health endpoint with detailed info
@@ -214,7 +263,7 @@ app.use('/api/running-agents', createRunningAgentsRoutes(autoModeService));
 app.use('/api/workspace', createWorkspaceRoutes());
 app.use('/api/templates', createTemplatesRoutes());
 app.use('/api/terminal', createTerminalRoutes());
-app.use('/api/settings', createSettingsRoutes(settingsService));
+app.use('/api/settings', strictLimiter, createSettingsRoutes(settingsService));
 app.use('/api/claude', createClaudeRoutes(claudeUsageService));
 app.use('/api/github', createGitHubRoutes(events, settingsService));
 app.use('/api/context', createContextRoutes(settingsService));
