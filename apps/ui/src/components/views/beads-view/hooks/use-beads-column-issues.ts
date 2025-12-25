@@ -1,11 +1,11 @@
 import { useMemo, useCallback } from 'react';
 import type { BeadsIssue } from '@automaker/types';
-import { BEADS_COLUMNS, type BeadsColumnId } from '../constants';
+import type { BeadsColumnId } from '../constants';
+import { getIssueColumn, hasOpenBlockers } from '../lib/column-utils';
 
 interface UseBeadsColumnIssuesProps {
   issues: BeadsIssue[];
   searchQuery: string;
-  currentProject: { path: string } | null;
 }
 
 export interface BeadsStats {
@@ -24,39 +24,7 @@ export interface BeadsStats {
  * - `getColumnIssues`: a function `(columnId: BeadsColumnId) => BeadsIssue[]` that returns the issues for the given column.
  * - `stats`: an object with issue counts `{ total, open, inProgress, closed, blocked }`.
  */
-export function useBeadsColumnIssues({
-  issues,
-  searchQuery,
-  currentProject,
-}: UseBeadsColumnIssuesProps) {
-  // Helper to check if an issue has open blockers
-  const hasOpenBlockers = (issue: BeadsIssue, allIssues: BeadsIssue[]): boolean => {
-    if (!issue.dependencies) return false;
-
-    // Check each dependency
-    for (const dep of issue.dependencies) {
-      // Only check 'blocks' type dependencies
-      if (dep.type === 'blocks') {
-        const depIssue = allIssues.find((i) => i.id === dep.issueId);
-        // If the blocking issue is open or in progress, it's blocking this issue
-        if (depIssue && (depIssue.status === 'open' || depIssue.status === 'in_progress')) {
-          return true;
-        }
-      }
-    }
-    return false;
-  };
-
-  // Helper to count how many issues this issue blocks
-  const getBlockingCount = (issue: BeadsIssue, allIssues: BeadsIssue[]): number => {
-    return allIssues.filter((otherIssue) => {
-      if (!otherIssue.dependencies) return false;
-      return otherIssue.dependencies.some(
-        (dep) => dep.issueId === issue.id && dep.type === 'blocks'
-      );
-    }).length;
-  };
-
+export function useBeadsColumnIssues({ issues, searchQuery }: UseBeadsColumnIssuesProps) {
   // Memoize column issues to prevent unnecessary re-renders
   const columnIssuesMap = useMemo(() => {
     const map: Record<BeadsColumnId, BeadsIssue[]> = {
@@ -80,26 +48,10 @@ export function useBeadsColumnIssues({
         )
       : issues;
 
-    // Categorize issues into columns
+    // Categorize issues into columns using the shared utility
     filteredIssues.forEach((issue) => {
-      const blockers = hasOpenBlockers(issue, issues);
-
-      if (issue.status === 'closed') {
-        map.done.push(issue);
-      } else if (blockers) {
-        // Issues with open blockers go to Blocked column, regardless of status
-        // This includes open, in_progress, and other statuses with blockers
-        map.blocked.push(issue);
-      } else if (issue.status === 'in_progress') {
-        // In-progress issues without blockers
-        map.in_progress.push(issue);
-      } else if (issue.status === 'open') {
-        // Open issues without blockers go to Ready
-        map.ready.push(issue);
-      } else {
-        // Other statuses without blockers go to backlog
-        map.backlog.push(issue);
-      }
+      const column = getIssueColumn(issue, issues);
+      map[column].push(issue);
     });
 
     // Sort issues within each column by priority (0=highest) then by creation date

@@ -22,8 +22,6 @@ import type {
   SpecRegenerationEvent,
   SuggestionType,
   GitHubAPI,
-  GitHubIssue,
-  GitHubPR,
   BeadsAPI,
 } from './electron';
 import type { Message, SessionListItem } from '@/types/electron';

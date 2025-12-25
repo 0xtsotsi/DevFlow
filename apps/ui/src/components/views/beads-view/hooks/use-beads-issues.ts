@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAppStore } from '@/store/app-store';
 import { getElectronAPI } from '@/lib/electron';
-import { toast } from 'sonner';
-import type { BeadsIssue } from '@automaker/types';
 
 interface UseBeadsIssuesProps {
   currentProject: { path: string; id: string } | null;
@@ -13,7 +11,7 @@ interface UseBeadsIssuesProps {
  *
  * @param currentProject - The active project (contains `path` and `id`), or `null` when no project is selected.
  * @returns An object with:
- *  - `issues`: the array of `BeadsIssue` for the current project (empty if no project or none available),
+ *  - `issues`: the array of issues for the current project (empty if no project or none available),
  *  - `isLoading`: `true` while the hook is loading issues,
  *  - `error`: an error message when loading fails, or `null` when there is no error,
  *  - `loadIssues`: a function to trigger a manual reload of issues
@@ -32,8 +30,6 @@ export function useBeadsIssues({ currentProject }: UseBeadsIssuesProps) {
     if (!currentProject) return;
 
     const currentPath = currentProject.path;
-    const previousPath = prevProjectPathRef.current;
-    const isProjectSwitch = previousPath !== null && currentPath !== previousPath;
 
     // Update the ref to track current project
     prevProjectPathRef.current = currentPath;

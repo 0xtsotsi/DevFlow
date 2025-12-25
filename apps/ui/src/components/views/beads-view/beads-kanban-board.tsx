@@ -1,5 +1,13 @@
-import { memo } from 'react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { memo, useMemo } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+} from '@dnd-kit/core';
 import { BEADS_COLUMNS, type BeadsColumnId } from './constants';
 import { BeadsColumn } from './components/beads-column';
 import { BeadsCard } from './components/beads-card';
@@ -12,8 +20,8 @@ interface BeadsKanbanBoardProps {
   issues: BeadsIssue[];
   columnIssuesMap: Record<BeadsColumnId, BeadsIssue[]>;
   activeIssue: BeadsIssue | null;
-  handleDragStart: (event: any) => void;
-  handleDragEnd: (event: any) => void;
+  handleDragStart: (event: DragStartEvent) => void;
+  handleDragEnd: (event: DragEndEvent) => void;
   onEditIssue: (issue: BeadsIssue) => void;
   onDeleteIssue: (issue: BeadsIssue) => void;
   onStartIssue: (issue: BeadsIssue) => void;
@@ -56,24 +64,28 @@ export const BeadsKanbanBoard = memo(function BeadsKanbanBoard({
     })
   );
 
-  // Helper to count blockers and blocking issues
-  const getBlockingCounts = (issue: BeadsIssue) => {
-    const blockingCount = issues.filter((otherIssue) =>
-      otherIssue.dependencies?.some((dep) => dep.issueId === issue.id && dep.type === 'blocks')
-    ).length;
+  // Memoize blocking counts to avoid O(n²) complexity on each render
+  const blockingCountsMap = useMemo(() => {
+    const map = new Map<string, { blockingCount: number; blockedCount: number }>();
+    issues.forEach((issue) => {
+      const blockingCount = issues.filter((otherIssue) =>
+        otherIssue.dependencies?.some((dep) => dep.issueId === issue.id && dep.type === 'blocks')
+      ).length;
 
-    const blockedCount =
-      issue.dependencies?.filter((dep) => {
-        const depIssue = issues.find((i) => i.id === dep.issueId);
-        return (
-          dep.type === 'blocks' &&
-          depIssue &&
-          (depIssue.status === 'open' || depIssue.status === 'in_progress')
-        );
-      }).length || 0;
+      const blockedCount =
+        issue.dependencies?.filter((dep) => {
+          const depIssue = issues.find((i) => i.id === dep.issueId);
+          return (
+            dep.type === 'blocks' &&
+            depIssue &&
+            (depIssue.status === 'open' || depIssue.status === 'in_progress')
+          );
+        }).length || 0;
 
-    return { blockingCount, blockedCount };
-  };
+      map.set(issue.id, { blockingCount, blockedCount });
+    });
+    return map;
+  }, [issues]);
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -95,7 +107,10 @@ export const BeadsKanbanBoard = memo(function BeadsKanbanBoard({
                 itemIds={columnIssues.map((i) => i.id)}
               >
                 {columnIssues.map((issue) => {
-                  const { blockingCount, blockedCount } = getBlockingCounts(issue);
+                  const { blockingCount, blockedCount } = blockingCountsMap.get(issue.id) ?? {
+                    blockingCount: 0,
+                    blockedCount: 0,
+                  };
 
                   return (
                     <BeadsCard

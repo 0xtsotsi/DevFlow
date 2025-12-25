@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import type { BeadsIssue } from '@automaker/types';
 import type { BeadsColumnId } from '../constants';
+import { getIssueColumn } from '../lib/column-utils';
 
 interface UseBeadsDragDropProps {
   issues: BeadsIssue[];
@@ -65,29 +66,10 @@ export function useBeadsDragDrop({ issues, handleStatusChange }: UseBeadsDragDro
       if (columnIds.includes(overId as BeadsColumnId)) {
         targetColumn = overId as BeadsColumnId;
       } else {
-        // Dropped on another issue - find its column
+        // Dropped on another issue - find its column using the shared utility
         const overIssue = issues.find((i) => i.id === overId);
         if (overIssue) {
-          // Determine which column the over issue is in
-          const blockers = overIssue.dependencies?.some(
-            (dep) =>
-              dep.type === 'blocks' &&
-              issues.find(
-                (i) => i.id === dep.issueId && (i.status === 'open' || i.status === 'in_progress')
-              )
-          );
-
-          if (overIssue.status === 'closed') {
-            targetColumn = 'done';
-          } else if (overIssue.status === 'in_progress') {
-            targetColumn = 'in_progress';
-          } else if (blockers) {
-            targetColumn = 'blocked';
-          } else if (overIssue.status === 'open') {
-            targetColumn = 'ready';
-          } else {
-            targetColumn = 'backlog';
-          }
+          targetColumn = getIssueColumn(overIssue, issues);
         }
       }
 

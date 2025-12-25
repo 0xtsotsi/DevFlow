@@ -81,11 +81,11 @@ export interface CreateBeadsIssueInput {
   /** Issue title */
   title: string;
   /** Detailed description */
-  description: string;
+  description?: string;
   /** Issue type */
-  type: BeadsIssueType;
+  type?: BeadsIssueType;
   /** Priority (0=highest, 4=lowest) */
-  priority: BeadsIssuePriority;
+  priority?: number;
   /** Optional labels */
   labels?: string[];
   /** Optional dependencies to add */
@@ -106,8 +106,8 @@ export interface UpdateBeadsIssueInput {
   status?: BeadsIssueStatus;
   /** Updated type */
   type?: BeadsIssueType;
-  /** Updated priority */
-  priority?: BeadsIssuePriority;
+  /** Updated priority (0=highest, 4=lowest) */
+  priority?: number;
   /** Updated labels */
   labels?: string[];
 }
@@ -122,9 +122,9 @@ export interface ListBeadsIssuesFilters {
   type?: BeadsIssueType[];
   /** Filter by labels (AND) */
   labels?: string[];
-  /** Filter by priority range */
-  priorityMin?: BeadsIssuePriority;
-  priorityMax?: BeadsIssuePriority;
+  /** Filter by priority range (0-4, where 0 is highest) */
+  priorityMin?: number;
+  priorityMax?: number;
   /** Search in title */
   titleContains?: string;
   /** Search in description */
