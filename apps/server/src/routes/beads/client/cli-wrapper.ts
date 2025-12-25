@@ -161,7 +161,7 @@ export async function checkBeadsDb(path: string): Promise<boolean> {
  * Get Beads database path for a project
  */
 export function getBeadsDbPath(projectPath: string): string {
-  return `${projectPath}/.beads/data.db`;
+  return `${projectPath}/.beads/beads.db`;
 }
 
 /**

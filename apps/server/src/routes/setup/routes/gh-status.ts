@@ -9,24 +9,12 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
 import { getErrorMessage, logError } from '../common.js';
+import { getGitHubCliEnv } from '../../../lib/github-cli-path.js';
 
 const execAsync = promisify(exec);
 
-// Extended PATH to include common tool installation locations
-const extendedPath = [
-  process.env.PATH,
-  '/opt/homebrew/bin',
-  '/usr/local/bin',
-  '/home/linuxbrew/.linuxbrew/bin',
-  `${process.env.HOME}/.local/bin`,
-]
-  .filter(Boolean)
-  .join(':');
-
-const execEnv = {
-  ...process.env,
-  PATH: extendedPath,
-};
+// Use centralized PATH configuration for GitHub CLI detection
+const execEnv = getGitHubCliEnv();
 
 export interface GhStatus {
   installed: boolean;
