@@ -552,6 +552,11 @@
     -webkit-text-stroke: 1.5px var(--foreground);
     color: transparent;
     font-weight: 700;
+    /* Firefox fallback - use solid text color */
+    @supports not (-webkit-text-stroke: 1px transparent) {
+      color: var(--foreground);
+      -webkit-text-stroke: none;
+    }
   }
 
   /* Brand gradient utilities */
