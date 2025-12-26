@@ -23,6 +23,8 @@ import { createGetProjectHandler } from './routes/get-project.js';
 import { createUpdateProjectHandler } from './routes/update-project.js';
 import { createMigrateHandler } from './routes/migrate.js';
 import { createStatusHandler } from './routes/status.js';
+import { createAuthStatusHandler } from './routes/auth-status.js';
+import { createUpdateAuthMethodHandler } from './routes/update-auth-method.js';
 
 /**
  * Create settings router with all endpoints
@@ -36,6 +38,8 @@ import { createStatusHandler } from './routes/status.js';
  * - PUT /global - Update global settings
  * - GET /credentials - Get masked credentials (safe for UI)
  * - PUT /credentials - Update API keys
+ * - GET /auth - Get Claude authentication status
+ * - PUT /auth - Update Claude authentication method
  * - POST /project - Get project settings (requires projectPath in body)
  * - PUT /project - Update project settings
  * - POST /migrate - Migrate settings from localStorage
@@ -56,6 +60,10 @@ export function createSettingsRoutes(settingsService: SettingsService): Router {
   // Credentials (separate for security)
   router.get('/credentials', createGetCredentialsHandler(settingsService));
   router.put('/credentials', createUpdateCredentialsHandler(settingsService));
+
+  // Claude authentication configuration
+  router.get('/auth', createAuthStatusHandler(settingsService));
+  router.put('/auth', createUpdateAuthMethodHandler(settingsService));
 
   // Project settings
   router.post(

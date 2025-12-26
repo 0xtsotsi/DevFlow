@@ -1,8 +1,8 @@
 /**
- * Claude Provider - Executes queries using Claude Agent SDK
+ * Claude Provider - Executes queries using Claude Agent SDK or CLI
  *
- * Wraps the @anthropic-ai/claude-agent-sdk for seamless integration
- * with the provider architecture.
+ * Routes through unified client when CLI auth is configured.
+ * Falls back to SDK for API key auth.
  */
 
 import { query, type Options, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
@@ -18,6 +18,7 @@ import type {
   ModelDefinition,
   ContentBlock,
 } from './types.js';
+import { getAuthStatus } from '../lib/claude-auth-manager.js';
 
 // Explicit allowlist of environment variables to pass to the SDK.
 // Only these vars are passed - nothing else from process.env leaks through.
@@ -51,7 +52,9 @@ export class ClaudeProvider extends BaseProvider {
   }
 
   /**
-   * Execute a query using Claude Agent SDK
+   * Execute a query using Claude Agent SDK or CLI (if configured)
+   *
+   * Routes through unified client when CLI auth is configured.
    */
   async *executeQuery(options: ExecuteOptions): AsyncGenerator<ProviderMessage> {
     const {

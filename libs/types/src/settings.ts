@@ -437,6 +437,10 @@ export interface GlobalSettings {
   /** Default Cursor model selection when switching to Cursor CLI */
   cursorDefaultModel: CursorModelId;
 
+  // Claude Authentication
+  /** Preferred Claude authentication method (api_key, cli, auto) */
+  claudeAuthMethod?: 'api_key' | 'cli' | 'auto';
+
   // Input Configuration
   /** User's keyboard shortcut bindings */
   keyboardShortcuts: KeyboardShortcuts;
