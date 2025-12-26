@@ -1,7 +1,7 @@
 import type { NavigateOptions } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 
-interface AutomakerLogoProps {
+interface DevFlowLogoProps {
   sidebarOpen: boolean;
   navigate: (opts: NavigateOptions) => void;
 }
@@ -24,7 +24,7 @@ export function AutomakerLogo({ sidebarOpen, navigate }: AutomakerLogoProps) {
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 256 256"
             role="img"
-            aria-label="Automaker Logo"
+            aria-label="DevFlow Logo"
             className="size-8 group-hover:rotate-12 transition-transform duration-300 ease-out"
           >
             <defs>
