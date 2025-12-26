@@ -69,7 +69,6 @@ export const createBeadsIssueSchema = z.object({
   type: beadsIssueTypeSchema.optional(),
   priority: beadsIssuePrioritySchema.optional(),
   labels: beadsLabelsSchema,
-  parentIssueId: beadsIssueIdSchema.optional(),
 });
 
 /**
