@@ -1,8 +1,8 @@
 /**
- * Claude Provider - Executes queries using Claude Agent SDK
+ * Claude Provider - Executes queries using Claude Agent SDK or CLI
  *
- * Wraps the @anthropic-ai/claude-agent-sdk for seamless integration
- * with the provider architecture.
+ * Routes through unified client when CLI auth is configured.
+ * Falls back to SDK for API key auth.
  */
 
 import { query, type Options, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
@@ -14,6 +14,7 @@ import type {
   ModelDefinition,
   ContentBlock,
 } from './types.js';
+import { getAuthStatus } from '../lib/claude-auth-manager.js';
 
 export class ClaudeProvider extends BaseProvider {
   getName(): string {
@@ -21,7 +22,9 @@ export class ClaudeProvider extends BaseProvider {
   }
 
   /**
-   * Execute a query using Claude Agent SDK
+   * Execute a query using Claude Agent SDK or CLI (if configured)
+   *
+   * Routes through unified client when CLI auth is configured.
    */
   async *executeQuery(options: ExecuteOptions): AsyncGenerator<ProviderMessage> {
     const {
@@ -35,6 +38,36 @@ export class ClaudeProvider extends BaseProvider {
       conversationHistory,
       sdkSessionId,
     } = options;
+
+    // Check if we should use CLI auth
+    const authStatus = await getAuthStatus();
+    const useCLI =
+      authStatus.method === 'cli' ||
+      (authStatus.method === 'auto' &&
+        authStatus.cli?.installed &&
+        authStatus.cli?.authenticated);
+
+    if (useCLI) {
+      // Use unified client for CLI mode
+      console.log('[ClaudeProvider] Using CLI authentication');
+      const { executeUnifiedQuery } = await import('../lib/unified-claude-client.js');
+      yield* executeUnifiedQuery({
+        prompt,
+        model,
+        cwd,
+        systemPrompt,
+        maxTurns,
+        allowedTools,
+        abortController,
+        conversationHistory,
+        sdkSessionId,
+        forceAuthMethod: 'cli',
+      });
+      return;
+    }
+
+    // Use SDK for API key mode (original behavior)
+    console.log('[ClaudeProvider] Using API key authentication');
 
     // Build Claude SDK options
     const defaultTools = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch'];
