@@ -51,6 +51,8 @@ import { createGitHubRoutes } from './routes/github/index.js';
 import { createContextRoutes } from './routes/context/index.js';
 import { createBeadsRoutes } from './routes/beads/index.js';
 import { BeadsService } from './services/beads-service.js';
+import { createReviewRoutes } from './routes/review/index.js';
+import { ReviewWatcherService } from './services/review-watcher.js';
 
 // Load environment variables
 dotenv.config();
@@ -166,6 +168,7 @@ const autoModeService = new AutoModeService(events);
 const settingsService = new SettingsService(DATA_DIR);
 const claudeUsageService = new ClaudeUsageService();
 const beadsService = new BeadsService();
+const reviewWatcherService = new ReviewWatcherService(events);
 
 // Initialize services
 (async () => {
@@ -205,6 +208,7 @@ app.use('/api/claude', apiLimiter, createClaudeRoutes(claudeUsageService));
 app.use('/api/github', apiLimiter, createGitHubRoutes());
 app.use('/api/context', apiLimiter, createContextRoutes());
 app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
+app.use('/api/review', apiLimiter, createReviewRoutes(reviewWatcherService));
 
 // Create HTTP server
 const server = createServer(app);
