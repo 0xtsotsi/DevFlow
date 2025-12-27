@@ -339,35 +339,54 @@ export class AgentMonitorService {
   /**
    * Add telemetry to an agent
    *
+   * Uses an atomic UPDATE to avoid race conditions when multiple
+   * threads/processes add telemetry concurrently.
+   *
    * @param id Agent ID
    * @param telemetry Telemetry data
    * @returns Success status
    */
   addTelemetry(id: string, telemetry: ParsedTelemetry): boolean {
-    const existing = this.getAgent(id);
-
-    if (!existing) {
-      return false;
-    }
-
-    // Aggregate with existing telemetry
-    const aggregated = existing.telemetry
-      ? {
-          tokensIn: existing.telemetry.tokensIn + telemetry.tokensIn,
-          tokensOut: existing.telemetry.tokensOut + telemetry.tokensOut,
-          cached: existing.telemetry.cached + telemetry.cached,
-          cost: existing.telemetry.cost + telemetry.cost,
-          duration: existing.telemetry.duration + telemetry.duration,
-        }
-      : telemetry;
-
+    // Use an atomic UPDATE with JSON extraction/aggregation
+    // This avoids the read-modify-write race condition
     const stmt = this.db.prepare(`
       UPDATE agents
-      SET telemetry_json = ?
+      SET telemetry_json = json_set(
+        COALESCE(telemetry_json, '{"tokensIn":0,"tokensOut":0,"cached":0,"cost":0,"duration":0}'),
+        '$.tokensIn',
+        COALESCE(json_extract(telemetry_json, '$.tokensIn'), 0) + ?
+      ),
+      telemetry_json = json_set(
+        telemetry_json,
+        '$.tokensOut',
+        json_extract(telemetry_json, '$.tokensOut') + ?
+      ),
+      telemetry_json = json_set(
+        telemetry_json,
+        '$.cached',
+        json_extract(telemetry_json, '$.cached') + ?
+      ),
+      telemetry_json = json_set(
+        telemetry_json,
+        '$.cost',
+        json_extract(telemetry_json, '$.cost') + ?
+      ),
+      telemetry_json = json_set(
+        telemetry_json,
+        '$.duration',
+        json_extract(telemetry_json, '$.duration') + ?
+      )
       WHERE id = ?
     `);
 
-    const result = stmt.run(JSON.stringify(aggregated), id);
+    const result = stmt.run(
+      telemetry.tokensIn,
+      telemetry.tokensOut,
+      telemetry.cached,
+      telemetry.cost,
+      telemetry.duration,
+      id
+    );
     return result.changes > 0;
   }
 
@@ -616,17 +635,28 @@ export class AgentMonitorService {
 
   /**
    * Clean up orphaned PIDs (agents marked as running but no process)
+   *
+   * Fetches all running agents with PIDs and checks if each process
+   * is still alive. Marks agents with dead processes as failed.
    */
   private cleanupOrphanedPIDs(): void {
-    const stmt = this.db.prepare(`
-      UPDATE agents
-      SET status = 'failed', error = 'Process orphaned', completed_at = ?
-      WHERE status = 'running' AND pid IS NOT NULL
-    `);
+    const runningAgents = this.getAgents({ status: 'running' });
+    const now = Date.now();
 
-    // Note: We can't actually check all PIDs without accessing /proc or using ps
-    // This is a placeholder for the cleanup logic
-    // In production, you might use `ps` or process management libraries
+    for (const agent of runningAgents) {
+      if (agent.pid !== null) {
+        // Check if the process is still alive
+        if (!this.isProcessAlive(agent.pid)) {
+          // Process is dead - mark agent as failed
+          const stmt = this.db.prepare(`
+            UPDATE agents
+            SET status = 'failed', error = 'Process orphaned', completed_at = ?
+            WHERE id = ?
+          `);
+          stmt.run(now, agent.id);
+        }
+      }
+    }
   }
 
   /**

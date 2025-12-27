@@ -13,7 +13,7 @@
  */
 
 import { spawn } from 'child_process';
-import { BaseProvider } from './base-provider.js';
+import { BaseProvider, type AuthMethod, type RateLimit } from './base-provider.js';
 import type {
   ExecuteOptions,
   ProviderMessage,
@@ -127,7 +127,7 @@ export class CursorProvider extends BaseProvider {
 
     try {
       // Run the command and get output
-      const output = await this.runCursorCommand(args);
+      const output = await this.runCursorCommand(args, cwd);
 
       // Yield the output as an assistant message
       yield {
@@ -192,9 +192,19 @@ export class CursorProvider extends BaseProvider {
       const versionMatch = result.match(/version\s+(\d+\.\d+\.\d+)/i);
       const version = versionMatch ? versionMatch[1] : undefined;
 
-      // Check authentication by trying a simple command
-      // (Cursor may not have an explicit auth check command)
-      const authenticated = true; // Assume authenticated if CLI is available
+      // Check authentication by trying a simple command that requires auth
+      // Note: Cursor CLI may not have an explicit auth check, so we try
+      // a command that would fail if not authenticated (like --help)
+      // If the command succeeds, we assume authentication is valid
+      let authenticated = false;
+      try {
+        await this.runCursorCommand(['--help']);
+        // If we get here without error, CLI is functional
+        authenticated = true;
+      } catch {
+        // Command failed - may indicate auth issue or other problem
+        authenticated = false;
+      }
 
       return {
         installed: true,
@@ -242,6 +252,11 @@ export class CursorProvider extends BaseProvider {
     maxContextWindow: number;
     maxOutputTokens: number;
   } {
+    // Derive max values from available models to ensure consistency
+    const models = this.getAvailableModels();
+    const maxContextWindow = Math.max(...models.map((m) => m.contextWindow ?? 0));
+    const maxOutputTokens = Math.max(...models.map((m) => m.maxOutputTokens ?? 0));
+
     return {
       supportsPlanning: true,
       supportsVision: true,
@@ -251,8 +266,8 @@ export class CursorProvider extends BaseProvider {
       supportsConversationHistory: true,
       supportsMCP: false, // Cursor may not support MCP
       supportsThinking: true,
-      maxContextWindow: 200000,
-      maxOutputTokens: 16000,
+      maxContextWindow,
+      maxOutputTokens,
     };
   }
 
@@ -263,6 +278,25 @@ export class CursorProvider extends BaseProvider {
    */
   getAvailableModels(): ModelDefinition[] {
     return CURSOR_MODELS;
+  }
+
+  /**
+   * Get authentication methods supported by Cursor
+   * @returns Array of supported authentication methods
+   */
+  getAuthenticationMethods(): AuthMethod[] {
+    return ['cli-auth'];
+  }
+
+  /**
+   * Get rate limits for Cursor
+   * @returns Rate limit information
+   */
+  getRateLimits(): RateLimit {
+    return {
+      requestsPerMinute: 60,
+      concurrent: 3,
+    };
   }
 
   /**
@@ -280,11 +314,12 @@ export class CursorProvider extends BaseProvider {
    * Run a Cursor CLI command and return the output
    *
    * @param args CLI arguments
+   * @param cwd Working directory for the command
    * @returns Command output
    */
-  private runCursorCommand(args: string[]): Promise<string> {
+  private runCursorCommand(args: string[], cwd?: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      const child = spawn(this.cliPath, args);
+      const child = spawn(this.cliPath, args, cwd ? { cwd } : undefined);
       let output = '';
       let errorOutput = '';
 

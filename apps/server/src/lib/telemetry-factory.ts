@@ -15,7 +15,7 @@
 import type { TelemetryParser } from './telemetry.js';
 import type { CapturedTelemetry, TelemetryCaptureOptions } from './telemetry.js';
 import {
-  createTelemetryCapture,
+  createTelemetryCapture as createTelemetryCaptureUtil,
   createEmptyTelemetry,
   parseTelemetry as baseParseTelemetry,
 } from './telemetry.js';

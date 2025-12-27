@@ -4,7 +4,6 @@
 
 import type { Request, Response } from 'express';
 import { EngineRegistry } from '../../../providers/registry.js';
-import { capabilityProbe } from '../../../providers/capability-probe.js';
 import { getErrorMessage, logError } from '../common.js';
 
 interface ProviderInfo {
@@ -39,10 +38,7 @@ export function createListProvidersHandler() {
         };
 
         // Include capabilities if provider supports getCapabilities method
-        if (
-          'getCapabilities' in metadata.provider &&
-          typeof metadata.provider.getCapabilities === 'function'
-        ) {
+        if (metadata.provider.getCapabilities) {
           info.capabilities = (
             metadata.provider as { getCapabilities(): ProviderInfo['capabilities'] }
           ).getCapabilities();

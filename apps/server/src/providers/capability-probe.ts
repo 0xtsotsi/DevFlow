@@ -12,13 +12,13 @@
  * - Model availability checking
  */
 
-import type { BaseProvider } from './base-provider.js';
+import type { BaseProvider, type AuthMethod } from './base-provider.js';
 import type { ModelDefinition } from './types.js';
 
 /**
- * Authentication methods supported by providers
+ * Re-export AuthMethod for convenience
  */
-export type AuthMethod = 'api-key' | 'oauth' | 'cli-auth' | 'none';
+export type { AuthMethod };
 
 /**
  * Supported capability flags
@@ -138,32 +138,14 @@ export class ProviderCapabilityProbe {
   /**
    * Probe authentication methods for a provider
    *
+   * Delegates to the provider's getAuthenticationMethods() method.
+   *
    * @param provider Provider instance
    * @returns Available authentication methods
    */
   async detectAuth(provider: BaseProvider): Promise<AuthMethod[]> {
-    const methods: AuthMethod[] = [];
-    const name = provider.getName();
-
-    // Check for API key authentication
-    if (name === 'claude' && process.env.ANTHROPIC_API_KEY) {
-      methods.push('api-key');
-    }
-
-    // Check for CLI-based authentication
-    const installStatus = await provider.detectInstallation();
-    if (installStatus.authenticated) {
-      if (installStatus.method === 'cli') {
-        methods.push('cli-auth');
-      }
-    }
-
-    // Default to 'none' if no auth found but provider is installed
-    if (methods.length === 0 && installStatus.installed) {
-      methods.push('none');
-    }
-
-    return methods;
+    // Use the provider's own method if available
+    return provider.getAuthenticationMethods();
   }
 
   /**
@@ -181,30 +163,14 @@ export class ProviderCapabilityProbe {
   /**
    * Probe a provider's rate limits
    *
-   * Note: Most providers don't expose rate limits programmatically.
-   * This returns known limits for supported providers.
+   * Delegates to the provider's getRateLimits() method.
    *
    * @param provider Provider instance
    * @returns Rate limit information or undefined
    */
   async probeLimits(provider: BaseProvider): Promise<ProviderCapability['rateLimit']> {
-    const name = provider.getName();
-
-    // Known rate limits for popular providers
-    switch (name) {
-      case 'claude':
-        return {
-          requestsPerMinute: 50, // Default for most tiers
-          concurrent: 5,
-        };
-      case 'cursor':
-        return {
-          requestsPerMinute: 60,
-          concurrent: 3,
-        };
-      default:
-        return undefined;
-    }
+    // Use the provider's own method if available
+    return provider.getRateLimits();
   }
 
   /**

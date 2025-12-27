@@ -13,6 +13,8 @@
  * - Factory function for creating telemetry captures
  */
 
+import { randomUUID } from 'node:crypto';
+
 /**
  * Unified telemetry format across all providers
  *
@@ -224,10 +226,12 @@ export function createEmptyTelemetry(options: TelemetryCaptureOptions): Captured
 /**
  * Generate a unique telemetry ID
  *
+ * Uses crypto.randomUUID() for guaranteed uniqueness.
+ *
  * @returns Unique identifier
  */
 export function generateTelemetryId(): string {
-  return `tel_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  return `tel_${randomUUID()}`;
 }
 
 /**

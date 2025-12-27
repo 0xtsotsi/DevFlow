@@ -7,7 +7,7 @@
  */
 
 import { query, type Options, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
-import { BaseProvider } from './base-provider.js';
+import { BaseProvider, type AuthMethod, type RateLimit } from './base-provider.js';
 import type {
   ExecuteOptions,
   ProviderMessage,
@@ -55,6 +55,11 @@ export class ClaudeProvider extends BaseProvider {
     maxContextWindow: number;
     maxOutputTokens: number;
   } {
+    // Derive max values from available models to ensure consistency
+    const models = this.getAvailableModels();
+    const maxContextWindow = Math.max(...models.map((m) => m.contextWindow ?? 0));
+    const maxOutputTokens = Math.max(...models.map((m) => m.maxOutputTokens ?? 0));
+
     return {
       supportsPlanning: true,
       supportsVision: true,
@@ -64,8 +69,27 @@ export class ClaudeProvider extends BaseProvider {
       supportsConversationHistory: true,
       supportsMCP: true,
       supportsThinking: true,
-      maxContextWindow: 200000,
-      maxOutputTokens: 16000,
+      maxContextWindow,
+      maxOutputTokens,
+    };
+  }
+
+  /**
+   * Get authentication methods supported by Claude
+   * @returns Array of supported authentication methods
+   */
+  getAuthenticationMethods(): AuthMethod[] {
+    return ['api-key'];
+  }
+
+  /**
+   * Get rate limits for Claude API
+   * @returns Rate limit information
+   */
+  getRateLimits(): RateLimit {
+    return {
+      requestsPerMinute: 50,
+      concurrent: 5,
     };
   }
 
