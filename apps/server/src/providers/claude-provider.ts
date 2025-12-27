@@ -2,7 +2,8 @@
  * Claude Provider - Executes queries using Claude Agent SDK
  *
  * Wraps the @anthropic-ai/claude-agent-sdk for seamless integration
- * with the provider architecture.
+ * with the provider architecture. Enhanced with capability probing,
+ * telemetry parsing, and authentication status tracking.
  */
 
 import { query, type Options, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
@@ -14,10 +15,58 @@ import type {
   ModelDefinition,
   ContentBlock,
 } from './types.js';
+import type { TelemetryParser } from '../lib/telemetry.js';
+import { claudeTelemetryParser } from './claude-telemetry.js';
 
 export class ClaudeProvider extends BaseProvider {
+  /** Telemetry parser for Claude output */
+  public readonly telemetryParser: TelemetryParser = claudeTelemetryParser;
+
   getName(): string {
     return 'claude';
+  }
+
+  /**
+   * Check if the provider is currently authenticated
+   *
+   * @returns Whether the provider has valid authentication
+   */
+  async isAuthenticated(): Promise<boolean> {
+    const status = await this.detectInstallation();
+    return status.authenticated ?? false;
+  }
+
+  /**
+   * Get provider capabilities
+   *
+   * Returns a summary of Claude's capabilities.
+   *
+   * @returns Provider capabilities object
+   */
+  getCapabilities(): {
+    supportsPlanning: boolean;
+    supportsVision: boolean;
+    supportsTools: boolean;
+    supportsStreaming: boolean;
+    supportsSystemPrompt: boolean;
+    supportsConversationHistory: boolean;
+    supportsMCP: boolean;
+    supportsThinking: boolean;
+    maxContextWindow: number;
+    maxOutputTokens: number;
+  } {
+    return {
+      supportsPlanning: true,
+      supportsVision: true,
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsSystemPrompt: true,
+      supportsConversationHistory: true,
+      supportsMCP: true,
+      supportsThinking: true,
+      maxContextWindow: 200000,
+      maxOutputTokens: 16000,
+    };
   }
 
   /**
