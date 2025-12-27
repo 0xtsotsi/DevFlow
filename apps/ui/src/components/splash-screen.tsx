@@ -274,7 +274,8 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
         }}
       >
         <span className="font-bold text-foreground text-4xl tracking-tight leading-none">
-          DevFlow<span className="text-brand-500">.</span><span className="font-outline">brnd</span>
+          DevFlow<span className="text-brand-500">.</span>
+          <span className="font-outline">brnd</span>
         </span>
       </div>
     </div>

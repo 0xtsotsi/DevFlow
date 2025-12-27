@@ -262,8 +262,7 @@ export function ContextView() {
         return result.description;
       }
 
-      const message =
-        result.error || `DevFlow couldn't generate a description for "${fileName}".`;
+      const message = result.error || `DevFlow couldn't generate a description for "${fileName}".`;
       toast.error('Failed to generate description', { description: message });
     } catch (error) {
       console.error('Failed to generate description:', error);

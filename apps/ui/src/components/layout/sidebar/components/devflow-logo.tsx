@@ -108,7 +108,8 @@ export function DevFlowLogo({ sidebarOpen, navigate }: DevFlowLogoProps) {
             </g>
           </svg>
           <span className="font-bold text-foreground text-[1.7rem] tracking-tight leading-none translate-y-[-2px]">
-            DevFlow<span className="text-brand-500">.</span><span className="font-outline">brnd</span>
+            DevFlow<span className="text-brand-500">.</span>
+            <span className="font-outline">brnd</span>
           </span>
         </div>
       )}
