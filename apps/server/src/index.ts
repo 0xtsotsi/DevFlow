@@ -51,6 +51,7 @@ import { createGitHubRoutes } from './routes/github/index.js';
 import { createContextRoutes } from './routes/context/index.js';
 import { createBeadsRoutes } from './routes/beads/index.js';
 import { BeadsService } from './services/beads-service.js';
+import { GitHubIssuePollerService } from './services/github-issue-poller-service.js';
 
 // Load environment variables
 dotenv.config();
@@ -166,6 +167,7 @@ const autoModeService = new AutoModeService(events);
 const settingsService = new SettingsService(DATA_DIR);
 const claudeUsageService = new ClaudeUsageService();
 const beadsService = new BeadsService();
+const gitHubIssuePollerService = new GitHubIssuePollerService(events);
 
 // Initialize services
 (async () => {
@@ -202,7 +204,7 @@ app.use('/api/templates', apiLimiter, createTemplatesRoutes());
 app.use('/api/terminal', apiLimiter, createTerminalRoutes());
 app.use('/api/settings', strictLimiter, createSettingsRoutes(settingsService));
 app.use('/api/claude', apiLimiter, createClaudeRoutes(claudeUsageService));
-app.use('/api/github', apiLimiter, createGitHubRoutes());
+app.use('/api/github', apiLimiter, createGitHubRoutes(gitHubIssuePollerService));
 app.use('/api/context', apiLimiter, createContextRoutes());
 app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
 
