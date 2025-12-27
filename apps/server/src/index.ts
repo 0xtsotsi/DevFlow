@@ -48,6 +48,7 @@ import { createSpecRegenerationRoutes } from './routes/app-spec/index.js';
 import { createClaudeRoutes } from './routes/claude/index.js';
 import { ClaudeUsageService } from './services/claude-usage-service.js';
 import { createGitHubRoutes } from './routes/github/index.js';
+import { PRWatcherService } from './services/github-pr-watcher.js';
 import { createContextRoutes } from './routes/context/index.js';
 import { createBeadsRoutes } from './routes/beads/index.js';
 import { BeadsService } from './services/beads-service.js';
@@ -166,6 +167,10 @@ const autoModeService = new AutoModeService(events);
 const settingsService = new SettingsService(DATA_DIR);
 const claudeUsageService = new ClaudeUsageService();
 const beadsService = new BeadsService();
+const prWatcherService = new PRWatcherService({
+  webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
+  dataDir: DATA_DIR,
+});
 
 // Initialize services
 (async () => {
@@ -202,7 +207,7 @@ app.use('/api/templates', apiLimiter, createTemplatesRoutes());
 app.use('/api/terminal', apiLimiter, createTerminalRoutes());
 app.use('/api/settings', strictLimiter, createSettingsRoutes(settingsService));
 app.use('/api/claude', apiLimiter, createClaudeRoutes(claudeUsageService));
-app.use('/api/github', apiLimiter, createGitHubRoutes());
+app.use('/api/github', apiLimiter, createGitHubRoutes(prWatcherService));
 app.use('/api/context', apiLimiter, createContextRoutes());
 app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
 
