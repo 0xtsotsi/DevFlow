@@ -2,7 +2,8 @@
  * Claude Provider - Executes queries using Claude Agent SDK or CLI
  *
  * Routes through unified client when CLI auth is configured.
- * Falls back to SDK for API key auth.
+ * Falls back to SDK for API key auth. Enhanced with capability probing,
+ * telemetry parsing, and authentication status tracking.
  */
 
 import { query, type Options, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
@@ -18,6 +19,8 @@ import type {
   ModelDefinition,
   ContentBlock,
 } from './types.js';
+import type { TelemetryParser } from '../lib/telemetry.js';
+import { claudeTelemetryParser } from './claude-telemetry.js';
 import { getAuthStatus } from '../lib/claude-auth-manager.js';
 
 // Explicit allowlist of environment variables to pass to the SDK.
@@ -47,8 +50,78 @@ function buildEnv(): Record<string, string | undefined> {
 }
 
 export class ClaudeProvider extends BaseProvider {
+  /** Telemetry parser for Claude output */
+  public readonly telemetryParser: TelemetryParser = claudeTelemetryParser;
+
   getName(): string {
     return 'claude';
+  }
+
+  /**
+   * Check if the provider is currently authenticated
+   *
+   * @returns Whether the provider has valid authentication
+   */
+  async isAuthenticated(): Promise<boolean> {
+    const status = await this.detectInstallation();
+    return status.authenticated ?? false;
+  }
+
+  /**
+   * Get provider capabilities
+   *
+   * Returns a summary of Claude's capabilities.
+   *
+   * @returns Provider capabilities object
+   */
+  getCapabilities(): {
+    supportsPlanning: boolean;
+    supportsVision: boolean;
+    supportsTools: boolean;
+    supportsStreaming: boolean;
+    supportsSystemPrompt: boolean;
+    supportsConversationHistory: boolean;
+    supportsMCP: boolean;
+    supportsThinking: boolean;
+    maxContextWindow: number;
+    maxOutputTokens: number;
+  } {
+    // Derive max values from available models to ensure consistency
+    const models = this.getAvailableModels();
+    const maxContextWindow = Math.max(...models.map((m) => m.contextWindow ?? 0));
+    const maxOutputTokens = Math.max(...models.map((m) => m.maxOutputTokens ?? 0));
+
+    return {
+      supportsPlanning: true,
+      supportsVision: true,
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsSystemPrompt: true,
+      supportsConversationHistory: true,
+      supportsMCP: true,
+      supportsThinking: true,
+      maxContextWindow,
+      maxOutputTokens,
+    };
+  }
+
+  /**
+   * Get authentication methods supported by Claude
+   * @returns Array of supported authentication methods
+   */
+  getAuthenticationMethods(): AuthMethod[] {
+    return ['api-key'];
+  }
+
+  /**
+   * Get rate limits for Claude API
+   * @returns Rate limit information
+   */
+  getRateLimits(): RateLimit {
+    return {
+      requestsPerMinute: 50,
+      concurrent: 5,
+    };
   }
 
   /**

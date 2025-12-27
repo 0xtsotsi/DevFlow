@@ -18,14 +18,10 @@ export function createUpdateAuthMethodHandler(settingsService: SettingsService) 
       };
 
       // Validate
-      if (
-        !claudeAuthMethod ||
-        !['api_key', 'cli', 'auto'].includes(claudeAuthMethod)
-      ) {
+      if (!claudeAuthMethod || !['api_key', 'cli', 'auto'].includes(claudeAuthMethod)) {
         res.status(400).json({
           success: false,
-          error:
-            'Invalid auth method. Must be api_key, cli, or auto',
+          error: 'Invalid auth method. Must be api_key, cli, or auto',
         });
         return;
       }
@@ -50,8 +46,7 @@ export function createUpdateAuthMethodHandler(settingsService: SettingsService) 
       console.error('[Settings] Update auth method error:', error);
       res.status(500).json({
         success: false,
-        error:
-          error instanceof Error ? error.message : 'Failed to update auth method',
+        error: error instanceof Error ? error.message : 'Failed to update auth method',
       });
     }
   };

@@ -12,6 +12,20 @@ import type {
 } from './types.js';
 
 /**
+ * Authentication method type
+ */
+export type AuthMethod = 'api-key' | 'oauth' | 'cli-auth' | 'none';
+
+/**
+ * Rate limit information
+ */
+export interface RateLimit {
+  requestsPerMinute?: number;
+  tokensPerMinute?: number;
+  concurrent?: number;
+}
+
+/**
  * Base provider class that all provider implementations must extend
  */
 export abstract class BaseProvider {
@@ -46,6 +60,44 @@ export abstract class BaseProvider {
    * @returns Array of model definitions
    */
   abstract getAvailableModels(): ModelDefinition[];
+
+  /**
+   * Get the authentication methods supported by this provider
+   * @returns Array of supported authentication methods
+   */
+  getAuthenticationMethods(): AuthMethod[] {
+    // Default implementation - override in subclasses
+    return ['none'];
+  }
+
+  /**
+   * Get the rate limits for this provider
+   * @returns Rate limit information or undefined
+   */
+  getRateLimits(): RateLimit | undefined {
+    // Default implementation - override in subclasses
+    return undefined;
+  }
+
+  /**
+   * Get provider capabilities
+   * @returns Capability information or undefined
+   */
+  getCapabilities?(): {
+    supportsPlanning: boolean;
+    supportsVision: boolean;
+    supportsTools: boolean;
+    supportsStreaming: boolean;
+    supportsSystemPrompt: boolean;
+    supportsConversationHistory: boolean;
+    supportsMCP: boolean;
+    supportsThinking: boolean;
+    maxContextWindow: number;
+    maxOutputTokens: number;
+  } {
+    // Default implementation - override in subclasses
+    return undefined;
+  }
 
   /**
    * Validate the provider configuration
