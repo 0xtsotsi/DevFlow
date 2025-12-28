@@ -54,16 +54,6 @@ export function createGitHubRoutes(
     createMarkViewedHandler(events)
   );
 
-  // Webhook endpoints for PR comment monitoring (require prWatcherService)
-  if (services?.prWatcherService) {
-    router.post('/webhook/pr-comment', createPRCommentHandler(services.prWatcherService));
-    router.get(
-      '/webhook/pr-comment/status/:commentId',
-      createPRCommentStatusHandler(services.prWatcherService)
-    );
-    router.post('/webhook/test', createTestWebhookHandler());
-  }
-
   // Auto-claim routes (require pollerService)
   if (services?.pollerService) {
     router.post('/auto-claim/start', createStartAutoClaimHandler(services.pollerService));

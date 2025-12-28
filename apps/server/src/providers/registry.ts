@@ -81,7 +81,7 @@ export type RegisterCallback = (metadata: ProviderMetadata) => void | Promise<vo
  * Manages all registered AI engine providers with auto-discovery,
  * lifecycle hooks, and runtime capability detection.
  */
-class EngineRegistry {
+export class EngineRegistry {
   private providers = new Map<string, ProviderMetadata>();
   private registerCallbacks: RegisterCallback[] = [];
 
@@ -359,7 +359,7 @@ class EngineRegistry {
 /**
  * Singleton instance of the provider registry
  */
-export const EngineRegistry = new EngineRegistry();
+export const providerRegistry = new EngineRegistry();
 
 /**
  * Convenience function to get a provider by ID
@@ -368,7 +368,7 @@ export const EngineRegistry = new EngineRegistry();
  * @returns Provider metadata or undefined
  */
 export function getProvider(id: string): ProviderMetadata | undefined {
-  return EngineRegistry.get(id);
+  return providerRegistry.get(id);
 }
 
 /**
@@ -377,7 +377,7 @@ export function getProvider(id: string): ProviderMetadata | undefined {
  * @returns Array of provider metadata
  */
 export function getAllProviders(): ProviderMetadata[] {
-  return EngineRegistry.getAll();
+  return providerRegistry.getAll();
 }
 
 /**
@@ -386,5 +386,5 @@ export function getAllProviders(): ProviderMetadata[] {
  * @returns Primary provider metadata or undefined
  */
 export function getPrimaryProvider(): ProviderMetadata | undefined {
-  return EngineRegistry.getPrimary();
+  return providerRegistry.getPrimary();
 }

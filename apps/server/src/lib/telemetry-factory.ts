@@ -14,11 +14,7 @@
 
 import type { TelemetryParser } from './telemetry.js';
 import type { CapturedTelemetry, TelemetryCaptureOptions } from './telemetry.js';
-import {
-  createTelemetryCapture as createTelemetryCaptureUtil,
-  createEmptyTelemetry,
-  parseTelemetry as baseParseTelemetry,
-} from './telemetry.js';
+import { createEmptyTelemetry, parseTelemetry as baseParseTelemetry } from './telemetry.js';
 import { claudeTelemetryParser } from '../providers/claude-telemetry.js';
 import { cursorTelemetryParser } from '../providers/cursor-telemetry.js';
 

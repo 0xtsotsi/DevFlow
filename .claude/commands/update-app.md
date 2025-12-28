@@ -36,6 +36,7 @@ npm install
 ```
 
 **Read ALL output carefully.** Look for:
+
 - Deprecation warnings (e.g., "package X is deprecated")
 - Security vulnerabilities
 - Peer dependency warnings
@@ -57,6 +58,7 @@ For each warning/deprecation found:
    - Update peer dependency versions
 
 3. **Re-run installation**
+
    ```bash
    npm install
    ```
@@ -100,6 +102,7 @@ npm run lint:lockfile
 ```
 
 If this fails, run:
+
 ```bash
 npm run fix:lockfile
 ```
@@ -140,6 +143,7 @@ npm run build:electron:dir
 ## Summary
 
 After completing all steps:
+
 - ✅ All dependencies updated
 - ⚠️ ZERO deprecation warnings
 - 🛡️ All security vulnerabilities addressed

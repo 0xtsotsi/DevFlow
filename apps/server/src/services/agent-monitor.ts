@@ -14,10 +14,19 @@
  * - SQLite persistence
  */
 
-import Database from 'better-sqlite3';
 import path from 'path';
 import { ensureDir } from 'fs-extra';
 import type { ParsedTelemetry } from '../lib/telemetry.js';
+
+// Dynamic import for better-sqlite3 (optional dependency)
+const getDatabase = () => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('better-sqlite3');
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Agent status enum
@@ -111,7 +120,7 @@ export interface AgentStats {
  * Singleton service for tracking AI agent executions.
  */
 export class AgentMonitorService {
-  private db!: Database.Database;
+  private db!: any; // better-sqlite3 Database instance (loaded dynamically)
   private dbPath: string;
   private pidCheckInterval?: NodeJS.Timeout;
   private pidCheckIntervalMs = 30000; // 30 seconds
@@ -128,7 +137,12 @@ export class AgentMonitorService {
   async initialize(): Promise<void> {
     await ensureDir(path.dirname(this.dbPath));
 
-    this.db = new Database(this.dbPath);
+    const DatabaseClass = getDatabase();
+    if (!DatabaseClass) {
+      throw new Error('better-sqlite3 is not installed. Agent monitoring requires better-sqlite3.');
+    }
+
+    this.db = new DatabaseClass(this.dbPath);
     this.db.pragma('journal_mode = WAL');
 
     this.createSchema();
@@ -472,12 +486,13 @@ export class AgentMonitorService {
   /**
    * Get agent tree (hierarchical view)
    *
-   * @param rootId Root agent ID (null for all trees)
+   * @param rootId Root agent ID (undefined for all trees)
    * @returns Array of tree nodes
    */
-  getAgentTree(rootId: string | null = null): AgentTreeNode[] {
+  getAgentTree(rootId?: string): AgentTreeNode[] {
     // Get root agents
-    const roots = rootId ? [this.getAgent(rootId)] : this.getAgents({ parentId: null });
+    const roots =
+      rootId !== undefined ? [this.getAgent(rootId)] : this.getAgents({ parentId: undefined });
 
     return roots
       .filter((r): r is AgentRecord => r !== null)

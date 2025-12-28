@@ -390,10 +390,11 @@ describe('auth.ts', () => {
       const { getAuthStatus } = await import('@/lib/auth.js');
       const status = getAuthStatus();
 
-      expect(status).toEqual({
+      expect(status).toMatchObject({
         enabled: true,
         method: 'api_key_or_session',
       });
+      expect(status).toHaveProperty('productionMode');
     });
   });
 });

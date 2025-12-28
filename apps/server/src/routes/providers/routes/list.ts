@@ -3,7 +3,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { EngineRegistry } from '../../../providers/registry.js';
+import { providerRegistry } from '../../../providers/registry.js';
 import { getErrorMessage, logError } from '../common.js';
 
 interface ProviderInfo {
@@ -24,7 +24,7 @@ interface ProviderInfo {
 export function createListProvidersHandler() {
   return async (_req: Request, res: Response): Promise<void> => {
     try {
-      const providers = EngineRegistry.getAll();
+      const providers = providerRegistry.getAll();
       const providerInfos: ProviderInfo[] = [];
 
       for (const metadata of providers) {

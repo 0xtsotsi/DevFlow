@@ -6,18 +6,22 @@
 >
 > **Learn more about Agentic Coding!**
 >
-> Automaker itself was built by a group of engineers using AI and agentic coding techniques to build features faster than ever. By leveraging tools like Cursor IDE and Claude Code CLI, the team orchestrated AI agents to implement complex functionality in days instead of weeks.
+> DevFlow extends [Automaker](https://github.com/AutoMaker-Org/automaker), an autonomous AI development studio built by engineers using AI and agentic coding techniques. By leveraging tools like Cursor IDE and Claude Code CLI, the team orchestrated AI agents to implement complex functionality in days instead of weeks.
 >
 > **Learn how:** Master these same techniques and workflows in the [Agentic Jumpstart course](https://agenticjumpstart.com/?utm=automaker-gh).
 
-# Automaker
+# DevFlow
 
 **Stop typing code. Start directing AI agents.**
+
+> **[!NOTE]**
+>
+> DevFlow is a fork of [Automaker](https://github.com/AutoMaker-Org/automaker) with additional features and enhancements for autonomous AI development.
 
 <details open>
 <summary><h2>Table of Contents</h2></summary>
 
-- [What Makes Automaker Different?](#what-makes-automaker-different)
+- [What Makes DevFlow Different?](#what-makes-devflow-different)
   - [The Workflow](#the-workflow)
   - [Powered by Claude Agent SDK](#powered-by-claude-agent-sdk)
   - [Why This Matters](#why-this-matters)
@@ -59,16 +63,16 @@
 
 Automaker is an autonomous AI development studio that transforms how you build software. Instead of manually writing every line of code, you describe features on a Kanban board and watch as AI agents powered by Claude Agent SDK automatically implement them. Built with React, Vite, Electron, and Express, Automaker provides a complete workflow for managing AI agents through a desktop application (or web browser), with features like real-time streaming, git worktree isolation, plan approval, and multi-agent task execution.
 
-![Automaker UI](https://i.imgur.com/jdwKydM.png)
+![DevFlow UI](https://i.imgur.com/jdwKydM.png)
 
-## What Makes Automaker Different?
+## What Makes DevFlow Different?
 
-Traditional development tools help you write code. Automaker helps you **orchestrate AI agents** to build entire features autonomously. Think of it as having a team of AI developers working for you—you define what needs to be built, and Automaker handles the implementation.
+Traditional development tools help you write code. DevFlow helps you **orchestrate AI agents** to build entire features autonomously. Think of it as having a team of AI developers working for you—you define what needs to be built, and DevFlow handles the implementation.
 
 ### The Workflow
 
 1. **Add Features** - Describe features you want built (with text, images, or screenshots)
-2. **Move to "In Progress"** - Automaker automatically assigns an AI agent to implement the feature
+2. **Move to "In Progress"** - DevFlow automatically assigns an AI agent to implement the feature
 3. **Watch It Build** - See real-time progress as the agent writes code, runs tests, and makes changes
 4. **Review & Verify** - Review the changes, run tests, and approve when ready
 5. **Ship Faster** - Build entire applications in days, not weeks
@@ -89,7 +93,7 @@ In the Discord, you can:
 
 - 💬 Discuss agentic coding patterns and best practices
 - 🧠 Share ideas for AI-driven development workflows
-- 🛠️ Get help setting up or extending Automaker
+- 🛠️ Get help setting up or extending DevFlow
 - 🚀 Show off projects built with AI agents
 - 🤝 Collaborate with other developers and contributors
 
@@ -156,7 +160,7 @@ echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
 
 ### Development Mode
 
-Start Automaker in development mode:
+Start DevFlow in development mode:
 
 ```bash
 npm run dev
@@ -612,7 +616,7 @@ bd create "Initial issue"
 
 ## Beads UI Integration
 
-Automaker integrates with [beads-ui](https://github.com/mantoni/beads-ui), a local web UI for the Beads CLI that provides a visual interface for collaborating on issues with your coding agent.
+DevFlow integrates with [beads-ui](https://github.com/mantoni/beads-ui), a local web UI for the Beads CLI that provides a visual interface for collaborating on issues with your coding agent.
 
 ### What is Beads UI?
 
@@ -670,7 +674,7 @@ bdui status
 
 ### NPM Helper Scripts
 
-Automaker includes convenient npm scripts for common Beads UI operations:
+DevFlow includes convenient npm scripts for common Beads UI operations:
 
 ```bash
 # Start Beads UI (default port: 3000)
@@ -691,9 +695,9 @@ npm run beads:issues
 
 These scripts provide shorthand commands for the most common Beads UI operations, making it easier to integrate Beads UI into your development workflow.
 
-### Using Beads UI with Automaker
+### Using Beads UI with DevFlow
 
-1. **Start Automaker** in development mode (`npm run dev`)
+1. **Start DevFlow** in development mode (`npm run dev`)
 2. **Launch Beads UI** in a separate terminal (`npm run beads:open`)
 3. **Access the UI** at `http://localhost:3000` (or your custom port)
 4. **View Issues** from your `.beads/beads.db` database in the web interface
@@ -751,10 +755,10 @@ bd create "Initial issue"
 
 ### Integration Notes
 
-- Beads UI reads from the same `.beads/beads.db` database used by Automaker
-- Changes made via the `bd` CLI or Automaker will appear in Beads UI in real-time
-- Beads UI runs independently and can be used alongside Automaker's built-in Kanban board
-- The default port (3000) may conflict with Automaker's web mode; use `--port` to specify an alternative
+- Beads UI reads from the same `.beads/beads.db` database used by DevFlow
+- Changes made via the `bd` CLI or DevFlow will appear in Beads UI in real-time
+- Beads UI runs independently and can be used alongside DevFlow's built-in Kanban board
+- The default port (3000) may conflict with DevFlow's web mode; use `--port` to specify an alternative
 
 ## Tech Stack
 
@@ -946,14 +950,14 @@ This project is licensed under the **Automaker License Agreement**. See [LICENSE
 **Summary of Terms:**
 
 - **Allowed:**
-  - **Build Anything:** You can clone and use Automaker locally or in your organization to build ANY product (commercial or free).
+  - **Build Anything:** You can clone and use DevFlow locally or in your organization to build ANY product (commercial or free).
   - **Internal Use:** You can use it internally within your company (commercial or non-profit) without restriction.
   - **Modify:** You can modify the code for internal use within your organization (commercial or non-profit).
 
 - **Restricted (The "No Monetization of the Tool" Rule):**
-  - **No Resale:** You cannot resell Automaker itself.
-  - **No SaaS:** You cannot host Automaker as a service for others.
-  - **No Monetizing Mods:** You cannot distribute modified versions of Automaker for money.
+  - **No Resale:** You cannot resell DevFlow itself.
+  - **No SaaS:** You cannot host DevFlow as a service for others.
+  - **No Monetizing Mods:** You cannot distribute modified versions of DevFlow for money.
 
 - **Liability:**
   - **Use at Own Risk:** This tool uses AI. We are **NOT** responsible if it breaks your computer, deletes your files, or generates bad code. You assume all risk.
