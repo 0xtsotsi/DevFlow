@@ -24,6 +24,11 @@ export type EventType =
   | 'project:analysis-completed'
   | 'project:analysis-error'
   | 'suggestions:event'
-  | 'spec-regeneration:event';
+  | 'spec-regeneration:event'
+  | 'github-poller:started'
+  | 'github-poller:stopped'
+  | 'github-poller:poll-complete'
+  | 'github-poller:poll-error'
+  | 'github-poller:issue-claimed';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;
