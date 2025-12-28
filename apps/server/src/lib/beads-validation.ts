@@ -69,7 +69,6 @@ export const createBeadsIssueSchema = z.object({
   type: beadsIssueTypeSchema.optional(),
   priority: beadsIssuePrioritySchema.optional(),
   labels: beadsLabelsSchema,
-  parentIssueId: beadsIssueIdSchema.optional(),
 });
 
 /**
@@ -81,7 +80,7 @@ export const updateBeadsIssueSchema = z
       .string()
       .min(1, 'Title is required')
       .max(200, 'Title must be 200 characters or less')
-      .regex(/^[^<>{}$]{1,50}$/, 'Title contains invalid characters')
+      .regex(/^[^<>{}$]/, 'Title contains invalid characters')
       .optional(),
     description: z.string().max(10000, 'Description must be 10000 characters or less').optional(),
     status: beadsIssueStatusSchema.optional(),
