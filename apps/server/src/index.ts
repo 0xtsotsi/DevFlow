@@ -54,6 +54,7 @@ import { createSpecRegenerationRoutes } from './routes/app-spec/index.js';
 import { createClaudeRoutes } from './routes/claude/index.js';
 import { ClaudeUsageService } from './services/claude-usage-service.js';
 import { createGitHubRoutes } from './routes/github/index.js';
+import { PRWatcherService } from './services/github-pr-watcher.js';
 import { createContextRoutes } from './routes/context/index.js';
 import { createBacklogPlanRoutes } from './routes/backlog-plan/index.js';
 import { cleanupStaleValidations } from './routes/github/routes/validation-common.js';
