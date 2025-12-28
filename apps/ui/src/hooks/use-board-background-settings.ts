@@ -46,7 +46,7 @@ export function useBoardBackgroundSettings() {
           cardGlassmorphism: true,
           cardBorderEnabled: true,
           cardBorderOpacity: 100,
-          hideScrollbar: false,
+          hideScrollbar: true,
         }
       );
     },
@@ -163,7 +163,7 @@ export function useBoardBackgroundSettings() {
         cardGlassmorphism: true,
         cardBorderEnabled: true,
         cardBorderOpacity: 100,
-        hideScrollbar: false,
+        hideScrollbar: true,
       });
     },
     [store, persistSettings]

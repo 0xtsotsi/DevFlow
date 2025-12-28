@@ -12,6 +12,7 @@ import { useBeadsActions } from './beads-view/hooks/use-beads-actions';
 import { useBeadsDragDrop } from './beads-view/hooks/use-beads-drag-drop';
 import { BeadsHeader } from './beads-view/beads-header';
 import { BeadsKanbanBoard } from './beads-view/beads-kanban-board';
+import { BeadsErrorDiagnostics } from './beads-view/components/beads-error-diagnostics';
 import { CreateIssueDialog } from './beads-view/dialogs/create-issue-dialog';
 import { EditIssueDialog } from './beads-view/dialogs/edit-issue-dialog';
 import { DeleteIssueDialog } from './beads-view/dialogs/delete-issue-dialog';
@@ -177,12 +178,11 @@ export function BeadsView() {
   // Show error state
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <p className="text-red-500 mb-2">Error loading issues</p>
-          <p className="text-sm text-muted-foreground">{error}</p>
-        </div>
-      </div>
+      <BeadsErrorDiagnostics
+        error={error}
+        projectPath={currentProject?.path}
+        onRetry={loadIssues}
+      />
     );
   }
 

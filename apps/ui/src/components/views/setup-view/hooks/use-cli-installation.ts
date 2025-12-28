@@ -7,6 +7,7 @@ const logger = createLogger('CliInstallation');
 interface CliInstallResult {
   success: boolean;
   error?: string;
+  manualCommand?: string;
 }
 
 interface CliInstallProgress {
@@ -95,7 +96,14 @@ export function useCliInstallation({
           onSuccess?.();
         }
       } else {
-        toast.error('Installation failed', { description: result.error });
+        // Show error with manual command if provided
+        if (result.manualCommand) {
+          toast.error('Installation failed', {
+            description: `${result.error}\n\nManual command:\n${result.manualCommand}`,
+          });
+        } else {
+          toast.error('Installation failed', { description: result.error });
+        }
       }
     } catch (error) {
       logger.error(`Failed to install ${cliType}:`, error);

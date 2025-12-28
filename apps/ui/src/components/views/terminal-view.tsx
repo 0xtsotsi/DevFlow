@@ -1282,9 +1282,30 @@ export function TerminalView() {
         </div>
         <h2 className="text-lg font-medium mb-2">Terminal Unavailable</h2>
         <p className="text-muted-foreground max-w-md mb-4">{error}</p>
+
+        {/* Diagnostic information */}
+        <div className="text-xs text-muted-foreground max-w-md mb-4 text-left bg-muted/50 p-3 rounded-md">
+          <p className="font-medium mb-1">Diagnostics:</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Server URL: {serverUrl}</li>
+            <li>Server must be running on port 3008</li>
+            <li>
+              Check:{' '}
+              <code className="px-1 py-0.5 rounded bg-background">TERMINAL_ENABLED=true</code> in
+              server .env
+            </li>
+            <li>
+              node-pty native module required. Run:{' '}
+              <code className="px-1 py-0.5 rounded bg-background">
+                cd apps/server && npm install
+              </code>
+            </li>
+          </ul>
+        </div>
+
         <Button variant="outline" onClick={fetchStatus}>
           <RefreshCw className="h-4 w-4 mr-2" />
-          Retry
+          Retry Connection
         </Button>
       </div>
     );

@@ -958,6 +958,9 @@ export class HttpApiClient implements ElectronAPI {
       success: boolean;
       message?: string;
       error?: string;
+      version?: string;
+      details?: string;
+      manualCommand?: string;
     }> => this.post('/api/setup/install-claude'),
 
     authClaude: (): Promise<{

@@ -1270,6 +1270,9 @@ interface SetupAPI {
     success: boolean;
     message?: string;
     error?: string;
+    version?: string;
+    details?: string;
+    manualCommand?: string;
   }>;
   authClaude: () => Promise<{
     success: boolean;

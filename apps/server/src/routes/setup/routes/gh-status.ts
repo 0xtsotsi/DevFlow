@@ -7,6 +7,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { getGitHubCliPaths, getExtendedPath, systemPathAccess } from '@automaker/platform';
 import { getErrorMessage, logError } from '../common.js';
+import { getGitHubCliEnv } from '../../../lib/github-cli-path.js';
 
 const execAsync = promisify(exec);
 

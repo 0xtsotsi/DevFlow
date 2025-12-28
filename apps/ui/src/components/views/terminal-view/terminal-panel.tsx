@@ -1123,6 +1123,16 @@ export function TerminalPanel({
           return;
         }
 
+        // Handle abnormal closure
+        if (event.code === 1006) {
+          setConnectionStatus('disconnected');
+          toast.error('Terminal connection closed unexpectedly', {
+            description: 'The server may have restarted. Check the server status.',
+            duration: 5000,
+          });
+          return;
+        }
+
         if (event.code === 4004) {
           setConnectionStatus('disconnected');
           // Notify parent that this session is no longer valid on the server

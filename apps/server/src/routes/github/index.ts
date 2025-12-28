@@ -54,5 +54,12 @@ export function createGitHubRoutes(
     createMarkViewedHandler(events)
   );
 
+  // Auto-claim routes (require pollerService)
+  if (pollerService) {
+    router.post('/auto-claim/start', createStartAutoClaimHandler(pollerService));
+    router.post('/auto-claim/stop', createStopAutoClaimHandler(pollerService));
+    router.get('/auto-claim/status', createGetAutoClaimStatusHandler(pollerService));
+  }
+
   return router;
 }
