@@ -54,6 +54,7 @@ import { createBeadsRoutes } from './routes/beads/index.js';
 import { BeadsService } from './services/beads-service.js';
 import { createReviewRoutes } from './routes/review/index.js';
 import { ReviewWatcherService } from './services/review-watcher.js';
+import { GitHubIssuePollerService } from './services/github-issue-poller-service.js';
 
 // Load environment variables
 dotenv.config();
@@ -170,6 +171,7 @@ const settingsService = new SettingsService(DATA_DIR);
 const claudeUsageService = new ClaudeUsageService();
 const beadsService = new BeadsService();
 const reviewWatcherService = new ReviewWatcherService(events);
+const gitHubIssuePollerService = new GitHubIssuePollerService(events);
 
 // Initialize services
 (async () => {
@@ -200,25 +202,26 @@ app.use('/api', authMiddleware);
 
 // General API routes with standard rate limiting
 app.use('/api/fs', apiLimiter, createFsRoutes(events));
-app.use('/api/agent', createAgentRoutes(agentService, events));
-app.use('/api/sessions', createSessionsRoutes(agentService));
-app.use('/api/features', createFeaturesRoutes(featureLoader));
-app.use('/api/auto-mode', createAutoModeRoutes(autoModeService));
-app.use('/api/enhance-prompt', createEnhancePromptRoutes());
-app.use('/api/worktree', createWorktreeRoutes());
-app.use('/api/git', createGitRoutes());
+app.use('/api/agent', apiLimiter, createAgentRoutes(agentService, events));
+app.use('/api/sessions', apiLimiter, createSessionsRoutes(agentService));
+app.use('/api/features', apiLimiter, createFeaturesRoutes(featureLoader));
+app.use('/api/auto-mode', apiLimiter, createAutoModeRoutes(autoModeService));
+app.use('/api/enhance-prompt', apiLimiter, createEnhancePromptRoutes());
+app.use('/api/worktree', apiLimiter, createWorktreeRoutes());
+app.use('/api/git', apiLimiter, createGitRoutes());
 app.use('/api/setup', strictLimiter, createSetupRoutes());
-app.use('/api/suggestions', createSuggestionsRoutes(events));
-app.use('/api/models', createModelsRoutes());
-app.use('/api/spec-regeneration', createSpecRegenerationRoutes(events));
-app.use('/api/running-agents', createRunningAgentsRoutes(autoModeService));
-app.use('/api/workspace', createWorkspaceRoutes());
-app.use('/api/templates', createTemplatesRoutes());
-app.use('/api/terminal', createTerminalRoutes());
+app.use('/api/suggestions', apiLimiter, createSuggestionsRoutes(events));
+app.use('/api/models', apiLimiter, createModelsRoutes());
+app.use('/api/spec-regeneration', apiLimiter, createSpecRegenerationRoutes(events));
+app.use('/api/running-agents', apiLimiter, createRunningAgentsRoutes(autoModeService));
+app.use('/api/workspace', apiLimiter, createWorkspaceRoutes());
+app.use('/api/templates', apiLimiter, createTemplatesRoutes());
+app.use('/api/terminal', apiLimiter, createTerminalRoutes());
 app.use('/api/settings', strictLimiter, createSettingsRoutes(settingsService));
-app.use('/api/claude', createClaudeRoutes(claudeUsageService));
-app.use('/api/github', createGitHubRoutes());
-app.use('/api/context', createContextRoutes());
+app.use('/api/claude', apiLimiter, createClaudeRoutes(claudeUsageService));
+app.use('/api/github', apiLimiter, createGitHubRoutes({ pollerService: gitHubIssuePollerService }));
+app.use('/api/review', apiLimiter, createReviewRoutes(reviewWatcherService));
+app.use('/api/context', apiLimiter, createContextRoutes());
 app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
 
 // Create HTTP server
