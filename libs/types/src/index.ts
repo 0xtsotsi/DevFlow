@@ -96,3 +96,15 @@ export type {
   BeadsValidationResult,
   BeadsStats,
 } from './beads.js';
+
+// Agent types
+export type {
+  AgentType,
+  AgentCapability,
+  AgentConfig,
+  TaskClassification,
+  AgentExecutionContext,
+  AgentExecutionResult,
+  AgentRegistryEntry,
+  TaskAnalysis,
+} from './agent-types.js';
