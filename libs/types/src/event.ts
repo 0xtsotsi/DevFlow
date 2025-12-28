@@ -25,6 +25,7 @@ export type EventType =
   | 'project:analysis-error'
   | 'suggestions:event'
   | 'spec-regeneration:event'
+  // GitHub poller events
   | 'github-poller:started'
   | 'github-poller:stopped'
   | 'github-poller:poll-complete'
@@ -50,6 +51,39 @@ export type EventType =
   // MCP bridge events
   | 'mcp:tool-call'
   | 'mcp:tool-success'
-  | 'mcp:tool-error';
+  | 'mcp:tool-error'
+  // Review watcher events
+  | 'review-watcher:started'
+  | 'review-watcher:stopped'
+  | 'review-watcher:error'
+  | 'review-watcher:task-found'
+  | 'review-watcher:task-status'
+  | 'review-watcher:task-approved'
+  | 'review-watcher:iteration-started'
+  | 'review-watcher:task-escalated'
+  // Agent monitor events
+  | 'agent-monitor:started'
+  | 'agent-monitor:stopped'
+  | 'agent-monitor:error'
+  | 'agent-monitor:agent-registered'
+  | 'agent-monitor:agent-unregistered'
+  | 'agent-monitor:agent-status-changed'
+  | 'agent-monitor:agent-crashed'
+  | 'agent-monitor:high-resource-usage'
+  | 'agent-monitor:orphans-cleaned'
+  // Telemetry events
+  | 'telemetry:started'
+  | 'telemetry:stopped'
+  | 'telemetry:provider-request'
+  | 'telemetry:task-started'
+  | 'telemetry:task-ended'
+  | 'telemetry:tool-call'
+  | 'telemetry:task-error'
+  | 'telemetry:aggregated'
+  // Shared state events
+  | 'shared-state:changed'
+  | 'shared-state:cleared'
+  | 'shared-state:transaction-committed'
+  | 'shared-state:transaction-rolledback';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;
