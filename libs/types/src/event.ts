@@ -29,6 +29,27 @@ export type EventType =
   | 'github-poller:stopped'
   | 'github-poller:poll-complete'
   | 'github-poller:poll-error'
-  | 'github-poller:issue-claimed';
+  | 'github-poller:issue-claimed'
+  // Orchestrator events
+  | 'orchestrator:started'
+  | 'orchestrator:stopped'
+  | 'orchestrator:poll'
+  | 'orchestrator:error'
+  | 'orchestrator:research-started'
+  | 'orchestrator:research-completed'
+  | 'orchestrator:task-created'
+  | 'orchestrator:task-updated'
+  | 'orchestrator:state-changed'
+  | 'orchestrator:invalid-transition'
+  | 'orchestrator:validation-failed'
+  | 'orchestrator:pr-created'
+  | 'orchestrator:pr-comment-analysis'
+  | 'orchestrator:phase-changed'
+  | 'orchestrator:workspace-started'
+  | 'orchestrator:workspace-failed'
+  // MCP bridge events
+  | 'mcp:tool-call'
+  | 'mcp:tool-success'
+  | 'mcp:tool-error';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

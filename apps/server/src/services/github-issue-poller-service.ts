@@ -12,9 +12,8 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import path from 'path';
 import type { EventEmitter } from '../lib/events.js';
-import { execAsync, execEnv, logError } from '../routes/github/routes/common.js';
+import { execEnv, logError } from '../routes/github/routes/common.js';
 
 const execAsyncCmd = promisify(exec);
 
@@ -409,7 +408,7 @@ export class GitHubIssuePollerService {
   /**
    * Start a workspace session for the issue
    */
-  private async startWorkspaceSession(issue: GitHubIssue, taskId: string): Promise<void> {
+  private async startWorkspaceSession(issue: GitHubIssue, _taskId: string): Promise<void> {
     if (!this.config) {
       throw new Error('Poller not configured');
     }
@@ -442,7 +441,7 @@ export class GitHubIssuePollerService {
       });
 
       console.log(`[GitHubPoller] Added '${CLAIMED_LABEL}' label to issue #${issueNumber}`);
-    } catch (error) {
+    } catch {
       // If label doesn't exist, create it first
       await execAsyncCmd(`gh label create "${CLAIMED_LABEL}" --color "0366d6"`, {
         cwd: projectPath,

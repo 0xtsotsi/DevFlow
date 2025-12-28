@@ -19,7 +19,6 @@ export const execAsync = promisify(exec);
 
 // CRITICAL: Only process PRs from DevFlow fork
 const DEVFLOW_REPO = '0xtsotsi/DevFlow';
-const UPSTREAM_REPO = 'AutoMaker-Org/automaker';
 
 export interface PRCommentEvent {
   prNumber: number;
@@ -147,7 +146,9 @@ export class PRWatcherService {
 
       // CRITICAL SAFETY CHECK: Only process DevFlow repo
       if (repoFullName !== DEVFLOW_REPO) {
-        console.log(`[PR Watcher] Ignoring event from ${repoFullName} (only ${DEVFLOW_REPO} allowed)`);
+        console.log(
+          `[PR Watcher] Ignoring event from ${repoFullName} (only ${DEVFLOW_REPO} allowed)`
+        );
         return null;
       }
 
@@ -405,10 +406,7 @@ export class PRWatcherService {
         .map((line) => `"${line.replace(/"/g, '\\"')}"`)
         .join(' ');
 
-      await execAsync(
-        `gh pr comment ${prNumber} --body ${commentBody}`,
-        { cwd: projectPath }
-      );
+      await execAsync(`gh pr comment ${prNumber} --body ${commentBody}`, { cwd: projectPath });
 
       console.log(`[PR Watcher] Replied to comment ${commentId} on PR #${prNumber}`);
       return true;

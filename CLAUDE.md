@@ -1,6 +1,8 @@
-# DevFlow (Automaker)
+# DevFlow
 
 An autonomous AI development studio where you describe features on a Kanban board and AI agents powered by Claude Code automatically implement them. Build entire applications in days by orchestrating AI agents as a team of developers.
+
+**Note:** DevFlow is a fork of [Automaker](https://github.com/AutoMaker-Org/automaker) with additional features and enhancements.
 
 **Target Users:** Software developers and teams adopting agentic coding workflows with AI agents while maintaining control over architecture and business logic.
 

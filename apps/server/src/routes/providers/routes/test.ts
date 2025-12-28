@@ -3,7 +3,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { EngineRegistry } from '../../../providers/registry.js';
+import { providerRegistry } from '../../../providers/registry.js';
 import { authCache } from '../../../providers/auth-cache.js';
 import { getErrorMessage, logError } from '../common.js';
 
@@ -17,7 +17,7 @@ export function createTestProviderHandler() {
         return;
       }
 
-      const metadata = EngineRegistry.get(providerId);
+      const metadata = providerRegistry.get(providerId);
 
       if (!metadata) {
         res.status(404).json({ success: false, error: `Provider "${providerId}" not found` });
@@ -38,7 +38,7 @@ export function createTestProviderHandler() {
       });
 
       // Update metadata
-      EngineRegistry.update(providerId, { isAuthenticated });
+      providerRegistry.update(providerId, { isAuthenticated });
 
       res.json({
         success: true,
