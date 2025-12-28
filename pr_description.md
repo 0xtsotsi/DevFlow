@@ -9,7 +9,7 @@ This PR implements the **Review Watcher** service, a critical piece of infrastru
 A comprehensive service that monitors code reviews and automates the iteration process:
 
 - **Polling System**: Checks Vibe Kanban for `inreview` tasks every 30 seconds (configurable)
-- **Multi-Source Comment Extraction**: 
+- **Multi-Source Comment Extraction**:
   - Vibe Kanban native comments
   - GitHub PR review comments (extensible)
   - Beads issue comments (extensible)
@@ -71,6 +71,7 @@ The Review Watcher enables **autonomous code quality improvement**:
 ### MCP Integration
 
 The service includes placeholder methods for Vibe Kanban MCP integration:
+
 - `listVibeKanbanTasks()` - Query tasks by status
 - `fetchVibeKanbanComments()` - Get task comments
 - `updateVibeKanbanTaskStatus()` - Change task status
@@ -92,6 +93,7 @@ These are ready to be connected to `mcp__vibe_kanban__*` tools when available.
 ## Testing
 
 The service includes:
+
 - Comprehensive error handling
 - Graceful shutdown support
 - Configurable timeouts and polling intervals
@@ -107,8 +109,8 @@ The service includes:
 
 ---
 
-**Priority**: CRITICAL (enables self-improving code quality loop)  
-**Estimated**: 1-2 days  
+**Priority**: CRITICAL (enables self-improving code quality loop)
+**Estimated**: 1-2 days
 **Status**: ✅ Core implementation complete, MCP integration pending
 
 This PR was written using [Vibe Kanban](https://vibekanban.com)
