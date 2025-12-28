@@ -74,7 +74,7 @@ export class AgentRegistry {
   getAutoSelectableAgents(): AgentType[] {
     const agents = Array.from(this.agents.entries())
       .filter(([_, entry]) => entry.config.autoSelectable)
-      .sort((a, b]) => b[1].config.priority - a[1].config.priority);
+      .sort((a, b) => b[1].config.priority - a[1].config.priority);
 
     return agents.map(([agentType]) => agentType);
   }
@@ -111,9 +111,7 @@ export class AgentRegistry {
     let bestConfidence = 0;
 
     for (const [agentType, entry] of this.agents.entries()) {
-      const capability = entry.config.capabilities.find(
-        cap => cap.name === capabilityName
-      );
+      const capability = entry.config.capabilities.find((cap) => cap.name === capabilityName);
 
       if (capability && capability.confidence > bestConfidence) {
         bestConfidence = capability.confidence;
@@ -181,7 +179,7 @@ export class AgentRegistry {
    * Get all agents' usage statistics
    */
   getAllAgentStats(): Map<AgentType, AgentRegistryEntry['stats']> {
-    const stats = new Map<AgentType, AgentRegistryEntry['stats']();
+    const stats = new Map<AgentType, AgentRegistryEntry['stats']>();
 
     for (const [agentType, entry] of this.agents.entries()) {
       stats.set(agentType, { ...entry.stats });
@@ -240,12 +238,13 @@ export class AgentRegistry {
         // Calculate a composite score
         const usageScore = Math.min(entry.stats.usageCount / 100, 1); // Cap at 100 uses
         const successScore = entry.stats.successRate;
-        const recencyScore = entry.stats.lastUsed > 0
-          ? Math.max(0, 1 - (Date.now() - entry.stats.lastUsed) / (30 * 24 * 60 * 60 * 1000)) // Decay over 30 days
-          : 0.5;
+        const recencyScore =
+          entry.stats.lastUsed > 0
+            ? Math.max(0, 1 - (Date.now() - entry.stats.lastUsed) / (30 * 24 * 60 * 60 * 1000)) // Decay over 30 days
+            : 0.5;
 
         // Weighted score
-        const score = (usageScore * 0.3) + (successScore * 0.5) + (recencyScore * 0.2);
+        const score = usageScore * 0.3 + successScore * 0.5 + recencyScore * 0.2;
 
         return {
           agentType,
@@ -263,18 +262,18 @@ export class AgentRegistry {
   /**
    * Get agent that has been most successful for similar tasks
    */
-  getBestAgentForTask(
-    taskPrompt: string,
-    similarTasksThreshold = 0.7
-  ): AgentType | null {
+  getBestAgentForTask(taskPrompt: string, similarTasksThreshold = 0.7): AgentType | null {
     // Find similar tasks in history
     const taskLower = taskPrompt.toLowerCase();
-    const taskWords = taskLower.split(/\s+/).filter(w => w.length > 3);
+    const taskWords = taskLower.split(/\s+/).filter((w) => w.length > 3);
 
     // Score each historical task by similarity
-    const similarTasks = this.classificationHistory.filter(record => {
-      const recordWords = record.task.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-      const commonWords = taskWords.filter(w => recordWords.includes(w));
+    const similarTasks = this.classificationHistory.filter((record) => {
+      const recordWords = record.task
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 3);
+      const commonWords = taskWords.filter((w) => recordWords.includes(w));
       const similarity = commonWords.length / Math.max(taskWords.length, recordWords.length);
       return similarity >= similarTasksThreshold;
     });
@@ -393,7 +392,10 @@ export class AgentRegistry {
   /**
    * Register a custom agent (for extensibility)
    */
-  registerCustomAgent(agentType: AgentType, config: AgentConfig): { success: boolean; error?: string } {
+  registerCustomAgent(
+    agentType: AgentType,
+    config: AgentConfig
+  ): { success: boolean; error?: string } {
     // Validate configuration
     const validation = this.validateAgentConfig(config);
     if (!validation.valid) {
@@ -423,8 +425,14 @@ export class AgentRegistry {
   unregisterAgent(agentType: AgentType): boolean {
     // Don't allow unregistering built-in agents
     const builtInAgents: AgentType[] = [
-      'planning', 'implementation', 'testing', 'review',
-      'debug', 'documentation', 'refactoring', 'generic',
+      'planning',
+      'implementation',
+      'testing',
+      'review',
+      'debug',
+      'documentation',
+      'refactoring',
+      'generic',
     ];
 
     if (builtInAgents.includes(agentType)) {

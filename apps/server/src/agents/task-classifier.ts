@@ -6,11 +6,7 @@
  * heuristics to route tasks to the most appropriate agent.
  */
 
-import type {
-  AgentType,
-  TaskAnalysis,
-  TaskClassification,
-} from '@automaker/types';
+import type { AgentType, TaskAnalysis, TaskClassification } from '@automaker/types';
 
 /**
  * Keywords and patterns associated with each agent type
@@ -19,7 +15,6 @@ const AGENT_KEYWORDS: Record<AgentType, string[]> = {
   planning: [
     'plan',
     'specification',
-    'spec',
     'design',
     'architecture',
     'break down',
@@ -30,6 +25,8 @@ const AGENT_KEYWORDS: Record<AgentType, string[]> = {
     'acceptance criteria',
     'user story',
     'technical design',
+    'create a specification',
+    'create a spec',
   ],
 
   implementation: [
@@ -65,7 +62,6 @@ const AGENT_KEYWORDS: Record<AgentType, string[]> = {
     'playwright',
     'jest',
     'vitest',
-    'spec',
   ],
 
   review: [
@@ -75,10 +71,9 @@ const AGENT_KEYWORDS: Record<AgentType, string[]> = {
     'best practices',
     'code review',
     'improve quality',
-    'check for bugs',
     'security',
-    'performance',
-    'optimize',
+    'security review',
+    'security issues',
     'standards',
     'conventions',
   ],
@@ -88,7 +83,6 @@ const AGENT_KEYWORDS: Record<AgentType, string[]> = {
     'error',
     'fix',
     'debug',
-    'issue',
     'problem',
     'broken',
     'not working',
@@ -130,34 +124,18 @@ const AGENT_KEYWORDS: Record<AgentType, string[]> = {
     'code smell',
   ],
 
-  generic: [
-    'help',
-    'assist',
-    'task',
-    'work',
-    'general',
-  ],
+  generic: ['help', 'assist', 'task', 'work', 'general'],
 };
 
 /**
  * File extension patterns associated with each agent type
  */
 const AGENT_FILE_PATTERNS: Record<AgentType, RegExp[]> = {
-  planning: [
-    /\b(plan|spec|design|architecture)\.(md|txt)/i,
-    /\breadme\b/i,
-  ],
+  planning: [/\b(plan|spec|design|architecture)\.(md|txt)/i, /\breadme\b/i],
 
-  implementation: [
-    /\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h)$/i,
-  ],
+  implementation: [/\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h)$/i],
 
-  testing: [
-    /\.test\.(ts|js|tsx|jsx)$/i,
-    /\.spec\.(ts|js|tsx|jsx)$/i,
-    /__tests__/i,
-    /test/i,
-  ],
+  testing: [/\.test\.(ts|js|tsx|jsx)$/i, /\.spec\.(ts|js|tsx|jsx)$/i, /__tests__/i, /test/i],
 
   review: [
     // Review agents work on any code file
@@ -169,12 +147,7 @@ const AGENT_FILE_PATTERNS: Record<AgentType, RegExp[]> = {
     /\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h|log)$/i,
   ],
 
-  documentation: [
-    /\.(md|markdown|txt)$/i,
-    /readme/i,
-    /docs?/i,
-    /\.md$/i,
-  ],
+  documentation: [/\.(md|markdown|txt)$/i, /readme/i, /docs?/i, /\.md$/i],
 
   refactoring: [
     // Refactoring agents work on any code file
@@ -235,6 +208,17 @@ export class TaskClassifier {
    * Classify a task to determine which agent should handle it
    */
   classifyTask(analysis: TaskAnalysis): TaskClassification {
+    // Handle edge case: empty or minimal prompts
+    const cleanedPrompt = analysis.prompt.replace(/[^\w\s]/g, '').trim();
+    if (!analysis.prompt || analysis.prompt.trim().length === 0 || cleanedPrompt.length === 0) {
+      return {
+        agentType: 'generic',
+        confidence: 0.3,
+        reason: 'Empty or minimal prompt, using generic agent',
+        alternatives: [],
+      };
+    }
+
     const scores = this.calculateAgentScores(analysis);
 
     // Sort by score
@@ -275,15 +259,26 @@ export class TaskClassifier {
       .toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
-      .filter(word => word.length > 3);
+      .filter((word) => word.length > 3);
 
     // Remove common stop words
     const stopWords = new Set([
-      'that', 'this', 'with', 'from', 'have', 'will', 'should',
-      'would', 'could', 'their', 'there', 'about', 'after',
+      'that',
+      'this',
+      'with',
+      'from',
+      'have',
+      'will',
+      'should',
+      'would',
+      'could',
+      'their',
+      'there',
+      'about',
+      'after',
     ]);
 
-    return words.filter(word => !stopWords.has(word));
+    return words.filter((word) => !stopWords.has(word));
   }
 
   /**
@@ -353,19 +348,18 @@ export class TaskClassifier {
     const types = new Set<string>();
 
     for (const filePath of filePaths) {
-      const ext = filePath.substring(filePath.lastIndexOf('.'));
-
-      if (ext.match(/\.(test|spec)\./i)) {
+      // Check for test files first (before general code files)
+      if (filePath.match(/\.(test|spec)\.(ts|js|tsx|jsx)$/i)) {
         types.add('test');
-      } else if (ext.match(/\.(md|markdown|txt)/i)) {
+      } else if (filePath.match(/\.(md|markdown|txt)$/i)) {
         types.add('documentation');
-      } else if (ext.match(/\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h)/i)) {
+      } else if (filePath.match(/\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h)$/i)) {
         types.add('code');
-      } else if (ext.match(/\.(json|yaml|yml|xml)/i)) {
+      } else if (filePath.match(/\.(json|yaml|yml|xml)$/i)) {
         types.add('config');
-      } else if (ext.match(/\.(css|scss|less|sass)/i)) {
+      } else if (filePath.match(/\.(css|scss|less|sass)$/i)) {
         types.add('stylesheet');
-      } else if (ext.match(/\.(html|htm)/i)) {
+      } else if (filePath.match(/\.(html|htm)$/i)) {
         types.add('markup');
       }
     }
@@ -386,7 +380,7 @@ export class TaskClassifier {
       Angular: /\bangular\b/i,
       Next: /\bnext\.?js\b/i,
       Express: /\bexpress\b/i,
-      'FastAPI': /\bfastapi\b/i,
+      FastAPI: /\bfastapi\b/i,
       Django: /\bdjango\b/i,
       'Node.js': /\bnode\.?js\b/i,
       Nest: /\bnest\.?js\b/i,
@@ -414,12 +408,27 @@ export class TaskClassifier {
     // Complexity indicators
     const complexityIndicators = {
       simple: [
-        'add', 'create', 'update', 'fix', 'remove', 'change',
-        'simple', 'quick', 'small', 'minor',
+        'add',
+        'create',
+        'update',
+        'fix',
+        'remove',
+        'change',
+        'simple',
+        'quick',
+        'small',
+        'minor',
       ],
       complex: [
-        'architecture', 'system', 'multiple', 'integrate', 'refactor',
-        'comprehensive', 'complete', 'overhaul', 'redesign',
+        'architecture',
+        'system',
+        'multiple',
+        'integrate',
+        'refactor',
+        'comprehensive',
+        'complete',
+        'overhaul',
+        'redesign',
       ],
     };
 
@@ -454,12 +463,21 @@ export class TaskClassifier {
   private involvesCodeCreation(prompt: string, filePaths?: string[]): boolean {
     const lowerPrompt = prompt.toLowerCase();
     const codeKeywords = [
-      'implement', 'create', 'build', 'add', 'write', 'develop',
-      'function', 'class', 'component', 'service', 'module',
+      'implement',
+      'create',
+      'build',
+      'add',
+      'write',
+      'develop',
+      'function',
+      'class',
+      'component',
+      'service',
+      'module',
     ];
 
-    const hasCodeKeywords = codeKeywords.some(keyword => lowerPrompt.includes(keyword));
-    const hasCodeFiles = filePaths?.some(path =>
+    const hasCodeKeywords = codeKeywords.some((keyword) => lowerPrompt.includes(keyword));
+    const hasCodeFiles = filePaths?.some((path) =>
       path.match(/\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h)$/i)
     );
 
@@ -472,11 +490,18 @@ export class TaskClassifier {
   private involvesTestingWork(prompt: string): boolean {
     const lowerPrompt = prompt.toLowerCase();
     const testKeywords = [
-      'test', 'testing', 'verify', 'validate', 'check',
-      'assert', 'mock', 'coverage', 'spec',
+      'test',
+      'testing',
+      'verify',
+      'validate',
+      'check',
+      'assert',
+      'mock',
+      'coverage',
+      'spec',
     ];
 
-    return testKeywords.some(keyword => lowerPrompt.includes(keyword));
+    return testKeywords.some((keyword) => lowerPrompt.includes(keyword));
   }
 
   /**
@@ -485,11 +510,17 @@ export class TaskClassifier {
   private involvesDocumentationWork(prompt: string): boolean {
     const lowerPrompt = prompt.toLowerCase();
     const docKeywords = [
-      'document', 'documentation', 'readme', 'doc', 'comment',
-      'explain', 'guide', 'tutorial',
+      'document',
+      'documentation',
+      'readme',
+      'doc',
+      'comment',
+      'explain',
+      'guide',
+      'tutorial',
     ];
 
-    return docKeywords.some(keyword => lowerPrompt.includes(keyword));
+    return docKeywords.some((keyword) => lowerPrompt.includes(keyword));
   }
 
   /**
@@ -498,11 +529,20 @@ export class TaskClassifier {
   private involvesDebuggingWork(prompt: string): boolean {
     const lowerPrompt = prompt.toLowerCase();
     const debugKeywords = [
-      'bug', 'error', 'fix', 'debug', 'issue', 'problem',
-      'broken', 'not working', 'fail', 'crash', 'exception',
+      'bug',
+      'error',
+      'fix',
+      'debug',
+      'issue',
+      'problem',
+      'broken',
+      'not working',
+      'fail',
+      'crash',
+      'exception',
     ];
 
-    return debugKeywords.some(keyword => lowerPrompt.includes(keyword));
+    return debugKeywords.some((keyword) => lowerPrompt.includes(keyword));
   }
 
   /**
@@ -516,12 +556,14 @@ export class TaskClassifier {
       scores.set(agentType, 0);
     }
 
-    // Keyword matching score
+    // Keyword matching score - longer phrases get higher weight
     for (const [agentType, keywords] of Object.entries(AGENT_KEYWORDS)) {
       let keywordScore = 0;
       for (const keyword of keywords) {
         if (analysis.prompt.toLowerCase().includes(keyword.toLowerCase())) {
-          keywordScore += 0.3;
+          // Longer phrases (multi-word) get higher scores
+          const wordCount = keyword.split(/\s+/).length;
+          keywordScore += 0.25 + (wordCount - 1) * 0.2;
         }
       }
       // Cap keyword score at 0.9
@@ -542,6 +584,11 @@ export class TaskClassifier {
     if (analysis.involvesDocs) {
       const docScore = scores.get('documentation') || 0;
       scores.set('documentation', Math.min(docScore + 0.4, 1.0));
+    }
+
+    if (analysis.involvesCode) {
+      const implScore = scores.get('implementation') || 0;
+      scores.set('implementation', Math.min(implScore + 0.3, 1.0));
     }
 
     // Complexity adjustments
@@ -573,7 +620,7 @@ export class TaskClassifier {
     score: number
   ): string {
     const keywords = AGENT_KEYWORDS[agentType];
-    const matchedKeywords = keywords.filter(keyword =>
+    const matchedKeywords = keywords.filter((keyword) =>
       analysis.prompt.toLowerCase().includes(keyword.toLowerCase())
     );
 
@@ -605,7 +652,7 @@ export class TaskClassifier {
    */
   private getAlternativeReason(agentType: AgentType, analysis: TaskAnalysis): string {
     const keywords = AGENT_KEYWORDS[agentType];
-    const matchedKeywords = keywords.filter(keyword =>
+    const matchedKeywords = keywords.filter((keyword) =>
       analysis.prompt.toLowerCase().includes(keyword.toLowerCase())
     );
 
