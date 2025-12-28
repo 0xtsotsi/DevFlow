@@ -5,6 +5,7 @@
 import type { Request, Response } from 'express';
 import { ProviderFactory } from '../../../providers/provider-factory.js';
 import { getErrorMessage, logError } from '../common.js';
+import { ProviderFactory } from '../../../providers/provider-factory.js';
 
 export function createAvailableHandler() {
   return async (_req: Request, res: Response): Promise<void> => {
