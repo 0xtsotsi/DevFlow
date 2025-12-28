@@ -4,6 +4,7 @@
 
 import type { Request, Response } from 'express';
 import { getErrorMessage, logError } from '../common.js';
+import { ProviderFactory } from '../../../providers/provider-factory.js';
 
 interface ModelDefinition {
   id: string;
@@ -18,44 +19,19 @@ interface ModelDefinition {
 export function createAvailableHandler() {
   return async (_req: Request, res: Response): Promise<void> => {
     try {
-      const models: ModelDefinition[] = [
-        {
-          id: 'claude-opus-4-5-20251101',
-          name: 'Claude Opus 4.5',
-          provider: 'anthropic',
-          contextWindow: 200000,
-          maxOutputTokens: 16384,
-          supportsVision: true,
-          supportsTools: true,
-        },
-        {
-          id: 'claude-sonnet-4-20250514',
-          name: 'Claude Sonnet 4',
-          provider: 'anthropic',
-          contextWindow: 200000,
-          maxOutputTokens: 16384,
-          supportsVision: true,
-          supportsTools: true,
-        },
-        {
-          id: 'claude-3-5-sonnet-20241022',
-          name: 'Claude 3.5 Sonnet',
-          provider: 'anthropic',
-          contextWindow: 200000,
-          maxOutputTokens: 8192,
-          supportsVision: true,
-          supportsTools: true,
-        },
-        {
-          id: 'claude-3-5-haiku-20241022',
-          name: 'Claude 3.5 Haiku',
-          provider: 'anthropic',
-          contextWindow: 200000,
-          maxOutputTokens: 8192,
-          supportsVision: true,
-          supportsTools: true,
-        },
-      ];
+      // Get models from all registered providers
+      const allModels = ProviderFactory.getAllAvailableModels();
+
+      // Map provider models to API format
+      const models: ModelDefinition[] = allModels.map((model) => ({
+        id: model.id,
+        name: model.name,
+        provider: model.provider,
+        contextWindow: model.contextWindow || 200000,
+        maxOutputTokens: model.maxOutputTokens || 8192,
+        supportsVision: model.supportsVision || false,
+        supportsTools: model.supportsTools || false,
+      }));
 
       res.json({ success: true, models });
     } catch (error) {
