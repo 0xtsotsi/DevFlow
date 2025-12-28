@@ -16,6 +16,7 @@ import dotenv from 'dotenv';
 import { createEventEmitter, type EventEmitter } from './lib/events.js';
 import { initAllowedPaths } from '@automaker/platform';
 import { authMiddleware, initializeAuth } from './lib/auth.js';
+import { setAuthConfig } from './lib/claude-auth-manager.js';
 import { apiLimiter, healthLimiter, beadsLimiter, strictLimiter } from './lib/rate-limiter.js';
 import { createFsRoutes } from './routes/fs/index.js';
 import { createHealthRoutes } from './routes/health/index.js';
@@ -173,6 +174,17 @@ const gitHubIssuePollerService = new GitHubIssuePollerService(events);
 (async () => {
   await agentService.initialize();
   console.log('[Server] Agent service initialized');
+
+  // Load Claude authentication configuration from settings
+  try {
+    const globalSettings = await settingsService.getGlobalSettings();
+    const authMethod = globalSettings.claudeAuthMethod || 'auto';
+    setAuthConfig({ method: authMethod });
+    console.log(`[Server] Claude auth config loaded: ${authMethod}`);
+  } catch (error) {
+    console.warn('[Server] Failed to load auth config, using default:', error);
+    setAuthConfig({ method: 'auto' });
+  }
 })();
 
 // ============================================================================
