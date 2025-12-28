@@ -1,0 +1,1 @@
+feat: Add Vibe Kanban Review Watcher for automated code quality iteration

@@ -3,7 +3,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { EngineRegistry } from '../../../providers/registry.js';
+import { providerRegistry } from '../../../providers/registry.js';
 import { capabilityProbe } from '../../../providers/capability-probe.js';
 import { getErrorMessage, logError } from '../common.js';
 
@@ -17,7 +17,7 @@ export function createProbeProviderHandler() {
         return;
       }
 
-      const metadata = EngineRegistry.get(providerId);
+      const metadata = providerRegistry.get(providerId);
 
       if (!metadata) {
         res.status(404).json({ success: false, error: `Provider "${providerId}" not found` });
@@ -48,7 +48,7 @@ export function createProbeProviderHandler() {
 export function createProbeAllProvidersHandler() {
   return async (_req: Request, res: Response): Promise<void> => {
     try {
-      const providers = EngineRegistry.getAll();
+      const providers = providerRegistry.getAll();
       const providersMap = new Map(providers.map((m) => [m.id, m.provider]));
 
       const results = await capabilityProbe.probeAll(providersMap);

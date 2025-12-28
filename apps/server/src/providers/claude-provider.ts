@@ -122,8 +122,37 @@ export class ClaudeProvider extends BaseProvider {
       // Use unified client for CLI mode
       console.log('[ClaudeProvider] Using CLI authentication');
       const { executeUnifiedQuery } = await import('../lib/unified-claude-client.js');
+
+      // Convert array prompt to AsyncIterable if needed
+      let cliPrompt: string | AsyncIterable<ProviderMessage>;
+      if (Array.isArray(prompt)) {
+        // For multi-part prompts with images, we need to convert to AsyncIterable
+        cliPrompt = (async function* () {
+          // Extract text content from array format
+          let textContent = '';
+          for (const item of prompt) {
+            if (item.type === 'text' && item.text) {
+              textContent += item.text;
+            } else if (item.source) {
+              // Image content - CLI mode doesn't support images well
+              // Add a placeholder
+              textContent += '[Image content]';
+            }
+          }
+          yield {
+            type: 'user',
+            message: {
+              role: 'user',
+              content: [{ type: 'text', text: textContent }],
+            },
+          } as ProviderMessage;
+        })();
+      } else {
+        cliPrompt = prompt;
+      }
+
       yield* executeUnifiedQuery({
-        prompt,
+        prompt: cliPrompt,
         model,
         cwd,
         systemPrompt,

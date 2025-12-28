@@ -9,11 +9,6 @@ import { createListPRsHandler } from './routes/list-prs.js';
 import { PRWatcherService } from '../../services/github-pr-watcher.js';
 import { GitHubIssuePollerService } from '../../services/github-issue-poller-service.js';
 import {
-  createPRCommentHandler,
-  createPRCommentStatusHandler,
-  createTestWebhookHandler,
-} from './routes/pr-comment-handler.js';
-import {
   createStartAutoClaimHandler,
   createStopAutoClaimHandler,
   createGetAutoClaimStatusHandler,
@@ -30,16 +25,6 @@ export function createGitHubRoutes(services?: GitHubRoutesServices): Router {
   router.post('/check-remote', createCheckGitHubRemoteHandler());
   router.post('/issues', createListIssuesHandler());
   router.post('/prs', createListPRsHandler());
-
-  // Webhook endpoints for PR comment monitoring (require prWatcherService)
-  if (services?.prWatcherService) {
-    router.post('/webhook/pr-comment', createPRCommentHandler(services.prWatcherService));
-    router.get(
-      '/webhook/pr-comment/status/:commentId',
-      createPRCommentStatusHandler(services.prWatcherService)
-    );
-    router.post('/webhook/test', createTestWebhookHandler());
-  }
 
   // Auto-claim routes (require pollerService)
   if (services?.pollerService) {

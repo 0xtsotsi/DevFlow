@@ -3,18 +3,18 @@
  */
 
 import type { Request, Response } from 'express';
-import { EngineRegistry } from '../../../providers/registry.js';
+import { providerRegistry } from '../../../providers/registry.js';
 import { getErrorMessage, logError } from '../common.js';
 
 export function createStatusHandler() {
   return async (_req: Request, res: Response): Promise<void> => {
     try {
-      const primary = EngineRegistry.getPrimary();
+      const primary = providerRegistry.getPrimary();
       const fallbackChain = primary
-        ? EngineRegistry.getFallbackChain(primary.id)
-        : EngineRegistry.getFallbackChain();
+        ? providerRegistry.getFallbackChain(primary.id)
+        : providerRegistry.getFallbackChain();
 
-      const allProviders = EngineRegistry.getAll();
+      const allProviders = providerRegistry.getAll();
 
       res.json({
         success: true,
