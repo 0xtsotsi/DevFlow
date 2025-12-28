@@ -16,6 +16,7 @@ import dotenv from 'dotenv';
 import { createEventEmitter, type EventEmitter } from './lib/events.js';
 import { initAllowedPaths } from '@automaker/platform';
 import { authMiddleware, initializeAuth } from './lib/auth.js';
+import { setAuthConfig } from './lib/claude-auth-manager.js';
 import { apiLimiter, healthLimiter, beadsLimiter, strictLimiter } from './lib/rate-limiter.js';
 import { createFsRoutes } from './routes/fs/index.js';
 import { createHealthRoutes } from './routes/health/index.js';
@@ -174,6 +175,17 @@ const reviewWatcherService = new ReviewWatcherService(events);
 (async () => {
   await agentService.initialize();
   console.log('[Server] Agent service initialized');
+
+  // Load Claude authentication configuration from settings
+  try {
+    const globalSettings = await settingsService.getGlobalSettings();
+    const authMethod = globalSettings.claudeAuthMethod || 'auto';
+    setAuthConfig({ method: authMethod });
+    console.log(`[Server] Claude auth config loaded: ${authMethod}`);
+  } catch (error) {
+    console.warn('[Server] Failed to load auth config, using default:', error);
+    setAuthConfig({ method: 'auto' });
+  }
 })();
 
 // ============================================================================
@@ -188,27 +200,26 @@ app.use('/api', authMiddleware);
 
 // General API routes with standard rate limiting
 app.use('/api/fs', apiLimiter, createFsRoutes(events));
-app.use('/api/agent', apiLimiter, createAgentRoutes(agentService, events));
-app.use('/api/sessions', apiLimiter, createSessionsRoutes(agentService));
-app.use('/api/features', apiLimiter, createFeaturesRoutes(featureLoader));
-app.use('/api/auto-mode', apiLimiter, createAutoModeRoutes(autoModeService));
-app.use('/api/enhance-prompt', apiLimiter, createEnhancePromptRoutes());
-app.use('/api/worktree', apiLimiter, createWorktreeRoutes());
-app.use('/api/git', apiLimiter, createGitRoutes());
+app.use('/api/agent', createAgentRoutes(agentService, events));
+app.use('/api/sessions', createSessionsRoutes(agentService));
+app.use('/api/features', createFeaturesRoutes(featureLoader));
+app.use('/api/auto-mode', createAutoModeRoutes(autoModeService));
+app.use('/api/enhance-prompt', createEnhancePromptRoutes());
+app.use('/api/worktree', createWorktreeRoutes());
+app.use('/api/git', createGitRoutes());
 app.use('/api/setup', strictLimiter, createSetupRoutes());
-app.use('/api/suggestions', apiLimiter, createSuggestionsRoutes(events));
-app.use('/api/models', apiLimiter, createModelsRoutes());
-app.use('/api/spec-regeneration', apiLimiter, createSpecRegenerationRoutes(events));
-app.use('/api/running-agents', apiLimiter, createRunningAgentsRoutes(autoModeService));
-app.use('/api/workspace', apiLimiter, createWorkspaceRoutes());
-app.use('/api/templates', apiLimiter, createTemplatesRoutes());
-app.use('/api/terminal', apiLimiter, createTerminalRoutes());
+app.use('/api/suggestions', createSuggestionsRoutes(events));
+app.use('/api/models', createModelsRoutes());
+app.use('/api/spec-regeneration', createSpecRegenerationRoutes(events));
+app.use('/api/running-agents', createRunningAgentsRoutes(autoModeService));
+app.use('/api/workspace', createWorkspaceRoutes());
+app.use('/api/templates', createTemplatesRoutes());
+app.use('/api/terminal', createTerminalRoutes());
 app.use('/api/settings', strictLimiter, createSettingsRoutes(settingsService));
-app.use('/api/claude', apiLimiter, createClaudeRoutes(claudeUsageService));
-app.use('/api/github', apiLimiter, createGitHubRoutes());
-app.use('/api/context', apiLimiter, createContextRoutes());
+app.use('/api/claude', createClaudeRoutes(claudeUsageService));
+app.use('/api/github', createGitHubRoutes());
+app.use('/api/context', createContextRoutes());
 app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
-app.use('/api/review', apiLimiter, createReviewRoutes(reviewWatcherService));
 
 // Create HTTP server
 const server = createServer(app);

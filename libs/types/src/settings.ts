@@ -262,6 +262,10 @@ export interface GlobalSettings {
   /** Which model to use for feature name/description enhancement */
   enhancementModel: AgentModel;
 
+  // Claude Authentication
+  /** Preferred Claude authentication method (api_key, cli, auto) */
+  claudeAuthMethod?: 'api_key' | 'cli' | 'auto';
+
   // Input Configuration
   /** User's keyboard shortcut bindings */
   keyboardShortcuts: KeyboardShortcuts;
@@ -437,6 +441,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   defaultAIProfileId: null,
   muteDoneSound: false,
   enhancementModel: 'sonnet',
+  claudeAuthMethod: 'auto',
   keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS,
   aiProfiles: [],
   projects: [],
