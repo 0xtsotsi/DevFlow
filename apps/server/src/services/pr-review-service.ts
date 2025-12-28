@@ -280,7 +280,7 @@ export class PRReviewService {
    */
   private analyzeComment(
     comment: PRComment,
-    prState: PRReviewState
+    _prState: PRReviewState
   ): CommentAnalysisWithFix | null {
     const body = comment.body.toLowerCase();
 
@@ -454,7 +454,7 @@ export class PRReviewService {
   /**
    * Search for conflict resolution strategies
    */
-  private async searchConflictResolution(file: string, prNumber: number): Promise<string | null> {
+  private async searchConflictResolution(file: string, _prNumber: number): Promise<string | null> {
     // TODO: Use Greptile MCP to search for similar conflict resolutions
     // For now, return a generic suggestion
     return `Consider using "git checkout --theirs ${file}" or "git checkout --ours ${file}" to resolve conflicts manually.`;
@@ -463,7 +463,7 @@ export class PRReviewService {
   /**
    * Search for similar code patterns
    */
-  private async searchSimilarPatterns(file: string): Promise<string[]> {
+  private async searchSimilarPatterns(_file: string): Promise<string[]> {
     // TODO: Use Greptile MCP to find similar patterns
     return [];
   }

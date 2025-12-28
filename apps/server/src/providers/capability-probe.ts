@@ -12,7 +12,8 @@
  * - Model availability checking
  */
 
-import type { BaseProvider, type AuthMethod } from './base-provider.js';
+import type { BaseProvider } from './base-provider.js';
+import type { AuthMethod } from './base-provider.js';
 import type { ModelDefinition } from './types.js';
 
 /**

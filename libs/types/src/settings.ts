@@ -264,7 +264,7 @@ export interface GlobalSettings {
 
   // Claude Authentication
   /** Preferred Claude authentication method (api_key, cli, auto) */
-  claudeAuthMethod?: 'api_key' | 'cli' | 'auto';
+  claudeAuthMethod: 'api_key' | 'cli' | 'auto';
 
   // Input Configuration
   /** User's keyboard shortcut bindings */

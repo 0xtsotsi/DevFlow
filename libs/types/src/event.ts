@@ -44,6 +44,12 @@ export type EventType =
   | 'orchestrator:validation-failed'
   | 'orchestrator:pr-created'
   | 'orchestrator:pr-comment-analysis'
-  | 'orchestrator:phase-changed';
+  | 'orchestrator:phase-changed'
+  | 'orchestrator:workspace-started'
+  | 'orchestrator:workspace-failed'
+  // MCP bridge events
+  | 'mcp:tool-call'
+  | 'mcp:tool-success'
+  | 'mcp:tool-error';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

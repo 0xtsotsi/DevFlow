@@ -49,17 +49,6 @@ const STATE_TO_VIBE_STATUS: Record<OrchestratorTaskState, VibeKanbanTask['status
 };
 
 /**
- * Map Vibe-Kanban statuses to orchestrator states
- */
-const VIBE_STATUS_TO_STATE: Partial<Record<VibeKanbanTask['status'], OrchestratorTaskState>> = {
-  todo: 'todo',
-  inprogress: 'in_progress',
-  inreview: 'in_review',
-  done: 'completed',
-  cancelled: 'todo', // Reset to todo on cancel
-};
-
-/**
  * Options for listing tasks
  */
 export interface ListTasksOptions {
@@ -238,7 +227,7 @@ export class VibeKanbanClient {
       }
 
       // Cache projects
-      const projects = result.data || [];
+      const projects = (result.data as VibeKanbanProject[]) || [];
       for (const project of projects) {
         this.projectCache.set(project.id, project);
       }
@@ -308,7 +297,7 @@ export class VibeKanbanClient {
         throw new Error('Failed to list tasks');
       }
 
-      return result.data || [];
+      return (result.data as VibeKanbanTask[]) || [];
     } catch (error) {
       throw this.wrapError('Failed to list tasks', error);
     }
@@ -333,7 +322,7 @@ export class VibeKanbanClient {
         throw new Error('Failed to create task');
       }
 
-      const task = result.data;
+      const task = result.data as VibeKanbanTask;
       console.log(`[VibeKanban] Created task: ${task.id} - ${task.title}`);
 
       return task;
@@ -399,7 +388,7 @@ export class VibeKanbanClient {
         throw new Error(`Task not found: ${taskId}`);
       }
 
-      return result.data;
+      return result.data as VibeKanbanTask;
     } catch (error) {
       throw this.wrapError(`Failed to get task ${taskId}`, error);
     }
@@ -441,7 +430,7 @@ export class VibeKanbanClient {
         throw new Error('Failed to list repos');
       }
 
-      return result.data || [];
+      return (result.data as VibeKanbanRepo[]) || [];
     } catch (error) {
       throw this.wrapError('Failed to list repos', error);
     }

@@ -83,18 +83,20 @@ export abstract class BaseProvider {
    * Get provider capabilities
    * @returns Capability information or undefined
    */
-  getCapabilities?(): {
-    supportsPlanning: boolean;
-    supportsVision: boolean;
-    supportsTools: boolean;
-    supportsStreaming: boolean;
-    supportsSystemPrompt: boolean;
-    supportsConversationHistory: boolean;
-    supportsMCP: boolean;
-    supportsThinking: boolean;
-    maxContextWindow: number;
-    maxOutputTokens: number;
-  } {
+  getCapabilities?():
+    | {
+        supportsPlanning: boolean;
+        supportsVision: boolean;
+        supportsTools: boolean;
+        supportsStreaming: boolean;
+        supportsSystemPrompt: boolean;
+        supportsConversationHistory: boolean;
+        supportsMCP: boolean;
+        supportsThinking: boolean;
+        maxContextWindow: number;
+        maxOutputTokens: number;
+      }
+    | undefined {
     // Default implementation - override in subclasses
     return undefined;
   }

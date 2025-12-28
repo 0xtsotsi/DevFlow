@@ -25,6 +25,7 @@ interface CursorMetadata {
   requestId?: string;
   /** Whether streaming was used */
   streaming?: boolean;
+  [key: string]: unknown;
 }
 
 /**

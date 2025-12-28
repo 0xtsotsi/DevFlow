@@ -19,7 +19,6 @@ export const execAsync = promisify(exec);
 
 // CRITICAL: Only process PRs from DevFlow fork
 const DEVFLOW_REPO = '0xtsotsi/DevFlow';
-const UPSTREAM_REPO = 'AutoMaker-Org/automaker';
 
 export interface PRCommentEvent {
   prNumber: number;

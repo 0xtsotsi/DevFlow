@@ -156,7 +156,7 @@ export function createOrchestratorRoutes(events: EventEmitter): Router {
    */
   router.get('/state-machine', async (req: Request, res: Response): Promise<void> => {
     try {
-      const orchestrator = getOrchestratorService(events);
+      getOrchestratorService(events);
       // Access state machine through internal API
       // For now, return basic info
       res.json({

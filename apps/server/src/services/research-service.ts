@@ -19,11 +19,7 @@ import type {
   ExaSearchResult,
   LSPCodeAnalysis,
 } from '@automaker/types';
-import {
-  ExaResearchClient,
-  type WebSearchOptions,
-  type CodeContextOptions,
-} from './exa-research-client.js';
+import { ExaResearchClient } from './exa-research-client.js';
 import { getGreptileClient } from './greptile-client.js';
 import { getMCPBridge } from '../lib/mcp-bridge.js';
 
@@ -333,7 +329,7 @@ export class ResearchService {
   /**
    * Basic file analysis fallback when LSP is unavailable
    */
-  private basicFileAnalysis(context: ResearchContext): LSPCodeAnalysis {
+  private basicFileAnalysis(_context: ResearchContext): LSPCodeAnalysis {
     const types: Array<{ name: string; file: string; line: number }> = [];
     const imports: Array<{ module: string; file: string; line: number }> = [];
     const exports: Array<{ name: string; file: string; line: number }> = [];

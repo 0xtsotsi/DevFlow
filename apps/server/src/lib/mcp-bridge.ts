@@ -67,8 +67,8 @@ export class MCPBridge {
     // In Claude Code, MCP tools are available via the tool calling interface
     // We check for the presence of the global tool interface
     return (
-      typeof (globalThis as any).callTool === 'function' ||
-      typeof (globalThis as any).__MCP_TOOLS__ !== 'undefined'
+      typeof (globalThis as { callTool?: unknown }).callTool === 'function' ||
+      typeof (globalThis as { __MCP_TOOLS__?: unknown }).__MCP_TOOLS__ !== 'undefined'
     );
   }
 
@@ -175,7 +175,7 @@ export class MCPBridge {
     // with the actual tool invocation logic when running in Claude Code
 
     // Check if there's a global tool invoker
-    const globalInvoke = (globalThis as any).__MCP_INVOKE__;
+    const globalInvoke = (globalThis as { __MCP_INVOKE__?: unknown }).__MCP_INVOKE__;
     if (typeof globalInvoke === 'function') {
       try {
         const timeout = options?.timeout || 30000;

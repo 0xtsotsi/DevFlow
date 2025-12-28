@@ -313,7 +313,7 @@ export class GreptileClient {
       /** Maximum results (default: 10) */
       limit?: number;
     }
-  ): Promise<PRReviewComment[]> {
+  ): Promise<PRComment[]> {
     const bridge = getMCPBridge();
 
     const params: Record<string, unknown> = {

@@ -23,7 +23,6 @@ import type {
   OrchestratorPhase,
   OrchestratorStats,
   ServiceStatus,
-  DEFAULT_ORCHESTRATOR_CONFIG,
 } from '@automaker/types';
 import { VibeKanbanClient } from './vibe-kanban-client.js';
 import { ExaResearchClient } from './exa-research-client.js';
@@ -32,6 +31,10 @@ import { PRReviewService } from './pr-review-service.js';
 import { OrchestratorStateMachine } from '../lib/orchestrator-state-machine.js';
 import { getGreptileClient } from './greptile-client.js';
 import { getMCPBridge } from '../lib/mcp-bridge.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+export const execAsync = promisify(exec);
 
 /**
  * Task tracking for active processing
@@ -391,8 +394,8 @@ export class OrchestratorService {
 
     try {
       const reposMapped = repos.map((r) => ({
-        repo_id: r.id,
-        base_branch: r.branch || this.config.defaultBaseBranch,
+        repoId: r.id,
+        baseBranch: r.branch || this.config.defaultBaseBranch,
       }));
 
       await this.vibeKanban.startWorkspaceSession({
@@ -554,7 +557,7 @@ export class OrchestratorService {
         } else {
           // Validation failed - move back to in_progress
           await this.vibeKanban.updateTask(task.id, {
-            status: 'inprogress',
+            status: 'in_progress',
             appendToDescription: `\n\n**Issues Found:**\n${issues.join('\n')}`,
           });
           this.updateTaskState(task.id, 'in_progress', 'fixing');
@@ -601,7 +604,7 @@ export class OrchestratorService {
 
           if (result.valid) {
             await this.vibeKanban.updateTask(task.id, {
-              status: 'inprogress',
+              status: 'pr_created',
               appendToDescription: `\n\n**PR Created:** #${prNumber}`,
             });
             this.updateTaskState(task.id, 'pr_created', 'monitoring_pr');
@@ -694,13 +697,13 @@ export class OrchestratorService {
         console.log(`[Orchestrator] Processing fixes for task: ${task.id}`);
 
         // Parse the issues from description
-        const issues = this.parseIssuesFromDescription(task.description);
+        this.parseIssuesFromDescription(task.description);
 
         // Generate fix suggestions and apply
         // This is where workspace sessions would be started
         // For now, we'll mark as ready for re-review
         await this.vibeKanban.updateTask(task.id, {
-          status: 'inreview',
+          status: 'in_review',
         });
         this.updateTaskState(task.id, 'in_review', 'reviewing');
 
@@ -739,7 +742,7 @@ export class OrchestratorService {
             await this.stateMachine.transition(taskId, 'ready_for_merge');
 
             await this.vibeKanban.updateTask(taskId, {
-              status: 'inreview',
+              status: 'ready_for_merge',
               appendToDescription: '\n\n**Status:** Ready for merge ✅',
             });
 
@@ -753,7 +756,7 @@ export class OrchestratorService {
       for (const task of completedTasks) {
         if (task.description.includes('Ready for merge')) {
           await this.stateMachine.transition(task.id, 'completed');
-          await this.vibeKanban.updateTask(task.id, { status: 'done' });
+          await this.vibeKanban.updateTask(task.id, { status: 'completed' });
 
           this.stats.tasksCompleted++;
           this.untrackTask(task.id);
@@ -769,7 +772,7 @@ export class OrchestratorService {
   /**
    * Validate a task's changes
    */
-  private async validateTask(task: { id: string; description: string }): Promise<string[]> {
+  private async validateTask(_task: { id: string; description: string }): Promise<string[]> {
     const issues: string[] = [];
 
     // TODO: Implement actual validation
