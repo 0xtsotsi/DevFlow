@@ -23,6 +23,7 @@ pnpm-lock.yaml
 # Generated files
 *.min.js
 *.min.css
+routeTree.gen.ts
 
 # Test artifacts
 test-results/

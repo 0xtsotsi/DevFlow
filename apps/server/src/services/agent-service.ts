@@ -15,7 +15,6 @@ import {
 } from '@automaker/utils';
 import { ProviderFactory } from '../providers/provider-factory.js';
 import { createChatOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
-import { PathNotAllowedError } from '@automaker/platform';
 
 interface Message {
   id: string;

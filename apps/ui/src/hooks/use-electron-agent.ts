@@ -134,16 +134,15 @@ export function useElectronAgent({
   );
 
   // Message queue for queuing messages when agent is busy
-  const { queuedMessages, isProcessingQueue, addToQueue, clearQueue, processNext } =
-    useMessageQueue({
-      onProcessNext: async (queuedMessage) => {
-        await sendMessageDirectly(
-          queuedMessage.content,
-          queuedMessage.images,
-          queuedMessage.textFiles
-        );
-      },
-    });
+  const { queuedMessages, isProcessingQueue, clearQueue, processNext } = useMessageQueue({
+    onProcessNext: async (queuedMessage) => {
+      await sendMessageDirectly(
+        queuedMessage.content,
+        queuedMessage.images,
+        queuedMessage.textFiles
+      );
+    },
+  });
 
   // Initialize connection and load history
   useEffect(() => {

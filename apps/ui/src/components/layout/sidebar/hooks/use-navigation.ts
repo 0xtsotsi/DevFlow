@@ -47,6 +47,11 @@ interface UseNavigationProps {
   cycleNextProject: () => void;
 }
 
+/**
+ * Constructs sidebar navigation sections and their keyboard shortcuts based on the provided state and visibility flags.
+ *
+ * @returns An object containing `navSections` — an array of navigation sections (labels and items) to render, and `navigationShortcuts` — an array of keyboard shortcut descriptors with keys, actions, and descriptions.
+ */
 export function useNavigation({
   shortcuts,
   hideSpecEditor,
@@ -237,7 +242,8 @@ export function useNavigation({
           if (item.shortcut) {
             shortcutsList.push({
               key: item.shortcut,
-              action: () => navigate({ to: `/${item.id}` as const }),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              action: () => navigate({ to: `/${item.id}` as any }),
               description: `Navigate to ${item.label}`,
             });
           }

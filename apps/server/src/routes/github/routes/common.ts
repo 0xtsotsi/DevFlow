@@ -4,24 +4,14 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { getGitHubCliEnv } from '../../../lib/github-cli-path.js';
 
 export const execAsync = promisify(exec);
 
-// Extended PATH to include common tool installation locations
-export const extendedPath = [
-  process.env.PATH,
-  '/opt/homebrew/bin',
-  '/usr/local/bin',
-  '/home/linuxbrew/.linuxbrew/bin',
-  `${process.env.HOME}/.local/bin`,
-]
-  .filter(Boolean)
-  .join(':');
+// Use centralized PATH configuration for GitHub CLI detection
+export const extendedPath = getGitHubCliEnv().PATH;
 
-export const execEnv = {
-  ...process.env,
-  PATH: extendedPath,
-};
+export const execEnv = getGitHubCliEnv();
 
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {

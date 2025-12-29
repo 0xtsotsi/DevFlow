@@ -28,8 +28,8 @@ export async function getTrackedBranches(projectPath: string): Promise<TrackedBr
     const content = (await secureFs.readFile(filePath, 'utf-8')) as string;
     const data: BranchTrackingData = JSON.parse(content);
     return data.branches || [];
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
       return [];
     }
     console.warn('[branch-tracking] Failed to read tracked branches:', error);

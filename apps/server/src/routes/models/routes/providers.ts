@@ -12,10 +12,15 @@ export function createProvidersHandler() {
       // Get installation status from all providers
       const statuses = await ProviderFactory.checkAllProviders();
 
-      const providers: Record<string, any> = {
+      const providers: Record<string, { available: boolean; hasApiKey: boolean }> = {
         anthropic: {
           available: statuses.claude?.installed || false,
           hasApiKey: !!process.env.ANTHROPIC_API_KEY,
+        },
+        cursor: {
+          available: statuses.cursor?.installed || false,
+          path: statuses.cursor?.path,
+          version: statuses.cursor?.version,
         },
       };
 

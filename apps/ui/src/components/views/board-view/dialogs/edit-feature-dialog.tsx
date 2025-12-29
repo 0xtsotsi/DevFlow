@@ -150,7 +150,7 @@ export function EditFeatureDialog({
 
     const selectedModel = (editingFeature.model ?? 'opus') as AgentModel;
     const normalizedThinking: ThinkingLevel = modelSupportsThinking(selectedModel)
-      ? (editingFeature.thinkingLevel ?? 'none')
+      ? ((editingFeature.thinkingLevel ?? 'none') as ThinkingLevel)
       : 'none';
 
     // Use current branch if toggle is on
@@ -436,7 +436,7 @@ export function EditFeatureDialog({
             <ProfileQuickSelect
               profiles={aiProfiles}
               selectedModel={editingFeature.model ?? 'opus'}
-              selectedThinkingLevel={editingFeature.thinkingLevel ?? 'none'}
+              selectedThinkingLevel={(editingFeature.thinkingLevel ?? 'none') as ThinkingLevel}
               onSelect={handleProfileSelect}
               testIdPrefix="edit-profile-quick-select"
             />
@@ -456,7 +456,7 @@ export function EditFeatureDialog({
                 />
                 {editModelAllowsThinking && (
                   <ThinkingLevelSelector
-                    selectedLevel={editingFeature.thinkingLevel ?? 'none'}
+                    selectedLevel={(editingFeature.thinkingLevel ?? 'none') as ThinkingLevel}
                     onLevelSelect={(level) =>
                       setEditingFeature({
                         ...editingFeature,

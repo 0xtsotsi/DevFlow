@@ -19,14 +19,7 @@ import {
   FeatureTextFilePath as DescriptionTextFilePath,
   ImagePreviewMap,
 } from '@/components/ui/description-image-dropzone';
-import {
-  MessageSquare,
-  Settings2,
-  SlidersHorizontal,
-  FlaskConical,
-  Sparkles,
-  ChevronDown,
-} from 'lucide-react';
+import { MessageSquare, Settings2, SlidersHorizontal, Sparkles, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { getElectronAPI } from '@/lib/electron';
 import { modelSupportsThinking } from '@/lib/utils';

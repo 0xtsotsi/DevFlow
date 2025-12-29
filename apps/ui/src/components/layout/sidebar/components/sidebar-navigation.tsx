@@ -52,7 +52,8 @@ export function SidebarNavigation({
                   <button
                     key={item.id}
                     onClick={() => {
-                      navigate({ to: `/${item.id}` as const });
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      navigate({ to: `/${item.id}` as any });
                     }}
                     className={cn(
                       'group flex items-center w-full px-3 py-2.5 rounded-xl relative overflow-hidden titlebar-no-drag',

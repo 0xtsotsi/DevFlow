@@ -1,12 +1,28 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
+interface CliInstallResult {
+  success: boolean;
+  error?: string;
+  manualCommand?: string;
+}
+
+interface CliInstallProgress {
+  cli?: string;
+  data?: string;
+  type?: string;
+}
+
+interface CliStoreState {
+  installed?: boolean;
+}
+
 interface UseCliInstallationOptions {
   cliType: 'claude';
-  installApi: () => Promise<any>;
-  onProgressEvent?: (callback: (progress: any) => void) => (() => void) | undefined;
+  installApi: () => Promise<CliInstallResult>;
+  onProgressEvent?: (callback: (progress: CliInstallProgress) => void) => (() => void) | undefined;
   onSuccess?: () => void;
-  getStoreState?: () => any;
+  getStoreState?: () => CliStoreState;
 }
 
 export function useCliInstallation({
@@ -29,15 +45,13 @@ export function useCliInstallation({
       let unsubscribe: (() => void) | undefined;
 
       if (onProgressEvent) {
-        unsubscribe = onProgressEvent(
-          (progress: { cli?: string; data?: string; type?: string }) => {
-            if (progress.cli === cliType) {
-              setInstallProgress((prev) => ({
-                output: [...prev.output, progress.data || progress.type || ''],
-              }));
-            }
+        unsubscribe = onProgressEvent((progress: CliInstallProgress) => {
+          if (progress.cli === cliType) {
+            setInstallProgress((prev) => ({
+              output: [...prev.output, progress.data || progress.type || ''],
+            }));
           }
-        );
+        });
       }
 
       const result = await installApi();
@@ -79,7 +93,14 @@ export function useCliInstallation({
           onSuccess?.();
         }
       } else {
-        toast.error('Installation failed', { description: result.error });
+        // Show error with manual command if provided
+        if (result.manualCommand) {
+          toast.error('Installation failed', {
+            description: `${result.error}\n\nManual command:\n${result.manualCommand}`,
+          });
+        } else {
+          toast.error('Installation failed', { description: result.error });
+        }
       }
     } catch (error) {
       console.error(`Failed to install ${cliType}:`, error);

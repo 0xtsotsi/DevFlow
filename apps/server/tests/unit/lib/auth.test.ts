@@ -95,10 +95,11 @@ describe('auth.ts', () => {
       const { getAuthStatus } = await import('@/lib/auth.js');
       const status = getAuthStatus();
 
-      expect(status).toEqual({
+      expect(status).toMatchObject({
         enabled: false,
         method: 'none',
       });
+      expect(status).toHaveProperty('productionMode');
     });
 
     it('should return enabled status when API key is set', async () => {
@@ -107,10 +108,11 @@ describe('auth.ts', () => {
       const { getAuthStatus } = await import('@/lib/auth.js');
       const status = getAuthStatus();
 
-      expect(status).toEqual({
+      expect(status).toMatchObject({
         enabled: true,
         method: 'api_key',
       });
+      expect(status).toHaveProperty('productionMode');
     });
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Terminal as TerminalIcon,
   Plus,
@@ -217,7 +217,6 @@ export function TerminalView() {
     reorderTerminalTabs,
     moveTerminalToTab,
     setTerminalPanelFontSize,
-    setTerminalTabLayout,
     toggleTerminalMaximized,
     saveTerminalLayout,
     getPersistedTerminalLayout,
@@ -446,8 +445,11 @@ export function TerminalView() {
         setError(data.error || 'Failed to get terminal status');
       }
     } catch (err) {
-      setError('Failed to connect to server');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Failed to connect to terminal server: ${errorMessage}`);
       console.error('[Terminal] Status fetch error:', err);
+      console.error('[Terminal] Server URL:', serverUrl);
+      console.error('[Terminal] Make sure the server is running on port 3008');
     } finally {
       setLoading(false);
     }
@@ -498,6 +500,7 @@ export function TerminalView() {
         // sendBeacon doesn't support DELETE method, so we'll use a sync XMLHttpRequest
         // which is more reliable during page unload than fetch
         try {
+          // eslint-disable-next-line no-undef
           const xhr = new XMLHttpRequest();
           xhr.open('DELETE', url, false); // synchronous
           if (terminalState.authToken) {
@@ -1310,9 +1313,30 @@ export function TerminalView() {
         </div>
         <h2 className="text-lg font-medium mb-2">Terminal Unavailable</h2>
         <p className="text-muted-foreground max-w-md mb-4">{error}</p>
+
+        {/* Diagnostic information */}
+        <div className="text-xs text-muted-foreground max-w-md mb-4 text-left bg-muted/50 p-3 rounded-md">
+          <p className="font-medium mb-1">Diagnostics:</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Server URL: {serverUrl}</li>
+            <li>Server must be running on port 3008</li>
+            <li>
+              Check:{' '}
+              <code className="px-1 py-0.5 rounded bg-background">TERMINAL_ENABLED=true</code> in
+              server .env
+            </li>
+            <li>
+              node-pty native module required. Run:{' '}
+              <code className="px-1 py-0.5 rounded bg-background">
+                cd apps/server && npm install
+              </code>
+            </li>
+          </ul>
+        </div>
+
         <Button variant="outline" onClick={fetchStatus}>
           <RefreshCw className="h-4 w-4 mr-2" />
-          Retry
+          Retry Connection
         </Button>
       </div>
     );

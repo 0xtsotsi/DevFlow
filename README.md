@@ -1,23 +1,27 @@
 <p align="center">
-  <img src="apps/ui/public/readme_logo.png" alt="Automaker Logo" height="80" />
+  <img src="apps/ui/public/readme_logo.png" alt="DevFlow Logo" height="80" />
 </p>
 
 > **[!TIP]**
 >
 > **Learn more about Agentic Coding!**
 >
-> Automaker itself was built by a group of engineers using AI and agentic coding techniques to build features faster than ever. By leveraging tools like Cursor IDE and Claude Code CLI, the team orchestrated AI agents to implement complex functionality in days instead of weeks.
+> DevFlow extends [Automaker](https://github.com/AutoMaker-Org/automaker), an autonomous AI development studio built by engineers using AI and agentic coding techniques. By leveraging tools like Cursor IDE and Claude Code CLI, the team orchestrated AI agents to implement complex functionality in days instead of weeks.
 >
 > **Learn how:** Master these same techniques and workflows in the [Agentic Jumpstart course](https://agenticjumpstart.com/?utm=automaker-gh).
 
-# Automaker
+# DevFlow
 
 **Stop typing code. Start directing AI agents.**
+
+> **[!NOTE]**
+>
+> DevFlow is a fork of [Automaker](https://github.com/AutoMaker-Org/automaker) with additional features and enhancements for autonomous AI development.
 
 <details open>
 <summary><h2>Table of Contents</h2></summary>
 
-- [What Makes Automaker Different?](#what-makes-automaker-different)
+- [What Makes DevFlow Different?](#what-makes-devflow-different)
   - [The Workflow](#the-workflow)
   - [Powered by Claude Code](#powered-by-claude-code)
   - [Why This Matters](#why-this-matters)
@@ -37,24 +41,25 @@
   - [Authentication Options](#authentication-options)
   - [Persistent Setup (Optional)](#persistent-setup-optional)
 - [Features](#features)
+- [Beads UI Integration](#beads-ui-integration)
 - [Tech Stack](#tech-stack)
 - [Learn More](#learn-more)
 - [License](#license)
 
 </details>
 
-Automaker is an autonomous AI development studio that transforms how you build software. Instead of manually writing every line of code, you describe features on a Kanban board and watch as AI agents powered by Claude Code automatically implement them.
+DevFlow is an autonomous AI development studio that transforms how you build software. Instead of manually writing every line of code, you describe features on a Kanban board and watch as AI agents powered by Claude Code automatically implement them.
 
-![Automaker UI](https://i.imgur.com/jdwKydM.png)
+![DevFlow UI](https://i.imgur.com/jdwKydM.png)
 
-## What Makes Automaker Different?
+## What Makes DevFlow Different?
 
-Traditional development tools help you write code. Automaker helps you **orchestrate AI agents** to build entire features autonomously. Think of it as having a team of AI developers working for you—you define what needs to be built, and Automaker handles the implementation.
+Traditional development tools help you write code. DevFlow helps you **orchestrate AI agents** to build entire features autonomously. Think of it as having a team of AI developers working for you—you define what needs to be built, and DevFlow handles the implementation.
 
 ### The Workflow
 
 1. **Add Features** - Describe features you want built (with text, images, or screenshots)
-2. **Move to "In Progress"** - Automaker automatically assigns an AI agent to implement the feature
+2. **Move to "In Progress"** - DevFlow automatically assigns an AI agent to implement the feature
 3. **Watch It Build** - See real-time progress as the agent writes code, runs tests, and makes changes
 4. **Review & Verify** - Review the changes, run tests, and approve when ready
 5. **Ship Faster** - Build entire applications in days, not weeks
@@ -77,7 +82,7 @@ The future of software development is **agentic coding**—where developers beco
 >
 > We have reviewed this codebase for security vulnerabilities, but you assume all risk when running this software. You should review the code yourself before running it.
 >
-> **We do not recommend running Automaker directly on your local computer** due to the risk of AI agents having access to your entire file system. Please sandbox this application using Docker or a virtual machine.
+> **We do not recommend running DevFlow directly on your local computer** due to the risk of AI agents having access to your entire file system. Please sandbox this application using Docker or a virtual machine.
 >
 > **[Read the full disclaimer](./DISCLAIMER.md)**
 
@@ -91,7 +96,7 @@ In the Discord, you can:
 
 - 💬 Discuss agentic coding patterns and best practices
 - 🧠 Share ideas for AI-driven development workflows
-- 🛠️ Get help setting up or extending Automaker
+- 🛠️ Get help setting up or extending DevFlow
 - 🚀 Show off projects built with AI agents
 - 🤝 Collaborate with other developers and contributors
 
@@ -112,8 +117,8 @@ https://discord.gg/jjem7aEDKU
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/AutoMaker-Org/automaker.git
-cd automaker
+git clone https://github.com/0xtsotsi/DevFlow.git
+cd DevFlow
 
 # 2. Install dependencies
 npm install
@@ -121,16 +126,28 @@ npm install
 # 3. Build local shared packages
 npm run build:packages
 
-# 4. Run Automaker (pick your mode)
+# 4. Run DevFlow (pick your mode)
 npm run dev
 # Then choose your run mode when prompted, or use specific commands below
 ```
+
+### Claude Code Plugin Setup
+
+This project includes the [minimal-claude](https://github.com/KenKaiii/minimal-claude) plugin for code quality automation:
+
+**Available Commands:**
+
+- `/setup-code-quality` - Auto-detect and configure linting/type-checking
+- `/setup-claude-md` - Generate code quality guidelines for AI agents
+- `/setup-commits` - Create custom commit command with quality checks
+
+The plugin installs automatically when you run `claude` in this repository.
 
 ## How to Run
 
 ### Development Mode
 
-Start Automaker in development mode:
+Start DevFlow in development mode:
 
 ```bash
 npm run dev
@@ -197,7 +214,7 @@ npm run lint
 
 ### Authentication Options
 
-Automaker supports multiple authentication methods (in order of priority):
+DevFlow supports multiple authentication methods (in order of priority):
 
 | Method           | Environment Variable | Description                     |
 | ---------------- | -------------------- | ------------------------------- |
@@ -234,6 +251,152 @@ Then restart your terminal or run `source ~/.bashrc`.
 - 🎨 **Dark/Light Theme** - Beautiful UI with theme support
 - 🖥️ **Cross-Platform** - Desktop application built with Electron for Windows, macOS, and Linux
 
+## Beads UI Integration
+
+DevFlow integrates with [beads-ui](https://github.com/mantoni/beads-ui), a local web UI for the Beads CLI that provides a visual interface for collaborating on issues with your coding agent.
+
+### What is Beads UI?
+
+Beads UI is a local web interface that works alongside the `bd` CLI tool to provide:
+
+- 📊 **Visual Issue Management** - View and manage issues in a clean web interface
+- 🔍 **Search & Filter** - Quickly find issues by status, labels, or text
+- 📋 **Multiple Views** - Switch between Issues list, Epics view, and Kanban board
+- ⚡ **Live Updates** - Real-time sync with your beads database
+- ⌨️ **Keyboard Navigation** - Efficient keyboard shortcuts for power users
+
+### Installation
+
+Beads UI is installed as a global npm package:
+
+```bash
+# Install beads-ui globally
+npm install -g beads-ui
+
+# Verify installation
+bdui --version
+```
+
+> **Note:** The `bd` CLI must be installed and accessible in your PATH. Beads UI respects the `BD_BIN` environment variable if you need to specify a custom path to the `bd` executable.
+
+### Starting Beads UI
+
+Launch the Beads UI web interface:
+
+```bash
+# Start Beads UI (default port: 3000)
+bdui start
+
+# Start and automatically open in browser
+bdui start --open
+
+# Start on custom port
+bdui start --port 3001
+
+# Start with custom beads database path
+bdui start --db /path/to/beads.db
+```
+
+### Stopping Beads UI
+
+Beads UI runs as a background daemon. To stop it:
+
+```bash
+# Stop the beads-ui service
+bdui stop
+
+# Check if beads-ui is running
+bdui status
+```
+
+### NPM Helper Scripts
+
+DevFlow includes convenient npm scripts for common Beads UI operations:
+
+```bash
+# Start Beads UI (default port: 3000)
+npm run beads
+
+# Start Beads UI and automatically open in browser
+npm run beads:open
+
+# Stop the Beads UI service
+npm run beads:stop
+
+# Check if Beads UI is running
+npm run beads:status
+
+# List all issues using the bd CLI
+npm run beads:issues
+```
+
+These scripts provide shorthand commands for the most common Beads UI operations, making it easier to integrate Beads UI into your development workflow.
+
+### Using Beads UI with DevFlow
+
+1. **Start DevFlow** in development mode (`npm run dev`)
+2. **Launch Beads UI** in a separate terminal (`npm run beads:open`)
+3. **Access the UI** at `http://localhost:3000` (or your custom port)
+4. **View Issues** from your `.beads/beads.db` database in the web interface
+
+### View Modes
+
+Beads UI provides three different views:
+
+- **Issues View** - Traditional list of all issues with status indicators
+- **Epics View** - Group issues by epic/feature for high-level planning
+- **Board View** - Kanban-style board for visual workflow management
+
+Switch between views using the navigation menu or keyboard shortcuts.
+
+### Keyboard Shortcuts
+
+| Shortcut | Action                       |
+| -------- | ---------------------------- |
+| `?`      | Show keyboard shortcuts help |
+| `/`      | Focus search box             |
+| `c`      | Create new issue             |
+| `n`      | Next issue                   |
+| `p`      | Previous issue               |
+| `e`      | Edit selected issue          |
+| `s`      | Change issue status          |
+
+### Troubleshooting
+
+**Port already in use:**
+
+```bash
+# Use a different port
+bdui start --port 3001
+```
+
+**bd CLI not found:**
+
+```bash
+# Verify bd is installed
+which bd
+
+# Set custom path if needed
+export BD_BIN=/path/to/bd
+```
+
+**Database not found:**
+
+```bash
+# Ensure beads database exists
+ls -la .beads/beads.db
+
+# Create a new issue to initialize the database
+bd create "Initial issue"
+```
+
+### Integration Notes
+
+- Beads UI reads from the same `.beads/beads.db` database used by DevFlow
+- Changes made via the `bd` CLI or DevFlow will appear in Beads UI in real-time
+- Beads UI runs independently and can be used alongside DevFlow's built-in Kanban board
+- The default port (3000) may conflict with DevFlow's web mode; use `--port` to specify an alternative
+
 ## Tech Stack
 
 - [Next.js](https://nextjs.org) - React framework
@@ -256,14 +419,14 @@ This project is licensed under the **Automaker License Agreement**. See [LICENSE
 **Summary of Terms:**
 
 - **Allowed:**
-  - **Build Anything:** You can clone and use Automaker locally or in your organization to build ANY product (commercial or free).
+  - **Build Anything:** You can clone and use DevFlow locally or in your organization to build ANY product (commercial or free).
   - **Internal Use:** You can use it internally within your company (commercial or non-profit) without restriction.
   - **Modify:** You can modify the code for internal use within your organization (commercial or non-profit).
 
 - **Restricted (The "No Monetization of the Tool" Rule):**
-  - **No Resale:** You cannot resell Automaker itself.
-  - **No SaaS:** You cannot host Automaker as a service for others.
-  - **No Monetizing Mods:** You cannot distribute modified versions of Automaker for money.
+  - **No Resale:** You cannot resell DevFlow itself.
+  - **No SaaS:** You cannot host DevFlow as a service for others.
+  - **No Monetizing Mods:** You cannot distribute modified versions of DevFlow for money.
 
 - **Liability:**
   - **Use at Own Risk:** This tool uses AI. We are **NOT** responsible if it breaks your computer, deletes your files, or generates bad code. You assume all risk.
