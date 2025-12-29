@@ -120,6 +120,7 @@ export interface AgentStats {
  * Singleton service for tracking AI agent executions.
  */
 export class AgentMonitorService {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private db!: any; // better-sqlite3 Database instance (loaded dynamically)
   private dbPath: string;
   private pidCheckInterval?: NodeJS.Timeout;

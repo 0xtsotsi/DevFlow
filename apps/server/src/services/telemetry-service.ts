@@ -627,7 +627,7 @@ export class TelemetryService {
       const content = await secureFs.readFile(this.eventsFile, 'utf-8');
       const lines = content.trim().split('\n').filter(Boolean);
       this.events = lines.map((line) => JSON.parse(line));
-    } catch (error) {
+    } catch {
       // File doesn't exist yet, that's okay
       this.events = [];
     }
@@ -641,7 +641,7 @@ export class TelemetryService {
       const content = await secureFs.readFile(this.sessionsFile, 'utf-8');
       const sessionsObj = JSON.parse(content);
       this.sessions = new Map(Object.entries(sessionsObj));
-    } catch (error) {
+    } catch {
       // File doesn't exist yet, that's okay
       this.sessions = new Map();
     }

@@ -154,11 +154,17 @@ export async function getClaudeStatus() {
       auth.hasCredentialsFile = true;
 
       // Check what type of token is in credentials
-      if (credentials.oauth_token || credentials.access_token) {
+      // Claude CLI 2.x uses nested claudeAiOauth.accessToken structure
+      if (credentials.claudeAiOauth?.accessToken) {
         auth.hasStoredOAuthToken = true;
         auth.oauthTokenValid = true;
         auth.authenticated = true;
-        auth.method = 'oauth_token'; // Stored OAuth token from credentials file
+        auth.method = 'oauth_token'; // Claude 2.x OAuth token from credentials file
+      } else if (credentials.oauth_token || credentials.access_token) {
+        auth.hasStoredOAuthToken = true;
+        auth.oauthTokenValid = true;
+        auth.authenticated = true;
+        auth.method = 'oauth_token'; // Legacy OAuth token format (CLI 1.x)
       } else if (credentials.api_key) {
         auth.apiKeyValid = true;
         auth.authenticated = true;

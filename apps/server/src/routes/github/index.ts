@@ -6,6 +6,7 @@ import { Router } from 'express';
 import { createCheckGitHubRemoteHandler } from './routes/check-github-remote.js';
 import { createListIssuesHandler } from './routes/list-issues.js';
 import { createListPRsHandler } from './routes/list-prs.js';
+import { createGitHubWebhookHandler } from './routes/webhook.js';
 import { PRWatcherService } from '../../services/github-pr-watcher.js';
 import { GitHubIssuePollerService } from '../../services/github-issue-poller-service.js';
 import {
@@ -17,6 +18,7 @@ import {
 interface GitHubRoutesServices {
   prWatcherService?: PRWatcherService;
   pollerService?: GitHubIssuePollerService;
+  events?: import('../../lib/events.js').EventEmitter;
 }
 
 export function createGitHubRoutes(services?: GitHubRoutesServices): Router {
@@ -25,6 +27,11 @@ export function createGitHubRoutes(services?: GitHubRoutesServices): Router {
   router.post('/check-remote', createCheckGitHubRemoteHandler());
   router.post('/issues', createListIssuesHandler());
   router.post('/prs', createListPRsHandler());
+
+  // Webhook endpoint for GitHub events (requires events)
+  if (services?.events) {
+    router.post('/webhook', createGitHubWebhookHandler(services.events));
+  }
 
   // Auto-claim routes (require pollerService)
   if (services?.pollerService) {

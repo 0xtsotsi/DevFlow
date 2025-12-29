@@ -350,18 +350,20 @@ export class AgentMonitorService {
       case 'message':
         this.recordMessage(sessionId);
         break;
-      case 'tool_use':
+      case 'tool_use': {
         const tool = data.tool as { name: string };
         if (tool?.name) {
           this.recordToolUse(sessionId, tool.name);
         }
         break;
-      case 'error':
+      }
+      case 'error': {
         const error = data.error as string;
         if (error) {
           this.recordError(sessionId, error);
         }
         break;
+      }
       case 'complete':
         this.completeSession(sessionId);
         break;
@@ -465,6 +467,7 @@ export class AgentMonitorService {
   }
 
   private emitMonitorEvent(type: string, data: Record<string, unknown>): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.events.emit(`monitor:${type}` as any, data);
   }
 }

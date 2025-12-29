@@ -12,6 +12,7 @@ import morgan from 'morgan';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
 import dotenv from 'dotenv';
+import path from 'path';
 
 import { createEventEmitter, type EventEmitter } from './lib/events.js';
 import { initAllowedPaths } from '@automaker/platform';
@@ -57,7 +58,12 @@ import { GitHubIssuePollerService } from './services/github-issue-poller-service
 import { createOrchestratorRoutes } from './routes/orchestrator/index.js';
 
 // Load environment variables
-dotenv.config();
+// Search for .env in project root (parent of apps/server) for monorepo setup
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+// Fallback to default .env locations
+if (!process.env.CORS_ORIGIN) {
+  dotenv.config();
+}
 
 const PORT = parseInt(process.env.PORT || '3008', 10);
 const DATA_DIR = process.env.DATA_DIR || './data';
@@ -225,7 +231,7 @@ app.use('/api/claude', apiLimiter, createClaudeRoutes(claudeUsageService));
 app.use(
   '/api/github',
   apiLimiter,
-  createGitHubRoutes({ prWatcherService, pollerService: gitHubIssuePollerService })
+  createGitHubRoutes({ prWatcherService, pollerService: gitHubIssuePollerService, events })
 );
 app.use('/api/context', apiLimiter, createContextRoutes());
 app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));

@@ -84,6 +84,16 @@ export type EventType =
   | 'shared-state:changed'
   | 'shared-state:cleared'
   | 'shared-state:transaction-committed'
-  | 'shared-state:transaction-rolledback';
+  | 'shared-state:transaction-rolledback'
+  // Beads orchestration events
+  | 'beads:execution-plan-created'
+  | 'beads:feature-completed'
+  | 'beads:feature-failed'
+  | 'beads:error'
+  | 'beads:sync-initialized'
+  | 'beads:sync-completed'
+  | 'beads:sync-error'
+  | 'beads:auto-sync-started'
+  | 'beads:auto-sync-stopped';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

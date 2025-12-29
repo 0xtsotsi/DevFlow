@@ -91,6 +91,7 @@ export class OrchestratorService {
   private trackedTasks = new Map<string, TrackedTask>();
   private startTime: Date | null = null;
   private lastPollAt: Date | null = null;
+  private webhookEventUnsubscribe?: () => void;
 
   // Statistics
   private stats: OrchestratorStats = {
@@ -220,6 +221,9 @@ export class OrchestratorService {
 
       console.log('[Orchestrator] Started successfully');
 
+      // Subscribe to GitHub webhook events for real-time PR/CI updates
+      this.subscribeToWebhookEvents();
+
       // Start polling loop
       this.scheduleNextPoll();
     } catch (error) {
@@ -250,6 +254,10 @@ export class OrchestratorService {
     }
 
     console.log('[Orchestrator] Stopping...');
+
+    // Unsubscribe from webhook events
+    this.webhookEventUnsubscribe?.();
+    this.webhookEventUnsubscribe = undefined;
 
     this.isRunning = false;
     this.config.isRunning = false;
@@ -944,6 +952,208 @@ Task ID: ${task.id}`;
    */
   getTrackedTasks(): Map<string, TrackedTask> {
     return new Map(this.trackedTasks);
+  }
+
+  /**
+   * Subscribe to GitHub webhook events for real-time PR/CI updates
+   *
+   * This enables immediate task state updates when:
+   * - PRs are merged (auto-complete tasks)
+   * - CI fails (move to fix state)
+   * - CI passes (move to ready for merge)
+   */
+  private subscribeToWebhookEvents(): void {
+    this.webhookEventUnsubscribe = this.events.subscribe((type, payload) => {
+      switch (type) {
+        case 'github:pr:merged':
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          this.handlePRMerged(payload as any);
+          break;
+        case 'github:ci:passed':
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          this.handleCIPassed(payload as any);
+          break;
+        case 'github:ci:failed':
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          this.handleCIFailed(payload as any);
+          break;
+        case 'github:pr:opened':
+        case 'github:pr:reopened':
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          this.handlePROpened(payload as any);
+          break;
+      }
+    });
+
+    console.log('[Orchestrator] Subscribed to GitHub webhook events');
+  }
+
+  /**
+   * Handle PR merged event from webhook
+   *
+   * When a PR is merged, find the corresponding task and mark it as done.
+   * This provides real-time completion without waiting for the poll cycle.
+   */
+  private async handlePRMerged(data: {
+    prNumber: number;
+    sha?: string;
+    url?: string;
+    repo?: string;
+    branch?: string;
+  }): Promise<void> {
+    console.log(`[Orchestrator] Handling PR merged: #${data.prNumber}`);
+
+    // Find tracked task with this PR number
+    for (const [taskId] of this.trackedTasks.entries()) {
+      try {
+        const task = await this.vibeKanban.getTask(taskId);
+
+        // Check if task description contains this PR number
+        const prPattern = new RegExp(`PR Created:? #?${data.prNumber}\\b`, 'i');
+        if (task.description && prPattern.test(task.description)) {
+          console.log(`[Orchestrator] Found task ${taskId} for PR #${data.prNumber}`);
+
+          // Mark task as done
+          await this.vibeKanban.updateTask(taskId, {
+            status: 'done',
+            appendToDescription: `\n\n**Merged:** SHA ${data.sha || 'unknown'}\n**Landed:** ${new Date().toISOString()}\n**Branch:** ${data.branch || 'unknown'}`,
+          });
+
+          // Emit completion event
+          this.events.emit('orchestrator:task-landed', {
+            taskId,
+            prNumber: data.prNumber,
+            sha: data.sha,
+            url: data.url,
+          });
+
+          // Untrack the task
+          this.untrackTask(taskId);
+          this.stats.tasksCompleted++;
+          this.stats.prsMerged++;
+
+          console.log(`[Orchestrator] Task ${taskId} marked done (PR merged)`);
+          break;
+        }
+      } catch (error) {
+        console.error(`[Orchestrator] Error handling PR merged for task ${taskId}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Handle CI passed event from webhook
+   *
+   * When CI passes for a PR, move the task to ready_for_merge state.
+   */
+  private async handleCIPassed(data: {
+    prNumber: number;
+    taskId?: string;
+    branch?: string;
+  }): Promise<void> {
+    console.log(`[Orchestrator] CI passed for PR #${data.prNumber}`);
+
+    // Find task by PR number or provided taskId
+    const taskId = data.taskId || this.findTaskByPRNumber(data.prNumber);
+
+    if (!taskId) {
+      console.warn(`[Orchestrator] No task found for PR #${data.prNumber}`);
+      return;
+    }
+
+    try {
+      // Get current task state
+      await this.vibeKanban.getTask(taskId);
+      const tracked = this.trackedTasks.get(taskId);
+
+      // Only move to ready_for_merge if in pr_fixes_needed or pr_created state
+      if (tracked?.state === 'pr_fixes_needed' || tracked?.state === 'pr_created') {
+        await this.vibeKanban.updateTask(taskId, {
+          status: 'inreview', // Vibe-Kanban's ready_for_merge maps to inreview
+          appendToDescription: '\n\n**Status:** CI passed - Ready for merge ✅',
+        });
+
+        await this.stateMachine.transition(taskId, 'ready_for_merge');
+        this.updateTaskState(taskId, 'ready_for_merge', 'ready_for_merge');
+
+        console.log(`[Orchestrator] Task ${taskId} moved to ready_for_merge (CI passed)`);
+      }
+    } catch (error) {
+      console.error(`[Orchestrator] Error handling CI passed for task ${taskId}:`, error);
+    }
+  }
+
+  /**
+   * Handle CI failed event from webhook
+   *
+   * When CI fails for a PR, move the task to pr_fixes_needed state.
+   */
+  private async handleCIFailed(data: {
+    prNumber: number;
+    taskId?: string;
+    checks?: Array<{ name: string; conclusion?: string }>;
+  }): Promise<void> {
+    console.log(`[Orchestrator] CI failed for PR #${data.prNumber}`);
+
+    // Find task by PR number or provided taskId
+    const taskId = data.taskId || this.findTaskByPRNumber(data.prNumber);
+
+    if (!taskId) {
+      console.warn(`[Orchestrator] No task found for PR #${data.prNumber}`);
+      return;
+    }
+
+    try {
+      const tracked = this.trackedTasks.get(taskId);
+
+      // Only move to pr_fixes_needed if not already there
+      if (tracked?.state !== 'pr_fixes_needed') {
+        await this.vibeKanban.updateTask(taskId, {
+          status: 'inprogress', // Vibe-Kanban's pr_fixes_needed maps to inprogress
+          appendToDescription: '\n\n**Status:** CI failed - Fixes needed ❌',
+        });
+
+        await this.stateMachine.transition(taskId, 'pr_fixes_needed');
+        this.updateTaskState(taskId, 'pr_fixes_needed', 'fixing');
+
+        console.log(`[Orchestrator] Task ${taskId} moved to pr_fixes_needed (CI failed)`);
+      }
+    } catch (error) {
+      console.error(`[Orchestrator] Error handling CI failed for task ${taskId}:`, error);
+    }
+  }
+
+  /**
+   * Handle PR opened event from webhook
+   *
+   * When a PR is opened/reopened, check if we should start watching it for CI.
+   */
+  private async handlePROpened(data: {
+    prNumber: number;
+    branch?: string;
+    taskId?: string;
+  }): Promise<void> {
+    console.log(`[Orchestrator] PR opened/reopened: #${data.prNumber}`);
+
+    // If taskId is provided, watch for CI
+    if (data.taskId) {
+      console.log(`[Orchestrator] Task ${data.taskId} associated with PR #${data.prNumber}`);
+      // CI watching is handled by GitHubCIService, this just logs the event
+    }
+  }
+
+  /**
+   * Find a task by PR number in tracked tasks
+   *
+   * This is a fallback when taskId is not provided in webhook events.
+   */
+  private findTaskByPRNumber(prNumber: number): string | null {
+    for (const [taskId, tracked] of this.trackedTasks.entries()) {
+      if (tracked.metadata.prNumber === prNumber) {
+        return taskId;
+      }
+    }
+    return null;
   }
 }
 
