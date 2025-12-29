@@ -227,8 +227,7 @@ export class ReviewWatcherService {
    * Helper method to validate project ID format
    */
   validateProjectId(projectId: string): boolean {
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(projectId);
   }
 
@@ -236,8 +235,7 @@ export class ReviewWatcherService {
    * Helper method to validate task ID format
    */
   validateTaskId(taskId: string): boolean {
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(taskId);
   }
 

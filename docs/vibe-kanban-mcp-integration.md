@@ -16,6 +16,7 @@ The VibeKanban MCP integration follows a direct tool invocation pattern:
 ## Available MCP Tools
 
 ### 1. List Projects
+
 **Tool:** `mcp__vibe_kanban__list_projects`
 
 **Description:** Retrieves all available projects from VibeKanban
@@ -23,19 +24,21 @@ The VibeKanban MCP integration follows a direct tool invocation pattern:
 **Parameters:** None
 
 **Returns:**
+
 ```typescript
 {
   projects: Array<{
-    id: string;          // UUID
+    id: string; // UUID
     name: string;
-    created_at: string;  // ISO timestamp
-    updated_at: string;  // ISO timestamp
+    created_at: string; // ISO timestamp
+    updated_at: string; // ISO timestamp
   }>;
   count: number;
 }
 ```
 
 **Example Usage:**
+
 ```
 mcp__vibe_kanban__list_projects
 ```
@@ -43,16 +46,19 @@ mcp__vibe_kanban__list_projects
 ---
 
 ### 2. List Tasks
+
 **Tool:** `mcp__vibe_kanban__list_tasks`
 
 **Description:** Lists all tasks in a project with optional filtering
 
 **Parameters:**
+
 - `project_id` (required, string): UUID of the project
 - `status` (optional, enum): 'todo' | 'inprogress' | 'inreview' | 'done' | 'cancelled'
 - `limit` (optional, number): Maximum tasks to return (default: 50)
 
 **Returns:**
+
 ```typescript
 {
   tasks: Array<{
@@ -75,6 +81,7 @@ mcp__vibe_kanban__list_projects
 ```
 
 **Example Usage:**
+
 ```
 mcp__vibe_kanban__list_tasks
   project_id="b1dce003-a326-4994-bc0b-04b628cf1434"
@@ -85,14 +92,17 @@ mcp__vibe_kanban__list_tasks
 ---
 
 ### 3. Get Task
+
 **Tool:** `mcp__vibe_kanban__get_task`
 
 **Description:** Retrieves detailed information about a specific task
 
 **Parameters:**
+
 - `task_id` (required, string): UUID of the task
 
 **Returns:**
+
 ```typescript
 {
   task: {
@@ -109,6 +119,7 @@ mcp__vibe_kanban__list_tasks
 ```
 
 **Example Usage:**
+
 ```
 mcp__vibe_kanban__get_task
   task_id="e35e9fab-fc20-4037-b3a8-9efbdb9d15a5"
@@ -117,16 +128,19 @@ mcp__vibe_kanban__get_task
 ---
 
 ### 4. Create Task
+
 **Tool:** `mcp__vibe_kanban__create_task`
 
 **Description:** Creates a new task in a project
 
 **Parameters:**
+
 - `project_id` (required, string): UUID of the project
 - `title` (required, string): Task title
 - `description` (optional, string): Task description
 
 **Returns:**
+
 ```typescript
 {
   task: {
@@ -141,6 +155,7 @@ mcp__vibe_kanban__get_task
 ```
 
 **Example Usage:**
+
 ```
 mcp__vibe_kanban__create_task
   project_id="b1dce003-a326-4994-bc0b-04b628cf1434"
@@ -151,11 +166,13 @@ mcp__vibe_kanban__create_task
 ---
 
 ### 5. Update Task
+
 **Tool:** `mcp__vibe_kanban__update_task`
 
 **Description:** Updates an existing task's title, description, or status
 
 **Parameters:**
+
 - `task_id` (required, string): UUID of the task
 - `title` (optional, string): New title
 - `description` (optional, string): New description
@@ -164,6 +181,7 @@ mcp__vibe_kanban__create_task
 **Note:** At least one of title, description, or status must be provided
 
 **Returns:**
+
 ```typescript
 {
   task: {
@@ -178,6 +196,7 @@ mcp__vibe_kanban__create_task
 ```
 
 **Example Usage:**
+
 ```
 mcp__vibe_kanban__update_task
   task_id="e35e9fab-fc20-4037-b3a8-9efbdb9d15a5"
@@ -187,16 +206,19 @@ mcp__vibe_kanban__update_task
 ---
 
 ### 6. Delete Task
+
 **Tool:** `mcp__vibe_kanban__delete_task`
 
 **Description:** Deletes a task from a project
 
 **Parameters:**
+
 - `task_id` (required, string): UUID of the task
 
 **Returns:** Success confirmation
 
 **Example Usage:**
+
 ```
 mcp__vibe_kanban__delete_task
   task_id="e35e9fab-fc20-4037-b3a8-9efbdb9d15a5"
@@ -205,18 +227,21 @@ mcp__vibe_kanban__delete_task
 ---
 
 ### 7. List Repositories
+
 **Tool:** `mcp__vibe_kanban__list_repos`
 
 **Description:** Lists all repositories associated with a project
 
 **Parameters:**
+
 - `project_id` (required, string): UUID of the project
 
 **Returns:**
+
 ```typescript
 {
   repos: Array<{
-    id: string;      // UUID
+    id: string; // UUID
     name: string;
     project_id: string;
   }>;
@@ -226,6 +251,7 @@ mcp__vibe_kanban__delete_task
 ```
 
 **Example Usage:**
+
 ```
 mcp__vibe_kanban__list_repos
   project_id="b1dce003-a326-4994-bc0b-04b628cf1434"
@@ -234,11 +260,13 @@ mcp__vibe_kanban__list_repos
 ---
 
 ### 8. Start Workspace Session
+
 **Tool:** `mcp__vibe_kanban__start_workspace_session`
 
 **Description:** Starts a workspace session for a task, launching a coding agent to work on the task
 
 **Parameters:**
+
 - `task_id` (required, string): UUID of the task
 - `executor` (required, enum): 'CLAUDE_CODE' | 'CODEX' | 'GEMINI' | 'CURSOR_AGENT' | 'OPENCODE'
 - `variant` (optional, string): Executor variant if needed
@@ -249,6 +277,7 @@ mcp__vibe_kanban__list_repos
 **Returns:** Workspace session information
 
 **Example Usage:**
+
 ```
 mcp__vibe_kanban__start_workspace_session
   task_id="e35e9fab-fc20-4037-b3a8-9efbdb9d15a5"
@@ -281,7 +310,7 @@ import type {
   MCPTask,
   MCPProject,
   ListTasksOptions,
-  UpdateTaskOptions
+  UpdateTaskOptions,
 } from './services/review-watcher-service.js';
 
 // When implementing features, Claude Code will directly invoke MCP tools
@@ -327,7 +356,7 @@ Always wrap MCP tool calls in try-catch blocks:
 ```typescript
 try {
   const result = await mcp__vibe_kanban__get_task({
-    task_id: taskId
+    task_id: taskId,
   });
   // Process result
 } catch (error) {
