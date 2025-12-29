@@ -7,6 +7,8 @@
  * - Concurrent execution with max concurrency limits
  * - Progress streaming via events
  * - Verification and merge workflows
+ *
+ * HYBRID-M2: Enhanced with epic-aware execution and Beads integration
  */
 
 import { ProviderFactory } from '../providers/provider-factory.js';
@@ -2873,6 +2875,197 @@ Begin implementing task ${task.id} now.`;
         );
       }
     });
+  }
+
+  // ==================== HYBRID-M2: Epic-Aware Execution Methods ====================
+
+  /**
+   * Execute an epic with coordinated subtask execution
+   * Uses Beads orchestration to execute subtasks in dependency order
+   */
+  async executeEpic(
+    projectPath: string,
+    epicIssueId: string,
+    useWorktrees = true
+  ): Promise<void> {
+    if (!this.useBeadsOrchestration || !this.beadsService || !this.beadsOrchestrator) {
+      throw new Error('Beads orchestration not enabled. Initialize AutoModeService with BeadsService.');
+    }
+
+    try {
+      // Get epic and subtasks
+      const epic = await this.beadsService.getIssue(projectPath, epicIssueId);
+      if (epic.type !== 'epic') {
+        throw new Error(`Issue ${epicIssueId} is not an epic`);
+      }
+
+      const epicCoordination = await this.beadsService.getEpicCoordination(projectPath);
+      const epicData = epicCoordination.epics.find((e) => e.epic.id === epicIssueId);
+
+      if (!epicData) {
+        throw new Error(`Epic ${epicIssueId} not found in coordination data`);
+      }
+
+      // Update epic status to in_progress
+      await this.beadsService.updateIssue(projectPath, epicIssueId, { status: 'in_progress' });
+
+      // Execute subtasks using Beads orchestrator
+      const subtasks = epicData.subtasks;
+      const readySubtasks = subtasks.filter((task) => {
+        return !epicData.subtasks.some((other) =>
+          other.dependencies?.some((d: any) => d.type === 'blocks' && d.to === task.id)
+        );
+      });
+
+      console.log(`[AutoMode] Executing epic ${epic.title} with ${subtasks.length} subtasks`);
+
+      // Execute ready subtasks first, then continue as dependencies resolve
+      for (const subtask of readySubtasks) {
+        if (this.autoLoopAbortController?.signal.aborted) {
+          break;
+        }
+
+        try {
+          await this.executeFeature(projectPath, subtask.id, useWorktrees, false);
+        } catch (error) {
+          console.error(`[AutoMode] Subtask ${subtask.id} failed:`, error);
+          // Continue with other subtasks
+        }
+      }
+
+      // Check epic completion
+      const updatedCoordination = await this.beadsService.getEpicCoordination(projectPath);
+      const updatedEpic = updatedCoordination.epics.find((e) => e.epic.id === epicIssueId);
+
+      if (updatedEpic?.isComplete) {
+        await this.beadsService.updateIssue(projectPath, epicIssueId, { status: 'closed' });
+        console.log(`[AutoMode] Epic ${epic.title} completed`);
+      }
+    } catch (error) {
+      console.error(`[AutoMode] Epic execution failed:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get recommended execution order based on Beads dependencies
+   */
+  async getRecommendedExecutionOrder(projectPath: string): Promise<Array<{ id: string; title: string; priority: number }>> {
+    if (!this.useBeadsOrchestration || !this.beadsOrchestrator) {
+      return [];
+    }
+
+    try {
+      const readyIssues = await this.beadsOrchestrator.getRecommendedOrder(projectPath);
+      return readyIssues.map((issue: any) => ({
+        id: issue.id,
+        title: issue.title,
+        priority: issue.priority,
+      }));
+    } catch (error) {
+      console.error('[AutoMode] Failed to get recommended order:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Execute multiple features with intelligent orchestration
+   * Respects dependencies and priorities using Beads orchestrator
+   */
+  async executeWithOrchestration(
+    projectPath: string,
+    featureIds: string[],
+    maxConcurrency = 3,
+    useWorktrees = true
+  ): Promise<Map<string, boolean>> {
+    if (!this.useBeadsOrchestration || !this.beadsOrchestrator) {
+      throw new Error('Beads orchestration not enabled');
+    }
+
+    const results = new Map<string, boolean>();
+
+    try {
+      // Map features to Beads issues
+      const features = await Promise.all(
+        featureIds.map(async (id) => {
+          try {
+            const issues = await this.beadsService!.listIssues(projectPath, { ids: [id] });
+            return {
+              id,
+              issueId: issues[0]?.id || id,
+              executor: async () => {
+                await this.executeFeature(projectPath, id, useWorktrees, false);
+                return true;
+              },
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const validFeatures = features.filter((f) => f !== null) as Array<{
+        id: string;
+        issueId: string;
+        executor: () => Promise<boolean>;
+      }>;
+
+      // Execute with orchestration
+      const executionResults = await this.beadsOrchestrator.executeWithOrchestration(validFeatures, {
+        projectPath,
+        maxConcurrency,
+        respectPriorities: true,
+        respectDependencies: true,
+      });
+
+      // Map results back to feature IDs
+      for (const [featureId, result] of executionResults.entries()) {
+        results.set(featureId, true);
+      }
+
+      return results;
+    } catch (error) {
+      console.error('[AutoMode] Orchestration execution failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if Beads orchestration is enabled
+   */
+  isBeadsOrchestrationEnabled(): boolean {
+    return this.useBeadsOrchestration;
+  }
+
+  /**
+   * Get epic coordination status for project
+   */
+  async getEpicStatus(projectPath: string): Promise<{
+    epics: Array<{
+      id: string;
+      title: string;
+      percentComplete: number;
+      hasReadyTasks: boolean;
+    }>;
+  } | null> {
+    if (!this.useBeadsOrchestration || !this.beadsService) {
+      return null;
+    }
+
+    try {
+      const coordination = await this.beadsService.getEpicCoordination(projectPath);
+      return {
+        epics: coordination.epics.map((e) => ({
+          id: e.epic.id,
+          title: e.epic.title,
+          percentComplete: e.percentComplete,
+          hasReadyTasks: coordination.readyEpics.includes(e.epic.id),
+        })),
+      };
+    } catch (error) {
+      console.error('[AutoMode] Failed to get epic status:', error);
+      return null;
+    }
   }
 
   // ========================================
