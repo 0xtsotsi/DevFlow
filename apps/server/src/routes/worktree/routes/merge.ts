@@ -31,11 +31,6 @@ export function createMergeHandler() {
       // Git worktrees are stored in project directory
       const worktreePath = path.join(projectPath, '.worktrees', featureId);
 
-      // Get current branch
-      const { stdout: currentBranch } = await execAsync('git rev-parse --abbrev-ref HEAD', {
-        cwd: projectPath,
-      });
-
       // Merge the feature branch
       const mergeCmd = options?.squash
         ? `git merge --squash ${branchName}`

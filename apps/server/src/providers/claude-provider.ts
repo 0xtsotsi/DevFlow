@@ -1,26 +1,103 @@
 /**
- * Claude Provider - Executes queries using Claude Agent SDK
+ * Claude Provider - Executes queries using Claude Agent SDK or CLI
  *
- * Wraps the @anthropic-ai/claude-agent-sdk for seamless integration
- * with the provider architecture.
+ * Routes through unified client when CLI auth is configured.
+ * Falls back to SDK for API key auth. Enhanced with capability probing,
+ * telemetry parsing, and authentication status tracking.
  */
 
-import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
-import { BaseProvider } from './base-provider.js';
+import { query, type Options, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
+import { BaseProvider, type AuthMethod, type RateLimit } from './base-provider.js';
 import type {
   ExecuteOptions,
   ProviderMessage,
   InstallationStatus,
   ModelDefinition,
+  ContentBlock,
 } from './types.js';
+import type { TelemetryParser } from '../lib/telemetry.js';
+import { claudeTelemetryParser } from './claude-telemetry.js';
+import { getAuthStatus } from '../lib/claude-auth-manager.js';
 
 export class ClaudeProvider extends BaseProvider {
+  /** Telemetry parser for Claude output */
+  public readonly telemetryParser: TelemetryParser = claudeTelemetryParser;
+
   getName(): string {
     return 'claude';
   }
 
   /**
-   * Execute a query using Claude Agent SDK
+   * Check if the provider is currently authenticated
+   *
+   * @returns Whether the provider has valid authentication
+   */
+  async isAuthenticated(): Promise<boolean> {
+    const status = await this.detectInstallation();
+    return status.authenticated ?? false;
+  }
+
+  /**
+   * Get provider capabilities
+   *
+   * Returns a summary of Claude's capabilities.
+   *
+   * @returns Provider capabilities object
+   */
+  getCapabilities(): {
+    supportsPlanning: boolean;
+    supportsVision: boolean;
+    supportsTools: boolean;
+    supportsStreaming: boolean;
+    supportsSystemPrompt: boolean;
+    supportsConversationHistory: boolean;
+    supportsMCP: boolean;
+    supportsThinking: boolean;
+    maxContextWindow: number;
+    maxOutputTokens: number;
+  } {
+    // Derive max values from available models to ensure consistency
+    const models = this.getAvailableModels();
+    const maxContextWindow = Math.max(...models.map((m) => m.contextWindow ?? 0));
+    const maxOutputTokens = Math.max(...models.map((m) => m.maxOutputTokens ?? 0));
+
+    return {
+      supportsPlanning: true,
+      supportsVision: true,
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsSystemPrompt: true,
+      supportsConversationHistory: true,
+      supportsMCP: true,
+      supportsThinking: true,
+      maxContextWindow,
+      maxOutputTokens,
+    };
+  }
+
+  /**
+   * Get authentication methods supported by Claude
+   * @returns Array of supported authentication methods
+   */
+  getAuthenticationMethods(): AuthMethod[] {
+    return ['api-key'];
+  }
+
+  /**
+   * Get rate limits for Claude API
+   * @returns Rate limit information
+   */
+  getRateLimits(): RateLimit {
+    return {
+      requestsPerMinute: 50,
+      concurrent: 5,
+    };
+  }
+
+  /**
+   * Execute a query using Claude Agent SDK or CLI (if configured)
+   *
+   * Routes through unified client when CLI auth is configured.
    */
   async *executeQuery(options: ExecuteOptions): AsyncGenerator<ProviderMessage> {
     const {
@@ -34,6 +111,63 @@ export class ClaudeProvider extends BaseProvider {
       conversationHistory,
       sdkSessionId,
     } = options;
+
+    // Check if we should use CLI auth
+    const authStatus = await getAuthStatus();
+    const useCLI =
+      authStatus.method === 'cli' ||
+      (authStatus.method === 'auto' && authStatus.cli?.installed && authStatus.cli?.authenticated);
+
+    if (useCLI) {
+      // Use unified client for CLI mode
+      console.log('[ClaudeProvider] Using CLI authentication');
+      const { executeUnifiedQuery } = await import('../lib/unified-claude-client.js');
+
+      // Convert array prompt to AsyncIterable if needed
+      let cliPrompt: string | AsyncIterable<ProviderMessage>;
+      if (Array.isArray(prompt)) {
+        // For multi-part prompts with images, we need to convert to AsyncIterable
+        cliPrompt = (async function* () {
+          // Extract text content from array format
+          let textContent = '';
+          for (const item of prompt) {
+            if (item.type === 'text' && item.text) {
+              textContent += item.text;
+            } else if (item.source) {
+              // Image content - CLI mode doesn't support images well
+              // Add a placeholder
+              textContent += '[Image content]';
+            }
+          }
+          yield {
+            type: 'user',
+            message: {
+              role: 'user',
+              content: [{ type: 'text', text: textContent }],
+            },
+          } as ProviderMessage;
+        })();
+      } else {
+        cliPrompt = prompt;
+      }
+
+      yield* executeUnifiedQuery({
+        prompt: cliPrompt,
+        model,
+        cwd,
+        systemPrompt,
+        maxTurns,
+        allowedTools,
+        abortController,
+        conversationHistory,
+        sdkSessionId,
+        forceAuthMethod: 'cli',
+      });
+      return;
+    }
+
+    // Use SDK for API key mode (original behavior)
+    console.log('[ClaudeProvider] Using API key authentication');
 
     // Build Claude SDK options
     const defaultTools = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch'];
@@ -58,7 +192,7 @@ export class ClaudeProvider extends BaseProvider {
     };
 
     // Build prompt payload
-    let promptPayload: string | AsyncIterable<any>;
+    let promptPayload: string | AsyncIterable<SDKUserMessage>;
 
     if (Array.isArray(prompt)) {
       // Multi-part prompt (with images)
@@ -68,11 +202,11 @@ export class ClaudeProvider extends BaseProvider {
           session_id: '',
           message: {
             role: 'user' as const,
-            content: prompt,
+            content: prompt as ContentBlock[],
           },
           parent_tool_use_id: null,
         };
-        yield multiPartPrompt;
+        yield multiPartPrompt as SDKUserMessage;
       })();
     } else {
       // Simple text prompt

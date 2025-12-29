@@ -1,11 +1,17 @@
 {
   "name": "automaker",
   "version": "1.0.0",
+  "description": "DevFlow - An autonomous AI development studio (fork of AutoMaker-Org/automaker)",
   "private": true,
   "workspaces": [
     "apps/*",
     "libs/*"
   ],
+  "homepage": "https://github.com/0xtsotsi/DevFlow",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xtsotsi/DevFlow.git"
+  },
   "scripts": {
     "postinstall": "node -e \"const fs=require('fs');if(process.platform==='darwin'){['darwin-arm64','darwin-x64'].forEach(a=>{const p='node_modules/node-pty/prebuilds/'+a+'/spawn-helper';if(fs.existsSync(p))fs.chmodSync(p,0o755)})}\" && node scripts/fix-lockfile-urls.mjs",
     "fix:lockfile": "node scripts/fix-lockfile-urls.mjs",
@@ -42,9 +48,16 @@
     "test:packages": "npm run test -w @automaker/types -w @automaker/utils -w @automaker/prompts -w @automaker/platform -w @automaker/model-resolver -w @automaker/dependency-resolver -w @automaker/git-utils --if-present",
     "test:all": "npm run test:packages && npm run test:server",
     "lint:lockfile": "! grep -q 'git+ssh://' package-lock.json || (echo 'Error: package-lock.json contains git+ssh:// URLs. Run: git config --global url.\"https://github.com/\".insteadOf \"git@github.com:\"' && exit 1)",
+    "check:deps": "bash scripts/check-dependencies.sh",
+    "rebuild:pty": "cd apps/server && npm rebuild node-pty",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky && npm run build:packages"
+    "prepare": "husky && npm run build:packages",
+    "beads": "bdui start",
+    "beads:open": "bdui start --open",
+    "beads:stop": "bdui stop",
+    "beads:status": "bdui status",
+    "beads:issues": "bd issues"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,css,md,html,yml,yaml}": [

@@ -63,7 +63,7 @@ export function AgentOutputModal({
 
       try {
         // Get current project path from store (we'll need to pass this)
-        const currentProject = (window as any).__currentProject;
+        const currentProject = (window as { __currentProject?: { path: string } }).__currentProject;
         if (!currentProject?.path) {
           setIsLoading(false);
           return;

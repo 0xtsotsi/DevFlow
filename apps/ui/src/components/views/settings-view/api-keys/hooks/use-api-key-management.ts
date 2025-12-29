@@ -74,6 +74,14 @@ export function useApiKeyManagement() {
 
     try {
       const api = getElectronAPI();
+      if (!api?.setup) {
+        setTestResult({
+          success: false,
+          message: 'API setup not available',
+        });
+        setTestingConnection(false);
+        return;
+      }
       const data = await api.setup.verifyClaudeAuth('api_key');
 
       if (data.success && data.authenticated) {

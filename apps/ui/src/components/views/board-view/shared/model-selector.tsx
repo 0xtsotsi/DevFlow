@@ -2,7 +2,7 @@ import { Label } from '@/components/ui/label';
 import { Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AgentModel } from '@/store/app-store';
-import { CLAUDE_MODELS, ModelOption } from './model-constants';
+import { CLAUDE_MODELS } from './model-constants';
 
 interface ModelSelectorProps {
   selectedModel: AgentModel;

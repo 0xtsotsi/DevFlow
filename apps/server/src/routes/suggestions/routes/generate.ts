@@ -4,11 +4,8 @@
 
 import type { Request, Response } from 'express';
 import type { EventEmitter } from '../../../lib/events.js';
-import { createLogger } from '@automaker/utils';
 import { getSuggestionsStatus, setRunningState, getErrorMessage, logError } from '../common.js';
 import { generateSuggestions } from '../generate-suggestions.js';
-
-const logger = createLogger('Suggestions');
 
 export function createGenerateHandler(events: EventEmitter) {
   return async (req: Request, res: Response): Promise<void> => {

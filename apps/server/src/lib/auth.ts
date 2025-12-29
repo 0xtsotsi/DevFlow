@@ -9,6 +9,27 @@ import type { Request, Response, NextFunction } from 'express';
 // API key from environment (optional - if not set, auth is disabled)
 const API_KEY = process.env.AUTOMAKER_API_KEY;
 
+// Check if running in production
+const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Validate and initialize authentication on server startup
+ *
+ * In production mode, AUTOMAKER_API_KEY must be set.
+ * Logs a warning if auth is disabled in development.
+ */
+export function initializeAuth(): void {
+  if (isProduction && !API_KEY) {
+    throw new Error('AUTOMAKER_API_KEY environment variable must be set in production mode');
+  }
+
+  if (!API_KEY) {
+    console.warn('[Auth] ⚠️  Authentication DISABLED - Set AUTOMAKER_API_KEY to enable');
+  } else {
+    console.log('[Auth] ✓ Authentication ENABLED - API key required');
+  }
+}
+
 /**
  * Authentication middleware
  *
@@ -54,9 +75,10 @@ export function isAuthEnabled(): boolean {
 /**
  * Get authentication status for health endpoint
  */
-export function getAuthStatus(): { enabled: boolean; method: string } {
+export function getAuthStatus(): { enabled: boolean; method: string; productionMode: boolean } {
   return {
     enabled: !!API_KEY,
     method: API_KEY ? 'api_key' : 'none',
+    productionMode: isProduction,
   };
 }

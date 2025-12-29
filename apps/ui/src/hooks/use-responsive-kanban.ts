@@ -55,7 +55,7 @@ export function useResponsiveKanban(
   };
 
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
-  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const [isInitialized, setIsInitialized] = useState(false);
 
   const calculateColumnWidth = useCallback(

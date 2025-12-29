@@ -108,3 +108,25 @@ export type {
   AgentRegistryEntry,
   TaskAnalysis,
 } from './agent-types.js';
+
+// Orchestrator types
+export type {
+  OrchestratorTaskState,
+  OrchestratorConfig,
+  ResearchResult,
+  ResearchSubtask,
+  GreptileSearchResult,
+  ExaSearchResult,
+  LSPCodeAnalysis,
+  PRCommentAnalysis,
+  OrchestratorState,
+  OrchestratorPhase,
+  OrchestratorStats,
+  ServiceStatus,
+  VibeKanbanTask,
+  VibeKanbanProject,
+  VibeKanbanRepo,
+  StateTransitionResult,
+  OrchestratorEventPayloads,
+} from './orchestrator.js';
+export { DEFAULT_ORCHESTRATOR_CONFIG } from './orchestrator.js';

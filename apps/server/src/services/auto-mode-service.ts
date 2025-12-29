@@ -11,12 +11,7 @@
 
 import { ProviderFactory } from '../providers/provider-factory.js';
 import type { ExecuteOptions, Feature } from '@automaker/types';
-import {
-  buildPromptWithImages,
-  isAbortError,
-  classifyError,
-  loadContextFiles,
-} from '@automaker/utils';
+import { buildPromptWithImages, classifyError, loadContextFiles } from '@automaker/utils';
 import { resolveModelString, DEFAULT_MODELS } from '@automaker/model-resolver';
 import { resolveDependencies, areDependenciesSatisfied } from '@automaker/dependency-resolver';
 import { getFeatureDir, getAutomakerDir, getFeaturesDir } from '@automaker/platform';
@@ -27,6 +22,7 @@ import * as secureFs from '../lib/secure-fs.js';
 import type { EventEmitter } from '../lib/events.js';
 import { createAutoModeOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
 import { FeatureLoader } from './feature-loader.js';
+import { CheckpointService, type AgentState } from './checkpoint-service.js';
 
 const execAsync = promisify(exec);
 
@@ -295,12 +291,13 @@ function parseTaskLine(line: string, currentPhase?: string): ParsedTask | null {
 }
 
 // Feature type is imported from feature-loader.js
-// Extended type with planning fields for local use
-interface FeatureWithPlanning extends Feature {
-  planningMode?: PlanningMode;
-  planSpec?: PlanSpec;
-  requirePlanApproval?: boolean;
-}
+// Extended type with planning fields for local use - defined but not currently used
+// Will be needed when planning mode features are fully implemented
+// interface FeatureWithPlanning extends Feature {
+//   planningMode?: PlanningMode;
+//   planSpec?: PlanSpec;
+//   requirePlanApproval?: boolean;
+// }
 
 interface RunningFeature {
   featureId: string;
@@ -1710,7 +1707,6 @@ This helps parse your summary correctly in the output logs.`;
       systemPrompt?: string;
     }
   ): Promise<void> {
-    const finalProjectPath = options?.projectPath || projectPath;
     const planningMode = options?.planningMode || 'skip';
     const previousContent = options?.previousContent;
 
@@ -2190,14 +2186,11 @@ After generating the revised spec, output:
                     abortController,
                   });
 
-                  let taskOutput = '';
-
                   // Process task stream
                   for await (const msg of taskStream) {
                     if (msg.type === 'assistant' && msg.message?.content) {
                       for (const block of msg.message.content) {
                         if (block.type === 'text') {
-                          taskOutput += block.text || '';
                           responseText += block.text || '';
                           this.emitAutoModeEvent('auto_mode_progress', {
                             featureId,
@@ -2214,7 +2207,6 @@ After generating the revised spec, output:
                     } else if (msg.type === 'error') {
                       throw new Error(msg.error || `Error during task ${task.id}`);
                     } else if (msg.type === 'result' && msg.subtype === 'success') {
-                      taskOutput += msg.result || '';
                       responseText += msg.result || '';
                     }
                   }
@@ -2493,5 +2485,340 @@ Begin implementing task ${task.id} now.`;
         );
       }
     });
+  }
+
+  // ========================================
+  // CHECKPOINT & RECOVERY METHODS
+  // ========================================
+
+  /**
+   * Detect agents that have failed or are stuck
+   */
+  async detectFailedAgents(projectPath: string): Promise<
+    Array<{
+      featureId: string;
+      agentId: string;
+      status: string;
+      lastActivity: string;
+      issue: 'timeout' | 'error' | 'stuck';
+    }>
+  > {
+    const failedAgents: Array<{
+      featureId: string;
+      agentId: string;
+      status: string;
+      lastActivity: string;
+      issue: 'timeout' | 'error' | 'stuck';
+    }> = [];
+
+    const now = Date.now();
+    const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+    for (const [featureId, runningFeature] of this.runningFeatures.entries()) {
+      const elapsed = now - runningFeature.startTime;
+
+      // Check for timeout
+      if (elapsed > TIMEOUT_MS) {
+        failedAgents.push({
+          featureId,
+          agentId: featureId,
+          status: 'running',
+          lastActivity: new Date(runningFeature.startTime).toISOString(),
+          issue: 'timeout',
+        });
+        continue;
+      }
+
+      // Check for stuck agents (no progress updates for 10 minutes)
+      const STUCK_MS = 10 * 60 * 1000;
+      if (elapsed > STUCK_MS) {
+        // Try to detect if agent is making progress
+        const feature = await this.loadFeature(projectPath, featureId);
+        if (feature?.planSpec?.tasksCompleted === feature?.planSpec?.tasksTotal) {
+          // Actually completed, just not cleaned up
+          continue;
+        }
+
+        if (
+          feature?.planSpec &&
+          feature.planSpec.tasksCompleted !== undefined &&
+          feature.planSpec.tasksTotal !== undefined
+        ) {
+          const updatedAt =
+            feature.planSpec.approvedAt || feature.planSpec.generatedAt || new Date().toISOString();
+          const lastUpdate = new Date(updatedAt).getTime();
+          const timeSinceUpdate = now - lastUpdate;
+
+          if (timeSinceUpdate > STUCK_MS) {
+            failedAgents.push({
+              featureId,
+              agentId: featureId,
+              status: 'in_progress',
+              lastActivity: updatedAt,
+              issue: 'stuck',
+            });
+          }
+        }
+      }
+    }
+
+    return failedAgents;
+  }
+
+  /**
+   * Recover a failed agent using checkpoint data
+   */
+  async recoverAgent(
+    projectPath: string,
+    agentId: string,
+    checkpointId: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const checkpointService = new CheckpointService(projectPath);
+      const checkpoint = await checkpointService.restoreCheckpoint(checkpointId);
+
+      if (!checkpoint) {
+        return {
+          success: false,
+          message: `Checkpoint ${checkpointId} not found`,
+        };
+      }
+
+      // Find the agent in the checkpoint
+      const agentData = checkpoint.agents.find((a) => a.agentId === agentId);
+      if (!agentData) {
+        return {
+          success: false,
+          message: `Agent ${agentId} not found in checkpoint`,
+        };
+      }
+
+      // Determine which task to resume from
+      const lastCompletedTask = [...agentData.taskHistory]
+        .reverse()
+        .find((t) => t.status === 'completed');
+
+      const nextTask = lastCompletedTask
+        ? agentData.taskHistory[agentData.taskHistory.indexOf(lastCompletedTask) + 1]
+        : agentData.taskHistory[0];
+
+      if (!nextTask) {
+        return {
+          success: false,
+          message: 'No tasks to recover - all tasks completed',
+        };
+      }
+
+      // Resume the feature from the checkpoint state
+      console.log(`[AutoMode] Recovering agent ${agentId} from checkpoint ${checkpointId}`);
+      console.log(`[AutoMode] Resuming from task: ${nextTask.taskId} - ${nextTask.description}`);
+
+      // Update feature planSpec with recovered state
+      const feature = await this.loadFeature(projectPath, checkpoint.featureId);
+      if (feature?.planSpec && checkpoint.state.taskHistory) {
+        // Convert checkpoint task history to ParsedTask format
+        const parsedTasks: ParsedTask[] = checkpoint.state.taskHistory.map((t) => ({
+          id: t.taskId,
+          description: t.description,
+          status: t.status,
+          startTime: t.startTime,
+          endTime: t.endTime,
+        }));
+
+        await this.updateFeaturePlanSpec(projectPath, checkpoint.featureId, {
+          tasks: parsedTasks,
+          tasksCompleted: checkpoint.state.taskHistory.filter((t) => t.status === 'completed')
+            .length,
+        });
+      }
+
+      // Resume execution
+      await this.resumeFeature(projectPath, checkpoint.featureId, true);
+
+      return {
+        success: true,
+        message: `Agent ${agentId} recovered from checkpoint ${checkpointId}`,
+      };
+    } catch (error) {
+      console.error(`[AutoMode] Failed to recover agent ${agentId}:`, error);
+      return {
+        success: false,
+        message: `Recovery failed: ${(error as Error).message}`,
+      };
+    }
+  }
+
+  /**
+   * Rollback a feature to a previous checkpoint
+   */
+  async rollbackFeature(
+    projectPath: string,
+    featureId: string,
+    checkpointId: string
+  ): Promise<{ success: boolean; message: string; restoredFiles?: string[] }> {
+    try {
+      const checkpointService = new CheckpointService(projectPath);
+      const checkpoint = await checkpointService.restoreCheckpoint(checkpointId);
+
+      if (!checkpoint) {
+        return {
+          success: false,
+          message: `Checkpoint ${checkpointId} not found`,
+        };
+      }
+
+      if (checkpoint.featureId !== featureId) {
+        return {
+          success: false,
+          message: `Checkpoint ${checkpointId} belongs to feature ${checkpoint.featureId}, not ${featureId}`,
+        };
+      }
+
+      console.log(`[AutoMode] Rolling back feature ${featureId} to checkpoint ${checkpointId}`);
+
+      // Stop the feature if it's currently running
+      if (this.runningFeatures.has(featureId)) {
+        await this.stopFeature(featureId);
+        console.log(`[AutoMode] Stopped running feature ${featureId} for rollback`);
+      }
+
+      // Restore feature state from checkpoint
+      const feature = await this.loadFeature(projectPath, featureId);
+      if (feature && checkpoint.state.taskHistory) {
+        // Convert checkpoint task history to ParsedTask format
+        const restoredTasks: ParsedTask[] = checkpoint.state.taskHistory.map((task) => ({
+          id: task.taskId,
+          description: task.description,
+          status: task.status === 'completed' ? 'completed' : 'pending',
+          startTime: task.startTime,
+          endTime: task.endTime,
+        }));
+
+        await this.updateFeaturePlanSpec(projectPath, featureId, {
+          tasks: restoredTasks,
+          tasksCompleted: restoredTasks.filter((t) => t.status === 'completed').length,
+          currentTaskId: undefined,
+        });
+
+        // Update feature status
+        await this.updateFeatureStatus(projectPath, featureId, 'pending');
+      }
+
+      // Note: File restoration is not implemented here as it would require
+      // storing full file snapshots in checkpoints. This is a conceptual rollback
+      // that resets the task state. For file-level rollback, git should be used.
+
+      this.emitAutoModeEvent('checkpoint_restored', {
+        featureId,
+        checkpointId,
+        projectPath,
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        message: `Feature ${featureId} rolled back to checkpoint ${checkpointId}`,
+        restoredFiles: checkpoint.state.filesModified,
+      };
+    } catch (error) {
+      console.error(`[AutoMode] Failed to rollback feature ${featureId}:`, error);
+      return {
+        success: false,
+        message: `Rollback failed: ${(error as Error).message}`,
+      };
+    }
+  }
+
+  /**
+   * Create a checkpoint for the current agent state
+   */
+  async createCheckpoint(
+    projectPath: string,
+    featureId: string,
+    description?: string
+  ): Promise<{ success: boolean; checkpointId?: string; message: string }> {
+    try {
+      const checkpointService = new CheckpointService(projectPath);
+      const feature = await this.loadFeature(projectPath, featureId);
+
+      if (!feature) {
+        return {
+          success: false,
+          message: `Feature ${featureId} not found`,
+        };
+      }
+
+      // Generate checkpoint ID
+      const checkpointId = `cp-${featureId}-${Date.now()}`;
+
+      // Gather agent state
+      const runningFeature = this.runningFeatures.get(featureId);
+      const agents: Array<{
+        agentId: string;
+        status: 'running' | 'completed' | 'failed' | 'stopped';
+        taskHistory: AgentState['taskHistory'];
+      }> = [
+        {
+          agentId: featureId,
+          status: runningFeature ? 'running' : 'stopped',
+          taskHistory: [], // Task history would need to be tracked during execution
+        },
+      ];
+
+      const state: AgentState = {
+        featureId,
+        taskHistory: [], // Task history would need to be tracked during execution
+        filesModified: [], // Would need to track this during execution
+        context: `Checkpoint created at ${new Date().toISOString()}`,
+        timestamp: new Date().toISOString(),
+      };
+
+      await checkpointService.createCheckpoint(checkpointId, agents, state, description);
+
+      this.emitAutoModeEvent('checkpoint_created', {
+        featureId,
+        checkpointId,
+        projectPath,
+        description,
+        timestamp: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        checkpointId,
+        message: `Checkpoint ${checkpointId} created for feature ${featureId}`,
+      };
+    } catch (error) {
+      console.error(`[AutoMode] Failed to create checkpoint for feature ${featureId}:`, error);
+      return {
+        success: false,
+        message: `Checkpoint creation failed: ${(error as Error).message}`,
+      };
+    }
+  }
+
+  /**
+   * List available checkpoints for a feature
+   */
+  async listFeatureCheckpoints(
+    projectPath: string,
+    featureId: string
+  ): Promise<
+    Array<{ checkpointId: string; version: number; createdAt: string; description?: string }>
+  > {
+    try {
+      const checkpointService = new CheckpointService(projectPath);
+      const checkpoints = await checkpointService.listCheckpoints(featureId);
+
+      return checkpoints.map((cp) => ({
+        checkpointId: cp.checkpointId,
+        version: cp.version,
+        createdAt: cp.createdAt,
+        description: cp.description,
+      }));
+    } catch (error) {
+      console.error(`[AutoMode] Failed to list checkpoints for feature ${featureId}:`, error);
+      return [];
+    }
   }
 }

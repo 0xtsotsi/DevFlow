@@ -1,10 +1,50 @@
 import { useState, useCallback } from 'react';
 
+interface CliStatusResult {
+  success: boolean;
+  status?: string;
+  path?: string | null;
+  version?: string | null;
+  method?: string;
+  auth?: {
+    authenticated: boolean;
+    method?: string;
+    hasStoredOAuthToken?: boolean;
+    hasEnvOAuthToken?: boolean;
+    hasStoredApiKey?: boolean;
+    hasEnvApiKey?: boolean;
+  };
+}
+
+interface CliStatus {
+  installed: boolean;
+  path: string | null;
+  version: string | null;
+  method: string;
+}
+
+interface AuthStatus {
+  authenticated: boolean;
+  method:
+    | 'oauth_token_env'
+    | 'oauth_token'
+    | 'api_key'
+    | 'api_key_env'
+    | 'credentials_file'
+    | 'cli_authenticated'
+    | 'none';
+  hasCredentialsFile: boolean;
+  oauthTokenValid: boolean;
+  apiKeyValid: boolean;
+  hasEnvOAuthToken: boolean;
+  hasEnvApiKey: boolean;
+}
+
 interface UseCliStatusOptions {
   cliType: 'claude';
-  statusApi: () => Promise<any>;
-  setCliStatus: (status: any) => void;
-  setAuthStatus: (status: any) => void;
+  statusApi: () => Promise<CliStatusResult>;
+  setCliStatus: (status: CliStatus) => void;
+  setAuthStatus: (status: AuthStatus) => void;
 }
 
 export function useCliStatus({
@@ -51,10 +91,12 @@ export function useCliStatus({
             authenticated: result.auth.authenticated,
             method,
             hasCredentialsFile: false,
-            oauthTokenValid: result.auth.hasStoredOAuthToken || result.auth.hasEnvOAuthToken,
-            apiKeyValid: result.auth.hasStoredApiKey || result.auth.hasEnvApiKey,
-            hasEnvOAuthToken: result.auth.hasEnvOAuthToken,
-            hasEnvApiKey: result.auth.hasEnvApiKey,
+            oauthTokenValid: Boolean(
+              result.auth.hasStoredOAuthToken || result.auth.hasEnvOAuthToken
+            ),
+            apiKeyValid: Boolean(result.auth.hasStoredApiKey || result.auth.hasEnvApiKey),
+            hasEnvOAuthToken: Boolean(result.auth.hasEnvOAuthToken),
+            hasEnvApiKey: Boolean(result.auth.hasEnvApiKey),
           };
           setAuthStatus(authStatus);
         }

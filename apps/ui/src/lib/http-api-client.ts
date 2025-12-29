@@ -22,12 +22,16 @@ import type {
   SpecRegenerationEvent,
   SuggestionType,
   GitHubAPI,
-  GitHubIssue,
-  GitHubPR,
+  BeadsAPI,
 } from './electron';
 import type { Message, SessionListItem } from '@/types/electron';
 import type { Feature, ClaudeUsageResponse } from '@/store/app-store';
 import type { WorktreeAPI, GitAPI, ModelDefinition, ProviderStatus } from '@/types/electron';
+import type {
+  ListBeadsIssuesFilters,
+  CreateBeadsIssueInput,
+  UpdateBeadsIssueInput,
+} from '@automaker/types';
 import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
 // Server URL - configurable via environment variable
@@ -442,6 +446,9 @@ export class HttpApiClient implements ElectronAPI {
       success: boolean;
       message?: string;
       error?: string;
+      version?: string;
+      details?: string;
+      manualCommand?: string;
     }> => this.post('/api/setup/install-claude'),
 
     authClaude: (): Promise<{
@@ -505,12 +512,16 @@ export class HttpApiClient implements ElectronAPI {
       error?: string;
     }> => this.get('/api/setup/gh-status'),
 
-    onInstallProgress: (callback: (progress: unknown) => void) => {
-      return this.subscribeToEvent('agent:stream', callback);
+    onInstallProgress: (
+      callback: (progress: { cli?: string; data?: string; type?: string }) => void
+    ) => {
+      return this.subscribeToEvent('agent:stream', callback as EventCallback);
     },
 
-    onAuthProgress: (callback: (progress: unknown) => void) => {
-      return this.subscribeToEvent('agent:stream', callback);
+    onAuthProgress: (
+      callback: (progress: { cli?: string; data?: string; type?: string; status?: string }) => void
+    ) => {
+      return this.subscribeToEvent('agent:stream', callback as EventCallback);
     },
   };
 
@@ -642,8 +653,10 @@ export class HttpApiClient implements ElectronAPI {
       this.post('/api/worktree/commit', { worktreePath, message }),
     push: (worktreePath: string, force?: boolean) =>
       this.post('/api/worktree/push', { worktreePath, force }),
-    createPR: (worktreePath: string, options?: any) =>
-      this.post('/api/worktree/create-pr', { worktreePath, ...options }),
+    createPR: (
+      worktreePath: string,
+      options?: { title?: string; body?: string; draft?: boolean }
+    ) => this.post('/api/worktree/create-pr', { worktreePath, ...options }),
     getDiffs: (projectPath: string, featureId: string) =>
       this.post('/api/worktree/diffs', { projectPath, featureId }),
     getFileDiff: (projectPath: string, featureId: string, filePath: string) =>
@@ -751,6 +764,21 @@ export class HttpApiClient implements ElectronAPI {
     checkRemote: (projectPath: string) => this.post('/api/github/check-remote', { projectPath }),
     listIssues: (projectPath: string) => this.post('/api/github/issues', { projectPath }),
     listPRs: (projectPath: string) => this.post('/api/github/prs', { projectPath }),
+  };
+
+  // Beads API
+  beads: BeadsAPI = {
+    list: (projectPath: string, filters?: ListBeadsIssuesFilters) =>
+      this.post('/api/beads/list', { projectPath, filters }),
+    create: (projectPath: string, input: CreateBeadsIssueInput) =>
+      this.post('/api/beads/create', { projectPath, issue: input }),
+    update: (projectPath: string, issueId: string, updates: UpdateBeadsIssueInput) =>
+      this.post('/api/beads/update', { projectPath, issueId, updates }),
+    delete: (projectPath: string, issueId: string) =>
+      this.post('/api/beads/delete', { projectPath, issueId }),
+    getReady: (projectPath: string, limit?: number) =>
+      this.post('/api/beads/ready', { projectPath, limit }),
+    validate: (projectPath: string) => this.post('/api/beads/validate', { projectPath }),
   };
 
   // Workspace API

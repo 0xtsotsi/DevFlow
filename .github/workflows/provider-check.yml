@@ -1,0 +1,164 @@
+name: Provider Integration Check
+
+on:
+  pull_request:
+    paths:
+      - 'apps/server/src/providers/**'
+      - 'apps/server/src/lib/telemetry*.ts'
+      - 'apps/server/src/services/agent-monitor.ts'
+      - 'apps/server/src/routes/providers/**'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'apps/server/src/providers/**'
+      - 'apps/server/src/lib/telemetry*.ts'
+      - 'apps/server/src/services/agent-monitor.ts'
+      - 'apps/server/src/routes/providers/**'
+
+jobs:
+  provider-validation:
+    name: Validate Provider Infrastructure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup project
+        uses: ./.github/actions/setup-project
+        with:
+          check-lockfile: 'true'
+
+      - name: Build shared packages
+        run: npm run build:packages
+
+      - name: Build server for type checking
+        run: npm run build --workspace=apps/server
+
+      - name: Verify provider exports
+        shell: bash
+        run: |
+          # Verify provider index exports are accessible
+          node -e "
+          import('./apps/server/src/providers/index.js').then(m => {
+            console.log('✓ Provider module exports:', Object.keys(m));
+            if (!m.EngineRegistry) throw new Error('EngineRegistry not exported');
+            if (!m.ClaudeProvider) throw new Error('ClaudeProvider not exported');
+            if (!m.CursorProvider) throw new Error('CursorProvider not exported');
+            console.log('✓ All expected exports found');
+          }).catch(e => {
+            console.error('✗ Provider export check failed:', e.message);
+            process.exit(1);
+          });
+          "
+
+      - name: Verify telemetry parsers
+        shell: bash
+        run: |
+          # Verify telemetry modules are accessible
+          node -e "
+          import('./apps/server/src/lib/telemetry.js').then(m => {
+            console.log('✓ Telemetry exports:', Object.keys(m));
+            if (!m.calculateCost) throw new Error('calculateCost not exported');
+            if (!m.createTelemetryCapture) throw new Error('createTelemetryCapture not exported');
+            console.log('✓ Telemetry module validated');
+          }).catch(e => {
+            console.error('✗ Telemetry module check failed:', e.message);
+            process.exit(1);
+          });
+          "
+
+  agent-monitor-validation:
+    name: Validate Agent Monitor Service
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup project
+        uses: ./.github/actions/setup-project
+        with:
+          check-lockfile: 'true'
+
+      - name: Build shared packages
+        run: npm run build:packages
+
+      - name: Verify better-sqlite3 compatibility
+        shell: bash
+        run: |
+          # Check that better-sqlite3 is properly installed
+          node -e "
+          const Database = require('better-sqlite3');
+          const db = new Database(':memory:');
+          db.exec('CREATE TABLE test (id INTEGER)');
+          console.log('✓ better-sqlite3 is working correctly');
+          db.close();
+          "
+
+      - name: Verify agent monitor exports
+        shell: bash
+        run: |
+          node -e "
+          import('./apps/server/src/services/agent-monitor.js').then(m => {
+            console.log('✓ AgentMonitor exports:', Object.keys(m));
+            if (!m.AgentMonitorService) throw new Error('AgentMonitorService not exported');
+            if (!m.getAgentMonitor) throw new Error('getAgentMonitor not exported');
+            console.log('✓ Agent monitor module validated');
+          }).catch(e => {
+            console.error('✗ Agent monitor check failed:', e.message);
+            process.exit(1);
+          });
+          "
+
+  integration-test:
+    name: Provider Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup project
+        uses: ./.github/actions/setup-project
+        with:
+          check-lockfile: 'true'
+
+      - name: Build shared packages
+        run: npm run build:packages
+
+      - name: Run server tests
+        run: npm run test:server
+        env:
+          NODE_ENV: test
+
+      - name: Test provider registry operations
+        shell: bash
+        run: |
+          node --run << 'EOF'
+          import { EngineRegistry } from './apps/server/src/providers/registry.js';
+          import { ClaudeProvider } from './apps/server/src/providers/claude-provider.js';
+
+          // Test registration
+          const claude = new ClaudeProvider();
+          const metadata = EngineRegistry.register('test-claude', claude, {});
+
+          console.log('✓ Provider registered:', metadata.id);
+
+          // Test retrieval
+          const retrieved = EngineRegistry.get('test-claude');
+          if (!retrieved || retrieved.id !== 'test-claude') {
+            throw new Error('Provider retrieval failed');
+          }
+          console.log('✓ Provider retrieved successfully');
+
+          // Test getAll
+          const all = EngineRegistry.getAll();
+          console.log('✓ Total providers registered:', all.length);
+
+          // Cleanup
+          EngineRegistry.unregister('test-claude');
+          console.log('✓ Provider registry integration test passed');
+          EOF

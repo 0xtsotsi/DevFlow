@@ -15,7 +15,9 @@ import dotenv from 'dotenv';
 
 import { createEventEmitter, type EventEmitter } from './lib/events.js';
 import { initAllowedPaths } from '@automaker/platform';
-import { authMiddleware, getAuthStatus } from './lib/auth.js';
+import { authMiddleware, initializeAuth } from './lib/auth.js';
+import { setAuthConfig } from './lib/claude-auth-manager.js';
+import { apiLimiter, healthLimiter, beadsLimiter, strictLimiter } from './lib/rate-limiter.js';
 import { createFsRoutes } from './routes/fs/index.js';
 import { createHealthRoutes } from './routes/health/index.js';
 import { createAgentRoutes } from './routes/agent/index.js';
@@ -47,9 +49,12 @@ import { createSpecRegenerationRoutes } from './routes/app-spec/index.js';
 import { createClaudeRoutes } from './routes/claude/index.js';
 import { ClaudeUsageService } from './services/claude-usage-service.js';
 import { createGitHubRoutes } from './routes/github/index.js';
+import { PRWatcherService } from './services/github-pr-watcher.js';
 import { createContextRoutes } from './routes/context/index.js';
 import { createBeadsRoutes } from './routes/beads/index.js';
 import { BeadsService } from './services/beads-service.js';
+import { GitHubIssuePollerService } from './services/github-issue-poller-service.js';
+import { createOrchestratorRoutes } from './routes/orchestrator/index.js';
 
 // Load environment variables
 dotenv.config();
@@ -57,6 +62,10 @@ dotenv.config();
 const PORT = parseInt(process.env.PORT || '3008', 10);
 const DATA_DIR = process.env.DATA_DIR || './data';
 const ENABLE_REQUEST_LOGGING = process.env.ENABLE_REQUEST_LOGGING !== 'false'; // Default to true
+
+// ============================================================================
+// Security Initialization
+// ============================================================================
 
 // Check for required environment variables
 const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
@@ -81,6 +90,48 @@ if (!hasAnthropicKey) {
 // Initialize security
 initAllowedPaths();
 
+// Initialize authentication (validates production setup)
+initializeAuth();
+
+// ============================================================================
+// CORS Configuration
+// ============================================================================
+
+/**
+ * Validate and normalize CORS_ORIGIN
+ *
+ * Defaults to localhost for development, requires valid URL otherwise.
+ */
+function validateCorsOrigin(): string {
+  const corsOrigin = process.env.CORS_ORIGIN;
+
+  if (!corsOrigin) {
+    console.warn('[CORS] No CORS_ORIGIN set, using localhost default');
+    return 'http://localhost:3008';
+  }
+
+  // Allow wildcard for development
+  if (corsOrigin === '*') {
+    console.warn('[CORS] ⚠️  Using wildcard origin - not recommended for production');
+    return '*';
+  }
+
+  // Validate URL format
+  try {
+    new URL(corsOrigin);
+    console.log(`[CORS] ✓ Origin set to: ${corsOrigin}`);
+    return corsOrigin;
+  } catch {
+    throw new Error(`Invalid CORS_ORIGIN: ${corsOrigin} - must be a valid URL`);
+  }
+}
+
+const CORS_ORIGIN = validateCorsOrigin();
+
+// ============================================================================
+// Express App Setup
+// ============================================================================
+
 // Create Express app
 const app = express();
 
@@ -103,7 +154,7 @@ if (ENABLE_REQUEST_LOGGING) {
 }
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: CORS_ORIGIN,
     credentials: true,
   })
 );
@@ -119,40 +170,66 @@ const autoModeService = new AutoModeService(events);
 const settingsService = new SettingsService(DATA_DIR);
 const claudeUsageService = new ClaudeUsageService();
 const beadsService = new BeadsService();
+const prWatcherService = new PRWatcherService({
+  webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
+  dataDir: DATA_DIR,
+});
+const gitHubIssuePollerService = new GitHubIssuePollerService(events);
 
 // Initialize services
 (async () => {
   await agentService.initialize();
   console.log('[Server] Agent service initialized');
+
+  // Load Claude authentication configuration from settings
+  try {
+    const globalSettings = await settingsService.getGlobalSettings();
+    const authMethod = globalSettings.claudeAuthMethod || 'auto';
+    setAuthConfig({ method: authMethod });
+    console.log(`[Server] Claude auth config loaded: ${authMethod}`);
+  } catch (error) {
+    console.warn('[Server] Failed to load auth config, using default:', error);
+    setAuthConfig({ method: 'auto' });
+  }
 })();
 
-// Mount API routes - health is unauthenticated for monitoring
-app.use('/api/health', createHealthRoutes());
+// ============================================================================
+// API Routes
+// ============================================================================
 
-// Apply authentication to all other routes
+// Mount API routes - health is rate-limited but unauthenticated for monitoring
+app.use('/api/health', healthLimiter, createHealthRoutes());
+
+// Apply authentication and rate limiting to all other routes
 app.use('/api', authMiddleware);
 
-app.use('/api/fs', createFsRoutes(events));
-app.use('/api/agent', createAgentRoutes(agentService, events));
-app.use('/api/sessions', createSessionsRoutes(agentService));
-app.use('/api/features', createFeaturesRoutes(featureLoader));
-app.use('/api/auto-mode', createAutoModeRoutes(autoModeService));
-app.use('/api/enhance-prompt', createEnhancePromptRoutes());
-app.use('/api/worktree', createWorktreeRoutes());
-app.use('/api/git', createGitRoutes());
-app.use('/api/setup', createSetupRoutes());
-app.use('/api/suggestions', createSuggestionsRoutes(events));
-app.use('/api/models', createModelsRoutes());
-app.use('/api/spec-regeneration', createSpecRegenerationRoutes(events));
-app.use('/api/running-agents', createRunningAgentsRoutes(autoModeService));
-app.use('/api/workspace', createWorkspaceRoutes());
-app.use('/api/templates', createTemplatesRoutes());
-app.use('/api/terminal', createTerminalRoutes());
-app.use('/api/settings', createSettingsRoutes(settingsService));
-app.use('/api/claude', createClaudeRoutes(claudeUsageService));
-app.use('/api/github', createGitHubRoutes());
-app.use('/api/context', createContextRoutes());
-app.use('/api/beads', createBeadsRoutes(beadsService));
+// General API routes with standard rate limiting
+app.use('/api/fs', apiLimiter, createFsRoutes(events));
+app.use('/api/agent', apiLimiter, createAgentRoutes(agentService, events));
+app.use('/api/sessions', apiLimiter, createSessionsRoutes(agentService));
+app.use('/api/features', apiLimiter, createFeaturesRoutes(featureLoader));
+app.use('/api/auto-mode', apiLimiter, createAutoModeRoutes(autoModeService));
+app.use('/api/enhance-prompt', apiLimiter, createEnhancePromptRoutes());
+app.use('/api/worktree', apiLimiter, createWorktreeRoutes());
+app.use('/api/git', apiLimiter, createGitRoutes());
+app.use('/api/setup', strictLimiter, createSetupRoutes());
+app.use('/api/suggestions', apiLimiter, createSuggestionsRoutes(events));
+app.use('/api/models', apiLimiter, createModelsRoutes());
+app.use('/api/spec-regeneration', apiLimiter, createSpecRegenerationRoutes(events));
+app.use('/api/running-agents', apiLimiter, createRunningAgentsRoutes(autoModeService));
+app.use('/api/workspace', apiLimiter, createWorkspaceRoutes());
+app.use('/api/templates', apiLimiter, createTemplatesRoutes());
+app.use('/api/terminal', apiLimiter, createTerminalRoutes());
+app.use('/api/settings', strictLimiter, createSettingsRoutes(settingsService));
+app.use('/api/claude', apiLimiter, createClaudeRoutes(claudeUsageService));
+app.use(
+  '/api/github',
+  apiLimiter,
+  createGitHubRoutes({ prWatcherService, pollerService: gitHubIssuePollerService })
+);
+app.use('/api/context', apiLimiter, createContextRoutes());
+app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
+app.use('/api/orchestrator', apiLimiter, createOrchestratorRoutes(events));
 
 // Create HTTP server
 const server = createServer(app);

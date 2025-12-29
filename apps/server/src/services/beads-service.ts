@@ -5,22 +5,32 @@
  * Beads is a dependency-aware issue tracker that gives AI agents long-term task memory.
  */
 
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
+import fsCallback from 'fs';
+import type {
+  BeadsIssue,
+  BeadsStats,
+  CreateBeadsIssueInput,
+  UpdateBeadsIssueInput,
+  ListBeadsIssuesFilters,
+} from '@automaker/types';
+import { safeJsonParse } from '../lib/json-parser.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export class BeadsService {
-  private watchTimeout?: NodeJS.Timeout;
+  // Note: watchTimeout removed from instance to prevent race conditions
+  // when watchDatabase is called multiple times on the same instance
 
   /**
    * Check if bd CLI is installed
    */
   async isBeadsInstalled(): Promise<boolean> {
     try {
-      const { stdout } = await execAsync('which bd');
+      const { stdout } = await execFileAsync('which', ['bd']);
       return stdout.trim().length > 0;
     } catch {
       return false;
@@ -32,7 +42,7 @@ export class BeadsService {
    */
   async getBeadsVersion(): Promise<string | null> {
     try {
-      const { stdout } = await execAsync('bd --version');
+      const { stdout } = await execFileAsync('bd', ['--version']);
       return stdout.trim();
     } catch {
       return null;
@@ -47,6 +57,10 @@ export class BeadsService {
     initialized: boolean;
     version?: string;
     error?: string;
+    cliPath?: string;
+    dbPath?: string;
+    dbExists?: boolean;
+    canInitialize?: boolean;
   }> {
     const installed = await this.isBeadsInstalled();
     if (!installed) {
@@ -54,13 +68,63 @@ export class BeadsService {
     }
 
     const version = await this.getBeadsVersion();
+    const cliPath = await this.getBeadsCliPath();
     const dbPath = this.getDatabasePath(projectPath);
+    const dbExists = await this.checkDatabaseExists(dbPath);
+    const canInitialize = await this.canInitializeBeads(projectPath);
 
+    return {
+      installed: true,
+      initialized: dbExists,
+      version: version ?? undefined,
+      cliPath,
+      dbPath,
+      dbExists,
+      canInitialize,
+    };
+  }
+
+  /**
+   * Get the path to the bd CLI executable
+   */
+  private async getBeadsCliPath(): Promise<string | undefined> {
+    try {
+      const { stdout } = await execFileAsync('which', ['bd']);
+      return stdout.trim();
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Check if the database file exists
+   */
+  private async checkDatabaseExists(dbPath: string): Promise<boolean> {
     try {
       await fs.access(dbPath);
-      return { installed: true, initialized: true, version };
+      return true;
     } catch {
-      return { installed: true, initialized: false, version };
+      return false;
+    }
+  }
+
+  /**
+   * Check if Beads can be initialized in the project directory
+   */
+  private async canInitializeBeads(projectPath: string): Promise<boolean> {
+    try {
+      const beadsDir = path.join(projectPath, '.beads');
+      await fs.access(beadsDir, fs.constants.W_OK);
+      return true;
+    } catch {
+      // Directory doesn't exist or isn't writable
+      // Check if parent directory is writable
+      try {
+        await fs.access(projectPath, fs.constants.W_OK);
+        return true;
+      } catch {
+        return false;
+      }
     }
   }
 
@@ -76,7 +140,7 @@ export class BeadsService {
       return;
     } catch {
       // Not initialized, run bd init
-      await execAsync('bd init --quiet', { cwd: projectPath });
+      await execFileAsync('bd', ['init', '--quiet'], { cwd: projectPath });
     }
   }
 
@@ -90,50 +154,38 @@ export class BeadsService {
   /**
    * List all issues in a project
    */
-  async listIssues(
-    projectPath: string,
-    filters?: {
-      status?: string[];
-      type?: string[];
-      labels?: string[];
-      priorityMin?: number;
-      priorityMax?: number;
-      titleContains?: string;
-      descContains?: string;
-      ids?: string[];
-    }
-  ): Promise<any[]> {
+  async listIssues(projectPath: string, filters?: ListBeadsIssuesFilters): Promise<BeadsIssue[]> {
     try {
-      let command = 'bd list --json';
+      const args = ['list', '--json'];
 
       // Apply filters
       if (filters?.status?.length) {
-        command += ` --status ${filters.status.join(',')}`;
+        args.push('--status', filters.status.join(','));
       }
       if (filters?.type?.length) {
-        command += ` --type ${filters.type.join(',')}`;
+        args.push('--type', filters.type.join(','));
       }
       if (filters?.labels?.length) {
-        command += ` --label ${filters.labels.join(',')}`;
+        args.push('--label', filters.labels.join(','));
       }
       if (filters?.priorityMin !== undefined) {
-        command += ` --priority-min ${filters.priorityMin}`;
+        args.push('--priority-min', String(filters.priorityMin));
       }
       if (filters?.priorityMax !== undefined) {
-        command += ` --priority-max ${filters.priorityMax}`;
+        args.push('--priority-max', String(filters.priorityMax));
       }
       if (filters?.titleContains) {
-        command += ` --title-contains "${filters.titleContains}"`;
+        args.push('--title-contains', filters.titleContains);
       }
       if (filters?.descContains) {
-        command += ` --desc-contains "${filters.descContains}"`;
+        args.push('--desc-contains', filters.descContains);
       }
       if (filters?.ids?.length) {
-        command += ` --id ${filters.ids.join(',')}`;
+        args.push('--id', filters.ids.join(','));
       }
 
-      const { stdout } = await execAsync(command, { cwd: projectPath });
-      const issues = JSON.parse(stdout);
+      const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'listIssues');
       return issues;
     } catch (error) {
       // If beads not initialized, return empty array
@@ -147,12 +199,12 @@ export class BeadsService {
   /**
    * Get a single issue by ID
    */
-  async getIssue(projectPath: string, issueId: string): Promise<any> {
+  async getIssue(projectPath: string, issueId: string): Promise<BeadsIssue | null> {
     try {
-      const { stdout } = await execAsync(`bd show ${issueId} --json`, {
+      const { stdout } = await execFileAsync('bd', ['show', issueId, '--json'], {
         cwd: projectPath,
       });
-      const issue = JSON.parse(stdout);
+      const issue = safeJsonParse<BeadsIssue>(stdout, 'getIssue');
       return issue;
     } catch (error) {
       throw new Error(`Failed to get issue ${issueId}: ${error}`);
@@ -162,34 +214,28 @@ export class BeadsService {
   /**
    * Create a new issue
    */
-  async createIssue(
-    projectPath: string,
-    input: {
-      title: string;
-      description?: string;
-      type?: string;
-      priority?: number;
-      labels?: string[];
-    }
-  ): Promise<any> {
+  async createIssue(projectPath: string, input: CreateBeadsIssueInput): Promise<BeadsIssue> {
     try {
-      let command = `bd create "${input.title}" --json`;
+      const args = ['create', input.title, '--json'];
 
       if (input.description) {
-        command += ` --description "${input.description}"`;
+        args.push('--description', input.description);
       }
       if (input.type) {
-        command += ` --type ${input.type}`;
+        args.push('--type', input.type);
       }
       if (input.priority !== undefined) {
-        command += ` --priority ${input.priority}`;
+        args.push('--priority', String(input.priority));
       }
       if (input.labels?.length) {
-        command += ` --labels ${input.labels.join(',')}`;
+        args.push('--labels', input.labels.join(','));
+      }
+      if (input.parentIssueId) {
+        args.push('--parent', input.parentIssueId);
       }
 
-      const { stdout } = await execAsync(command, { cwd: projectPath });
-      const issue = JSON.parse(stdout);
+      const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
+      const issue = safeJsonParse<BeadsIssue>(stdout, 'createIssue');
       return issue;
     } catch (error) {
       throw new Error(`Failed to create issue: ${error}`);
@@ -202,39 +248,32 @@ export class BeadsService {
   async updateIssue(
     projectPath: string,
     issueId: string,
-    updates: {
-      title?: string;
-      description?: string;
-      status?: string;
-      type?: string;
-      priority?: number;
-      labels?: string[];
-    }
-  ): Promise<any> {
+    updates: UpdateBeadsIssueInput
+  ): Promise<BeadsIssue> {
     try {
-      let command = `bd update ${issueId} --json`;
+      const args = ['update', issueId, '--json'];
 
       if (updates.title) {
-        command += ` --title "${updates.title}"`;
+        args.push('--title', updates.title);
       }
       if (updates.description) {
-        command += ` --description "${updates.description}"`;
+        args.push('--description', updates.description);
       }
       if (updates.status) {
-        command += ` --status ${updates.status}`;
+        args.push('--status', updates.status);
       }
       if (updates.type) {
-        command += ` --type ${updates.type}`;
+        args.push('--type', updates.type);
       }
       if (updates.priority !== undefined) {
-        command += ` --priority ${updates.priority}`;
+        args.push('--priority', String(updates.priority));
       }
       if (updates.labels) {
-        command += ` --labels ${updates.labels.join(',')}`;
+        args.push('--labels', updates.labels.join(','));
       }
 
-      const { stdout } = await execAsync(command, { cwd: projectPath });
-      const issue = JSON.parse(stdout);
+      const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
+      const issue = safeJsonParse<BeadsIssue>(stdout, 'updateIssue');
       return issue;
     } catch (error) {
       throw new Error(`Failed to update issue ${issueId}: ${error}`);
@@ -246,8 +285,11 @@ export class BeadsService {
    */
   async deleteIssue(projectPath: string, issueId: string, force = false): Promise<void> {
     try {
-      const command = force ? `bd delete ${issueId} --force` : `bd delete ${issueId}`;
-      await execAsync(command, { cwd: projectPath });
+      const args = ['delete', issueId];
+      if (force) {
+        args.push('--force');
+      }
+      await execFileAsync('bd', args, { cwd: projectPath });
     } catch (error) {
       throw new Error(`Failed to delete issue ${issueId}: ${error}`);
     }
@@ -263,8 +305,8 @@ export class BeadsService {
     type: 'blocks' | 'related' | 'parent' | 'discovered-from'
   ): Promise<void> {
     try {
-      const command = `bd dep add ${issueId} ${depId} --type ${type}`;
-      await execAsync(command, { cwd: projectPath });
+      const args = ['dep', 'add', issueId, depId, '--type', type];
+      await execFileAsync('bd', args, { cwd: projectPath });
     } catch (error) {
       throw new Error(`Failed to add dependency: ${error}`);
     }
@@ -275,8 +317,8 @@ export class BeadsService {
    */
   async removeDependency(projectPath: string, issueId: string, depId: string): Promise<void> {
     try {
-      const command = `bd dep remove ${issueId} ${depId}`;
-      await execAsync(command, { cwd: projectPath });
+      const args = ['dep', 'remove', issueId, depId];
+      await execFileAsync('bd', args, { cwd: projectPath });
     } catch (error) {
       throw new Error(`Failed to remove dependency: ${error}`);
     }
@@ -285,14 +327,14 @@ export class BeadsService {
   /**
    * Get ready work (issues with no open blockers)
    */
-  async getReadyWork(projectPath: string, limit?: number): Promise<any[]> {
+  async getReadyWork(projectPath: string, limit?: number): Promise<BeadsIssue[]> {
     try {
-      let command = 'bd ready --json';
+      const args = ['ready', '--json'];
       if (limit) {
-        command += ` --limit ${limit}`;
+        args.push('--limit', String(limit));
       }
-      const { stdout } = await execAsync(command, { cwd: projectPath });
-      const issues = JSON.parse(stdout);
+      const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'getReadyWork');
       return issues;
     } catch (error) {
       if (this.isNotInitializedError(error)) {
@@ -305,10 +347,10 @@ export class BeadsService {
   /**
    * Get statistics about the database
    */
-  async getStats(projectPath: string): Promise<any> {
+  async getStats(projectPath: string): Promise<BeadsStats> {
     try {
-      const { stdout } = await execAsync('bd stats --json', { cwd: projectPath });
-      const stats = JSON.parse(stdout);
+      const { stdout } = await execFileAsync('bd', ['stats', '--json'], { cwd: projectPath });
+      const stats = safeJsonParse<BeadsStats>(stdout, 'getStats');
       return stats;
     } catch (error) {
       if (this.isNotInitializedError(error)) {
@@ -317,6 +359,8 @@ export class BeadsService {
           openIssues: 0,
           inProgressIssues: 0,
           closedIssues: 0,
+          readyIssues: 0,
+          blockedIssues: 0,
         };
       }
       throw error;
@@ -328,38 +372,119 @@ export class BeadsService {
    */
   async sync(projectPath: string): Promise<void> {
     try {
-      await execAsync('bd sync', { cwd: projectPath });
+      await execFileAsync('bd', ['sync'], { cwd: projectPath });
     } catch (error) {
       throw new Error(`Failed to sync database: ${error}`);
     }
   }
 
   /**
+   * Search issues by text query
+   */
+  async searchIssues(
+    projectPath: string,
+    query: string,
+    options?: {
+      limit?: number;
+      inComments?: boolean;
+    }
+  ): Promise<BeadsIssue[]> {
+    try {
+      const args = ['search', query, '--json'];
+      if (options?.limit) {
+        args.push('--limit', String(options.limit));
+      }
+      if (options?.inComments) {
+        args.push('--comments');
+      }
+
+      const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'searchIssues');
+      return issues;
+    } catch (error) {
+      if (this.isNotInitializedError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get blocked issues (issues with open blockers)
+   */
+  async getBlockedIssues(projectPath: string): Promise<BeadsIssue[]> {
+    try {
+      const { stdout } = await execFileAsync('bd', ['blocked', '--json'], {
+        cwd: projectPath,
+      });
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'getBlockedIssues');
+      return issues;
+    } catch (error) {
+      if (this.isNotInitializedError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get stale issues (not updated recently)
+   */
+  async getStaleIssues(projectPath: string, days?: number): Promise<BeadsIssue[]> {
+    try {
+      const args = ['stale', '--json'];
+      if (days) {
+        args.push('--days', String(days));
+      }
+
+      const { stdout } = await execFileAsync('bd', args, { cwd: projectPath });
+      const issues = safeJsonParse<BeadsIssue[]>(stdout, 'getStaleIssues');
+      return issues;
+    } catch (error) {
+      if (this.isNotInitializedError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Watch the database for changes
+   *
+   * Uses a local timeout variable (not instance property) to avoid race conditions
+   * when watchDatabase is called multiple times concurrently on the same instance.
    */
   async watchDatabase(projectPath: string, callback: () => void): Promise<() => void> {
     const dbPath = this.getDatabasePath(projectPath);
 
     try {
-      const watcher = fs.watch(dbPath, () => {
+      let watchTimeout: NodeJS.Timeout | undefined;
+
+      const watcher = fsCallback.watch(dbPath, () => {
         // Debounce rapid changes
-        if (this.watchTimeout) {
-          clearTimeout(this.watchTimeout);
+        if (watchTimeout) {
+          clearTimeout(watchTimeout);
         }
-        this.watchTimeout = setTimeout(() => {
-          callback();
+        watchTimeout = setTimeout(() => {
+          try {
+            callback();
+          } catch (error) {
+            // Log error but don't stop watching
+            console.error('[BeadsService] Error in watchDatabase callback:', error);
+          }
         }, 500);
       });
 
       // Return cleanup function
       return () => {
         watcher.close();
-        if (this.watchTimeout) {
-          clearTimeout(this.watchTimeout);
+        if (watchTimeout) {
+          clearTimeout(watchTimeout);
         }
       };
     } catch (error) {
       // If watching fails (e.g., database doesn't exist), return no-op cleanup
+      console.error('[BeadsService] Failed to watch database:', error);
       return () => {};
     }
   }
@@ -367,8 +492,8 @@ export class BeadsService {
   /**
    * Check if error is due to beads not being initialized
    */
-  private isNotInitializedError(error: any): boolean {
-    const errorMsg = error?.message || error?.toString() || '';
+  private isNotInitializedError(error: unknown): boolean {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     return (
       errorMsg.includes('no such file') ||
       errorMsg.includes('database not found') ||
