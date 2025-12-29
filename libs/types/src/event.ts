@@ -84,6 +84,20 @@ export type EventType =
   | 'shared-state:changed'
   | 'shared-state:cleared'
   | 'shared-state:transaction-committed'
-  | 'shared-state:transaction-rolledback';
+  | 'shared-state:transaction-rolledback'
+  // Beads events (HYBRID-M2)
+  | 'beads:issue-created'
+  | 'beads:issue-updated'
+  | 'beads:issue-deleted'
+  | 'beads:dependency-added'
+  | 'beads:dependency-removed'
+  | 'beads:epic-started'
+  | 'beads:epic-completed'
+  | 'beads:sync-started'
+  | 'beads:sync-completed'
+  | 'beads:sync-error'
+  | 'beads:task-ready'
+  | 'beads:task-blocked'
+  | 'beads:cross-feature-resolved';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;
