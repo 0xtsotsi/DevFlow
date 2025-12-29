@@ -10,11 +10,14 @@
  * - PUT    /orchestrator/config   - Update configuration
  * - GET    /orchestrator/stats    - Get statistics
  * - GET    /orchestrator/tasks    - Get tracked tasks
+ * - GET    /orchestrator/init     - Get initialization status
+ * - GET    /orchestrator/webhook-setup - Get webhook setup instructions
  */
 
 import { Router, type Request, type Response } from 'express';
 import { getOrchestratorService } from '../../services/orchestrator-service.js';
 import type { EventEmitter } from '../../lib/events.js';
+import { createInitCheckHandler, createWebhookSetupHandler } from './routes/init.js';
 
 /**
  * Create orchestrator routes
@@ -180,6 +183,10 @@ export function createOrchestratorRoutes(events: EventEmitter): Router {
       });
     }
   });
+
+  // Initialization and setup routes
+  router.get('/init', createInitCheckHandler(events));
+  router.get('/webhook-setup', createWebhookSetupHandler());
 
   return router;
 }
