@@ -55,12 +55,20 @@ import { createBeadsRoutes } from './routes/beads/index.js';
 import { BeadsService } from './services/beads-service.js';
 import { GitHubIssuePollerService } from './services/github-issue-poller-service.js';
 import { createOrchestratorRoutes } from './routes/orchestrator/index.js';
+import { createSkillsRoutes } from './routes/skills/index.js';
+import { createHooksRoutes } from './routes/hooks/index.js';
 import { BeadsLiveLinkService } from './services/beads-live-link-service.js';
 import { BeadsMemoryService } from './services/beads-memory-service.js';
 import { BeadsAgentCoordinator } from './services/beads-agent-coordinator.js';
 import { getMCPBridge } from './lib/mcp-bridge.js';
 import { AgentRegistry } from './agents/agent-registry.js';
 import { SpecializedAgentService } from './agents/specialized-agent-service.js';
+import { HooksService } from './services/hooks-service.js';
+import { MCPConfigurationService } from './services/mcp-configuration-service.js';
+import { ResearchSkillService } from './services/research-skill-service.js';
+import { ImplementationSkillService } from './services/implementation-skill-service.js';
+import { CICDSkillService } from './services/cicd-skill-service.js';
+import { WorkflowOrchestratorService } from './services/workflow-orchestrator-service.js';
 
 // Load environment variables
 dotenv.config();
@@ -182,6 +190,14 @@ const prWatcherService = new PRWatcherService({
 });
 const gitHubIssuePollerService = new GitHubIssuePollerService(events);
 
+// Declare skill services (initialized in IIFE below)
+// Definite assignment assertion (!) is safe because IIFE runs synchronously for assignment
+let researchSkillService!: ResearchSkillService;
+let implementationSkillService!: ImplementationSkillService;
+let cicdSkillService!: CICDSkillService;
+let workflowOrchestratorService!: WorkflowOrchestratorService;
+let hooksService!: HooksService;
+
 // Initialize services
 (async () => {
   await agentService.initialize();
@@ -253,6 +269,45 @@ const gitHubIssuePollerService = new GitHubIssuePollerService(events);
   }, 30000);
 
   console.log('[Server] Beads autonomous memory services initialized');
+
+  // ============================================================================
+  // Skills & Hooks System
+  // ============================================================================
+
+  // Initialize MCP Configuration Service
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const mcpConfigurationService = new MCPConfigurationService(DATA_DIR, events);
+
+  // Initialize Hooks Manager and Service
+  hooksService = new HooksService(DATA_DIR, events);
+  await hooksService.initialize();
+
+  // Initialize Skill Services
+  researchSkillService = new ResearchSkillService(events);
+  implementationSkillService = new ImplementationSkillService(events);
+  cicdSkillService = new CICDSkillService(events);
+  workflowOrchestratorService = new WorkflowOrchestratorService(events);
+
+  // Wire up event listeners for skill coordination
+  events.subscribe(async (type: string, result: unknown) => {
+    if (type === 'agent:completed') {
+      // Notify hooks service of agent completion
+      const payload = result as { sessionId?: string; projectPath?: string };
+      await hooksService.executeHooks('post-task', {
+        sessionId: payload.sessionId || '',
+        projectPath: payload.projectPath || process.cwd(),
+      });
+    } else if (type === 'agent:error') {
+      // Notify hooks service of agent errors
+      const payload = result as { sessionId?: string; projectPath?: string };
+      await hooksService.executeHooks('post-task', {
+        sessionId: payload.sessionId || '',
+        projectPath: payload.projectPath || process.cwd(),
+      });
+    }
+  });
+
+  console.log('[Server] Skills & Hooks system initialized');
 })();
 
 // ============================================================================
@@ -292,6 +347,17 @@ app.use(
 app.use('/api/context', apiLimiter, createContextRoutes());
 app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
 app.use('/api/orchestrator', apiLimiter, createOrchestratorRoutes(events));
+app.use(
+  '/api/skills',
+  apiLimiter,
+  createSkillsRoutes({
+    researchSkillService,
+    implementationSkillService,
+    cicdSkillService,
+    workflowOrchestratorService,
+  })
+);
+app.use('/api/hooks', apiLimiter, createHooksRoutes(hooksService));
 
 // Create HTTP server
 const server = createServer(app);

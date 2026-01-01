@@ -16,6 +16,7 @@ export type AgentType =
   | 'debug'
   | 'documentation'
   | 'refactoring'
+  | 'orchestration'
   | 'generic';
 
 /**

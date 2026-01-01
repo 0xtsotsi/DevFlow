@@ -105,6 +105,46 @@ export type EventType =
   | 'beads:agent-cleaned'
   | 'beads:helper-spawned'
   | 'beads:helper-completed'
-  | 'beads:helper-failed';
+  | 'beads:helper-failed'
+  // Agent events
+  | 'agent:completed'
+  | 'agent:error'
+  // Hooks events
+  | 'hook:registered'
+  | 'hook:updated'
+  | 'hook:removed'
+  | 'hook:executed'
+  | 'hook:failed'
+  | 'hook:blocked'
+  // Skill events
+  | 'skill:started'
+  | 'skill:completed'
+  | 'skill:failed'
+  | 'skill:progress'
+  | 'skill:phase-started'
+  | 'skill:phase-completed'
+  | 'skill:phase-failed'
+  | 'skill:stage-started'
+  | 'skill:stage-completed'
+  | 'skill:stage-failed'
+  | 'skill:stage-skipped'
+  | 'skill:agent-started'
+  | 'skill:agent-completed'
+  | 'skill:agent-failed'
+  // Workflow events
+  | 'workflow:started'
+  | 'workflow:completed'
+  | 'workflow:failed'
+  | 'workflow:step-started'
+  | 'workflow:step-completed'
+  | 'workflow:step-failed'
+  | 'workflow:checkpoint-created'
+  | 'workflow:checkpoint-approved'
+  | 'workflow:checkpoint-rejected'
+  // MCP configuration events
+  | 'mcp:server-added'
+  | 'mcp:server-removed'
+  | 'mcp:server-toggled'
+  | 'mcp:permissions-updated';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

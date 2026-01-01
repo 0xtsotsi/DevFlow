@@ -264,6 +264,7 @@ export class AutoModeAgentIntegration {
         documentation: 0,
         refactoring: 0,
         generic: 0,
+        orchestration: 0,
       } as Record<AgentType, number>,
       byPhase: { planning: 0, implementation: 0, testing: 0 },
       avgDurationByAgent: {
@@ -275,6 +276,7 @@ export class AutoModeAgentIntegration {
         documentation: 0,
         refactoring: 0,
         generic: 0,
+        orchestration: 0,
       } as Record<AgentType, number>,
       successRateByAgent: {
         planning: 0,
@@ -285,6 +287,7 @@ export class AutoModeAgentIntegration {
         documentation: 0,
         refactoring: 0,
         generic: 0,
+        orchestration: 0,
       } as Record<AgentType, number>,
     };
 
@@ -297,6 +300,7 @@ export class AutoModeAgentIntegration {
       documentation: [],
       refactoring: [],
       generic: [],
+      orchestration: [],
     };
     const successByAgent: Record<AgentType, { success: number; total: number }> = {
       planning: { success: 0, total: 0 },
@@ -307,6 +311,7 @@ export class AutoModeAgentIntegration {
       documentation: { success: 0, total: 0 },
       refactoring: { success: 0, total: 0 },
       generic: { success: 0, total: 0 },
+      orchestration: { success: 0, total: 0 },
     };
 
     for (const execution of this.executionHistory) {

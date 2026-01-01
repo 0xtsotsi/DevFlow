@@ -134,3 +134,16 @@ export type {
   OrchestratorEventPayloads,
 } from './orchestrator.js';
 export { DEFAULT_ORCHESTRATOR_CONFIG } from './orchestrator.js';
+
+// Hooks types
+export type {
+  HookType,
+  Hook,
+  HookContext,
+  HookResult,
+  CreateHookInput,
+  UpdateHookInput,
+  HookValidationResult,
+  HookStats,
+  HookExecutionOptions,
+} from './hooks.js';
