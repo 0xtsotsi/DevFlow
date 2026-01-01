@@ -10,7 +10,6 @@ import type {
   AgentType,
   AgentConfig,
   AgentRegistryEntry,
-  AgentExecutionContext,
   AgentExecutionResult,
 } from '@automaker/types';
 import { getAgentConfigurations } from './agent-prompts.js';
@@ -317,7 +316,13 @@ export class AgentRegistry {
    */
   exportState(): {
     agents: Record<string, AgentRegistryEntry>;
-    history: typeof this.classificationHistory;
+    history: Array<{
+      timestamp: number;
+      task: string;
+      classifiedAs: AgentType;
+      confidence: number;
+      success: boolean;
+    }>;
   } {
     const agents: Record<string, AgentRegistryEntry> = {};
 
@@ -336,7 +341,13 @@ export class AgentRegistry {
    */
   importState(state: {
     agents: Record<string, AgentRegistryEntry>;
-    history: typeof this.classificationHistory;
+    history: Array<{
+      timestamp: number;
+      task: string;
+      classifiedAs: AgentType;
+      confidence: number;
+      success: boolean;
+    }>;
   }): void {
     for (const [agentType, entry] of Object.entries(state.agents)) {
       this.agents.set(agentType as AgentType, entry);

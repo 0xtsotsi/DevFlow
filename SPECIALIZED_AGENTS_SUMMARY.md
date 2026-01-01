@@ -7,6 +7,7 @@ Successfully implemented a comprehensive Specialized Worker Agents System for th
 ## What Was Built
 
 ### 1. Core Type Definitions (`libs/types/src/agent-types.ts`)
+
 - **AgentType enum**: 8 specialized agent types (planning, implementation, testing, review, debug, documentation, refactoring, generic)
 - **AgentCapability**: Defines agent skills and confidence levels
 - **AgentConfig**: Complete agent configuration structure
@@ -17,6 +18,7 @@ Successfully implemented a comprehensive Specialized Worker Agents System for th
 - **TaskAnalysis**: Detailed task analysis results
 
 ### 2. Agent System Prompts (`apps/server/src/agents/agent-prompts.ts`)
+
 Created comprehensive, role-specific system prompts for each agent:
 
 - **Planning Agent**: Spec creation, task breakdown, risk identification
@@ -29,6 +31,7 @@ Created comprehensive, role-specific system prompts for each agent:
 - **Generic Agent**: General-purpose tasks across domains
 
 Each prompt includes:
+
 - Role definition and responsibilities
 - Approach and methodology
 - Best practices
@@ -36,9 +39,11 @@ Each prompt includes:
 - What NOT to do (anti-patterns to avoid)
 
 ### 3. Task Classifier (`apps/server/src/agents/task-classifier.ts`)
+
 Intelligent task classification system:
 
 **Features**:
+
 - Keyword matching against agent-specific patterns
 - Programming language detection
 - File type analysis
@@ -49,6 +54,7 @@ Intelligent task classification system:
 - Alternative agent suggestions
 
 **Algorithm**:
+
 1. Extract keywords from prompt
 2. Detect languages, file types, frameworks
 3. Assess complexity
@@ -57,9 +63,11 @@ Intelligent task classification system:
 6. Return top recommendation with alternatives
 
 ### 4. Agent Registry (`apps/server/src/agents/agent-registry.ts`)
+
 Centralized agent management system:
 
 **Features**:
+
 - Agent registration and configuration
 - Usage statistics tracking (count, success rate, duration)
 - Historical performance analysis
@@ -70,6 +78,7 @@ Centralized agent management system:
 - Performance-based recommendations
 
 **Metrics Tracked**:
+
 - Usage count per agent
 - Success rate (exponential moving average)
 - Average execution duration
@@ -77,9 +86,11 @@ Centralized agent management system:
 - Classification history
 
 ### 5. Specialized Agent Service (`apps/server/src/agents/specialized-agent-service.ts`)
+
 High-level orchestration service:
 
 **Features**:
+
 - Task classification and agent selection
 - Single-agent execution
 - Multi-agent workflow execution
@@ -89,6 +100,7 @@ High-level orchestration service:
 - Agent statistics and recommendations
 
 **API**:
+
 - `classifyTask()`: Analyze and classify tasks
 - `executeTaskWithAgent()`: Execute with optimal agent
 - `executeMultiAgentWorkflow()`: Multi-step workflows
@@ -96,9 +108,11 @@ High-level orchestration service:
 - `getRecommendedAgents()`: Performance-based recommendations
 
 ### 6. AutoMode Integration (`apps/server/src/services/automode-agent-integration.ts`)
+
 Seamless integration with AutoModeService:
 
 **Features**:
+
 - Configurable agent selection per phase
 - Task classification for implementation tasks
 - Execution history tracking
@@ -107,6 +121,7 @@ Seamless integration with AutoModeService:
 - Event emission for real-time updates
 
 **Configuration**:
+
 ```typescript
 {
   useSpecializedAgents: boolean,
@@ -118,9 +133,11 @@ Seamless integration with AutoModeService:
 ```
 
 ### 7. Comprehensive Tests (`apps/server/tests/unit/agents/`)
+
 Full test coverage for:
 
 **Task Classifier Tests** (`task-classifier.test.ts`):
+
 - Keyword extraction
 - Language detection
 - File type detection
@@ -129,6 +146,7 @@ Full test coverage for:
 - Edge cases (empty prompts, very long prompts, etc.)
 
 **Agent Registry Tests** (`agent-registry.test.ts`):
+
 - Initialization and setup
 - Auto-selectable agents
 - Tool-based agent selection
@@ -138,7 +156,9 @@ Full test coverage for:
 - State export/import
 
 ### 8. Documentation (`apps/server/src/agents/README.md`)
+
 Comprehensive documentation including:
+
 - Architecture overview
 - Agent type descriptions
 - Usage examples for all major features
@@ -178,30 +198,35 @@ DevFlow/
 ## Key Features
 
 ### 1. Intelligent Agent Selection
+
 - Automatic task classification
 - Confidence-based routing
 - Historical performance learning
 - Alternative agent suggestions
 
 ### 2. Specialized Expertise
+
 - 8 distinct agent types
 - Role-specific system prompts
 - Tailored tool access
 - Optimized configurations
 
 ### 3. Performance Tracking
+
 - Usage statistics per agent
 - Success rate monitoring
 - Duration tracking
 - Historical analysis
 
 ### 4. Flexibility
+
 - Enable/disable specialized agents
 - Force specific agent types
 - Register custom agents
 - Multi-agent workflows
 
 ### 5. Seamless Integration
+
 - Works with existing AutoModeService
 - Event-based progress updates
 - Context-aware execution
@@ -213,10 +238,9 @@ DevFlow/
 import { specializedAgentService } from './agents';
 
 // Classify a task
-const { recommendedAgent, classification } =
-  specializedAgentService.classifyTask(
-    "Write comprehensive tests for the user authentication module"
-  );
+const { recommendedAgent, classification } = specializedAgentService.classifyTask(
+  'Write comprehensive tests for the user authentication module'
+);
 
 // Execute with optimal agent
 const result = await specializedAgentService.executeTaskWithAgent(
@@ -226,7 +250,7 @@ const result = await specializedAgentService.executeTaskWithAgent(
     cwd: '/path/to/project',
     abortController: new AbortController(),
   },
-  "Write comprehensive tests for the user authentication module"
+  'Write comprehensive tests for the user authentication module'
 );
 
 console.log(`Used ${result.agentType} agent`);
@@ -256,11 +280,13 @@ To integrate this system with AutoModeService:
 ## Testing
 
 Run tests with:
+
 ```bash
 npm test -- agents
 ```
 
 All tests passing with comprehensive coverage of:
+
 - Task classification logic
 - Agent registry operations
 - Statistics tracking
@@ -285,6 +311,7 @@ Potential improvements for future iterations:
 The Specialized Worker Agents System is now fully implemented and ready for integration. It provides a robust, flexible, and intelligent framework for leveraging specialized AI agents in autonomous feature development.
 
 The system is designed to be:
+
 - **Modular**: Easy to understand and maintain
 - **Extensible**: Simple to add new agent types
 - **Performant**: Efficient classification and execution

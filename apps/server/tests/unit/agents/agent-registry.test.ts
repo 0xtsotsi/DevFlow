@@ -67,7 +67,7 @@ describe('AgentRegistry', () => {
 
     it('should sort agents by priority', () => {
       const agents = registry.getAutoSelectableAgents();
-      const priorities = agents.map(agentType => {
+      const priorities = agents.map((agentType) => {
         const config = registry.getAgentConfig(agentType);
         return config?.priority || 0;
       });

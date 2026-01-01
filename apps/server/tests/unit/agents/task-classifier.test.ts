@@ -11,7 +11,9 @@ describe('TaskClassifier', () => {
 
   describe('analyzeTask', () => {
     it('should extract keywords from a prompt', () => {
-      const analysis = classifier.analyzeTask('Implement a user authentication system with JWT tokens');
+      const analysis = classifier.analyzeTask(
+        'Implement a user authentication system with JWT tokens'
+      );
 
       expect(analysis.keywords).toContain('implement');
       expect(analysis.keywords).toContain('authentication');

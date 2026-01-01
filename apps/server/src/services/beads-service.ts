@@ -25,18 +25,6 @@ import { safeJsonParse } from '../lib/json-parser.js';
 
 const execFileAsync = promisify(execFile);
 
-export interface BeadsIssue {
-  id: string;
-  title: string;
-  description?: string;
-  status: string;
-  type: string;
-  priority: number;
-  labels?: string[];
-  created_at?: string;
-  updated_at?: string;
-}
-
 export interface BeadsDependency {
   from: string;
   to: string;
@@ -570,7 +558,10 @@ export class BeadsService {
   /**
    * Get all dependencies for an issue (both incoming and outgoing)
    */
-  async getDependencies(projectPath: string, issueId: string): Promise<{
+  async getDependencies(
+    projectPath: string,
+    issueId: string
+  ): Promise<{
     blocks: string[];
     blockedBy: string[];
     related: string[];
@@ -583,9 +574,15 @@ export class BeadsService {
       // Get the issue to find its outgoing dependencies
       const issue = await this.getIssue(projectPath, issueId);
 
+      if (!issue) {
+        throw new Error(`Issue ${issueId} not found`);
+      }
+
       // Parse dependencies from the issue
-      const blocks: string[] = issue.dependencies?.filter((d: any) => d.type === 'blocks').map((d: any) => d.to) || [];
-      const related: string[] = issue.dependencies?.filter((d: any) => d.type === 'related').map((d: any) => d.to) || [];
+      const blocks: string[] =
+        issue.dependencies?.filter((d) => d.type === 'blocks').map((d) => d.to || '') || [];
+      const related: string[] =
+        issue.dependencies?.filter((d) => d.type === 'related').map((d) => d.to || '') || [];
       const parent = issue.parentId || null;
 
       // Find incoming dependencies (issues that block this one)
@@ -596,7 +593,7 @@ export class BeadsService {
         if (other.id === issueId) continue;
 
         // Check if other issue blocks this one
-        if (other.dependencies?.some((d: any) => d.type === 'blocks' && d.to === issueId)) {
+        if (other.dependencies?.some((d) => d.type === 'blocks' && d.to === issueId)) {
           blockedBy.push(other.id);
         }
 
@@ -677,14 +674,14 @@ export class BeadsService {
       const allIssues = await this.listIssues(projectPath);
 
       // Get all epics
-      const epics = allIssues.filter((i: any) => i.type === 'epic');
+      const epics = allIssues.filter((i: BeadsIssue) => i.type === 'epic');
 
       const epicData = await Promise.all(
         epics.map(async (epic: BeadsIssue) => {
           // Get subtasks (children)
-          const subtasks = allIssues.filter((i: any) => i.parentId === epic.id);
+          const subtasks = allIssues.filter((i: BeadsIssue) => i.parentId === epic.id);
 
-          const completedCount = subtasks.filter((i: any) => i.status === 'closed').length;
+          const completedCount = subtasks.filter((i: BeadsIssue) => i.status === 'closed').length;
           const totalCount = subtasks.length;
           const percentComplete = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
           const isComplete = completedCount === totalCount && totalCount > 0;
@@ -704,7 +701,7 @@ export class BeadsService {
       const readyEpics: string[] = [];
       for (const epic of epics) {
         const readyWork = await this.getReadyWork(projectPath);
-        const hasReadyTask = readyWork.some((task: any) => task.parentId === epic.id);
+        const hasReadyTask = readyWork.some((task: BeadsIssue) => task.parentId === epic.id);
         if (hasReadyTask) {
           readyEpics.push(epic.id);
         }
@@ -726,12 +723,16 @@ export class BeadsService {
       const issue = await this.getIssue(projectPath, issueId);
       const dependencies = await this.getDependencies(projectPath, issueId);
 
+      if (!issue) {
+        throw new Error(`Issue ${issueId} not found`);
+      }
+
       // Check if all blocking issues are closed
       const blockingIssues = await Promise.all(
         dependencies.blockedBy.map((id) => this.getIssue(projectPath, id))
       );
 
-      const hasOpenBlockers = blockingIssues.some((i) => i.status !== 'closed');
+      const hasOpenBlockers = blockingIssues.some((i) => i?.status !== 'closed');
 
       // Auto-update status if needed
       if (!hasOpenBlockers && issue.status === 'blocked') {

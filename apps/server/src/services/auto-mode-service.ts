@@ -2883,19 +2883,17 @@ Begin implementing task ${task.id} now.`;
    * Execute an epic with coordinated subtask execution
    * Uses Beads orchestration to execute subtasks in dependency order
    */
-  async executeEpic(
-    projectPath: string,
-    epicIssueId: string,
-    useWorktrees = true
-  ): Promise<void> {
+  async executeEpic(projectPath: string, epicIssueId: string, useWorktrees = true): Promise<void> {
     if (!this.useBeadsOrchestration || !this.beadsService || !this.beadsOrchestrator) {
-      throw new Error('Beads orchestration not enabled. Initialize AutoModeService with BeadsService.');
+      throw new Error(
+        'Beads orchestration not enabled. Initialize AutoModeService with BeadsService.'
+      );
     }
 
     try {
       // Get epic and subtasks
       const epic = await this.beadsService.getIssue(projectPath, epicIssueId);
-      if (epic.type !== 'epic') {
+      if (!epic || epic.type !== 'epic') {
         throw new Error(`Issue ${epicIssueId} is not an epic`);
       }
 
@@ -2913,7 +2911,7 @@ Begin implementing task ${task.id} now.`;
       const subtasks = epicData.subtasks;
       const readySubtasks = subtasks.filter((task) => {
         return !epicData.subtasks.some((other) =>
-          other.dependencies?.some((d: any) => d.type === 'blocks' && d.to === task.id)
+          other.dependencies?.some((d) => d.type === 'blocks' && d.to === task.id)
         );
       });
 
@@ -2950,14 +2948,16 @@ Begin implementing task ${task.id} now.`;
   /**
    * Get recommended execution order based on Beads dependencies
    */
-  async getRecommendedExecutionOrder(projectPath: string): Promise<Array<{ id: string; title: string; priority: number }>> {
+  async getRecommendedExecutionOrder(
+    projectPath: string
+  ): Promise<Array<{ id: string; title: string; priority: number }>> {
     if (!this.useBeadsOrchestration || !this.beadsOrchestrator) {
       return [];
     }
 
     try {
       const readyIssues = await this.beadsOrchestrator.getRecommendedOrder(projectPath);
-      return readyIssues.map((issue: any) => ({
+      return readyIssues.map((issue: { id: string; title: string; priority: number }) => ({
         id: issue.id,
         title: issue.title,
         priority: issue.priority,
@@ -3011,15 +3011,18 @@ Begin implementing task ${task.id} now.`;
       }>;
 
       // Execute with orchestration
-      const executionResults = await this.beadsOrchestrator.executeWithOrchestration(validFeatures, {
-        projectPath,
-        maxConcurrency,
-        respectPriorities: true,
-        respectDependencies: true,
-      });
+      const executionResults = await this.beadsOrchestrator.executeWithOrchestration(
+        validFeatures,
+        {
+          projectPath,
+          maxConcurrent: maxConcurrency,
+          respectPriorities: true,
+          respectDependencies: true,
+        }
+      );
 
       // Map results back to feature IDs
-      for (const [featureId, result] of executionResults.entries()) {
+      for (const [featureId] of executionResults.entries()) {
         results.set(featureId, true);
       }
 

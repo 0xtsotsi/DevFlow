@@ -46,7 +46,4 @@ export { TaskClassifier, taskClassifier } from './task-classifier.js';
 export { AgentRegistry, agentRegistry } from './agent-registry.js';
 
 // Re-export specialized agent service
-export {
-  SpecializedAgentService,
-  specializedAgentService,
-} from './specialized-agent-service.js';
+export { SpecializedAgentService, specializedAgentService } from './specialized-agent-service.js';

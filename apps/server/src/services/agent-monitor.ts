@@ -18,6 +18,9 @@ import path from 'path';
 import { ensureDir } from 'fs-extra';
 import type { ParsedTelemetry } from '../lib/telemetry.js';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DatabaseType = any;
+
 // Dynamic import for better-sqlite3 (optional dependency)
 const getDatabase = () => {
   try {
@@ -120,7 +123,7 @@ export interface AgentStats {
  * Singleton service for tracking AI agent executions.
  */
 export class AgentMonitorService {
-  private db!: any; // better-sqlite3 Database instance (loaded dynamically)
+  private db!: DatabaseType; // better-sqlite3 Database instance (loaded dynamically)
   private dbPath: string;
   private pidCheckInterval?: NodeJS.Timeout;
   private pidCheckIntervalMs = 30000; // 30 seconds

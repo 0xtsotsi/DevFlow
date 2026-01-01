@@ -11,7 +11,7 @@ import type { AgentType, TaskAnalysis, TaskClassification } from '@automaker/typ
 /**
  * Keywords and patterns associated with each agent type
  */
-const AGENT_KEYWORDS: Record<AgentType, string[]> = {
+const AGENT_KEYWORDS: Record<string, string[]> = {
   planning: [
     'plan',
     'specification',
@@ -129,8 +129,9 @@ const AGENT_KEYWORDS: Record<AgentType, string[]> = {
 
 /**
  * File extension patterns associated with each agent type
+ * Exported for potential future file-based classification enhancements
  */
-const AGENT_FILE_PATTERNS: Record<AgentType, RegExp[]> = {
+export const AGENT_FILE_PATTERNS: Record<string, RegExp[]> = {
   planning: [/\b(plan|spec|design|architecture)\.(md|txt)/i, /\breadme\b/i],
 
   implementation: [/\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h)$/i],
@@ -167,8 +168,6 @@ export class TaskClassifier {
    * Analyze a task prompt to extract key information
    */
   analyzeTask(prompt: string, filePaths?: string[]): TaskAnalysis {
-    const lowerPrompt = prompt.toLowerCase();
-
     // Extract keywords
     const keywords = this.extractKeywords(prompt);
 
@@ -238,7 +237,7 @@ export class TaskClassifier {
 
     // Build alternatives (next 2 highest scores)
     const alternatives = sorted.slice(1, 3).map(([agentType, score]) => ({
-      agentType,
+      type: agentType,
       confidence: score,
       reason: this.getAlternativeReason(agentType, analysis),
     }));
@@ -477,9 +476,8 @@ export class TaskClassifier {
     ];
 
     const hasCodeKeywords = codeKeywords.some((keyword) => lowerPrompt.includes(keyword));
-    const hasCodeFiles = filePaths?.some((path) =>
-      path.match(/\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h)$/i)
-    );
+    const hasCodeFiles =
+      filePaths?.some((path) => path.match(/\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h)$/i)) || false;
 
     return hasCodeKeywords || hasCodeFiles;
   }

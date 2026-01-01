@@ -6,9 +6,20 @@
  * different phases of feature implementation.
  */
 
-import type { AgentType, ParsedTask } from '@automaker/types';
+import type { AgentType } from '@automaker/types';
 import { specializedAgentService } from '../agents/specialized-agent-service.js';
 import type { EventEmitter } from '../lib/events.js';
+
+/**
+ * Parsed task from AutoMode planning
+ */
+interface ParsedTask {
+  id: string;
+  description: string;
+  filePath?: string;
+  phase?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+}
 
 /**
  * Integration configuration for using specialized agents in AutoMode
@@ -35,9 +46,9 @@ export interface AutoModeAgentConfig {
  */
 const DEFAULT_CONFIG: AutoModeAgentConfig = {
   useSpecializedAgents: true,
-  planningAgent: 'planning',
-  implementationAgent: 'implementation',
-  testingAgent: 'testing',
+  planningAgent: 'planning' as AgentType,
+  implementationAgent: 'implementation' as AgentType,
+  testingAgent: 'testing' as AgentType,
   autoClassifyTasks: true,
 };
 
@@ -90,7 +101,7 @@ export class AutoModeAgentIntegration {
     if (!this.config.useSpecializedAgents || !this.config.autoClassifyTasks) {
       // Use default implementation agent
       return {
-        agentType: this.config.implementationAgent || 'implementation',
+        agentType: this.config.implementationAgent || ('implementation' as AgentType),
         confidence: 1.0,
         reason: 'Using default implementation agent (auto-classification disabled)',
       };
@@ -114,12 +125,12 @@ export class AutoModeAgentIntegration {
   getAgentForPhase(phase: 'planning' | 'implementation' | 'testing'): AgentType {
     switch (phase) {
       case 'planning':
-        return this.config.planningAgent || 'planning';
+        return this.config.planningAgent || ('planning' as AgentType);
       case 'testing':
-        return this.config.testingAgent || 'testing';
+        return this.config.testingAgent || ('testing' as AgentType);
       case 'implementation':
       default:
-        return this.config.implementationAgent || 'implementation';
+        return this.config.implementationAgent || ('implementation' as AgentType);
     }
   }
 
@@ -244,19 +255,63 @@ export class AutoModeAgentIntegration {
   } {
     const stats = {
       totalExecutions: this.executionHistory.length,
-      byAgentType: {} as Record<AgentType, number>,
+      byAgentType: {
+        planning: 0,
+        implementation: 0,
+        testing: 0,
+        review: 0,
+        debug: 0,
+        documentation: 0,
+        refactoring: 0,
+        generic: 0,
+      } as Record<AgentType, number>,
       byPhase: { planning: 0, implementation: 0, testing: 0 },
-      avgDurationByAgent: {} as Record<AgentType, number>,
-      successRateByAgent: {} as Record<AgentType, number>,
+      avgDurationByAgent: {
+        planning: 0,
+        implementation: 0,
+        testing: 0,
+        review: 0,
+        debug: 0,
+        documentation: 0,
+        refactoring: 0,
+        generic: 0,
+      } as Record<AgentType, number>,
+      successRateByAgent: {
+        planning: 0,
+        implementation: 0,
+        testing: 0,
+        review: 0,
+        debug: 0,
+        documentation: 0,
+        refactoring: 0,
+        generic: 0,
+      } as Record<AgentType, number>,
     };
 
-    const durationsByAgent: Record<AgentType, number[]> = {};
-    const successByAgent: Record<AgentType, { success: number; total: number }> = {};
+    const durationsByAgent: Record<AgentType, number[]> = {
+      planning: [],
+      implementation: [],
+      testing: [],
+      review: [],
+      debug: [],
+      documentation: [],
+      refactoring: [],
+      generic: [],
+    };
+    const successByAgent: Record<AgentType, { success: number; total: number }> = {
+      planning: { success: 0, total: 0 },
+      implementation: { success: 0, total: 0 },
+      testing: { success: 0, total: 0 },
+      review: { success: 0, total: 0 },
+      debug: { success: 0, total: 0 },
+      documentation: { success: 0, total: 0 },
+      refactoring: { success: 0, total: 0 },
+      generic: { success: 0, total: 0 },
+    };
 
     for (const execution of this.executionHistory) {
       // Count by agent type
-      stats.byAgentType[execution.agentType] =
-        (stats.byAgentType[execution.agentType] || 0) + 1;
+      stats.byAgentType[execution.agentType] = (stats.byAgentType[execution.agentType] || 0) + 1;
 
       // Count by phase
       stats.byPhase[execution.taskType]++;
@@ -329,7 +384,8 @@ export class AutoModeAgentIntegration {
       recommendations.push({
         type: 'configuration',
         message: 'Specialized agents are disabled',
-        suggestion: 'Enable useSpecializedAgents to leverage specialized agents for different task types',
+        suggestion:
+          'Enable useSpecializedAgents to leverage specialized agents for different task types',
       });
     }
 

@@ -8,47 +8,15 @@
 /**
  * Agent type enumeration - defines all available specialized agent types
  */
-export enum AgentType {
-  /**
-   * Planning agent - creates specifications, breaks down features into tasks
-   */
-  PLANNING = 'planning',
-
-  /**
-   * Implementation agent - writes code, implements features
-   */
-  IMPLEMENTATION = 'implementation',
-
-  /**
-   * Testing agent - writes tests, verifies functionality
-   */
-  TESTING = 'testing',
-
-  /**
-   * Review agent - reviews code for quality, security, best practices
-   */
-  REVIEW = 'review',
-
-  /**
-   * Debug agent - diagnoses and fixes issues
-   */
-  DEBUG = 'debug',
-
-  /**
-   * Documentation agent - writes and updates documentation
-   */
-  DOCUMENTATION = 'documentation',
-
-  /**
-   * Refactoring agent - improves code structure and maintainability
-   */
-  REFACTORING = 'refactoring',
-
-  /**
-   * Generic agent - handles general-purpose tasks
-   */
-  GENERIC = 'generic',
-}
+export type AgentType =
+  | 'planning'
+  | 'implementation'
+  | 'testing'
+  | 'review'
+  | 'debug'
+  | 'documentation'
+  | 'refactoring'
+  | 'generic';
 
 /**
  * Agent capability - defines what an agent can do
