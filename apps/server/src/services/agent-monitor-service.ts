@@ -10,6 +10,7 @@
  */
 
 import type { EventEmitter } from '../lib/events.js';
+import type { EventType } from '@automaker/types';
 
 // Monitoring metrics interfaces
 interface AgentSessionMetrics {
@@ -350,18 +351,20 @@ export class AgentMonitorService {
       case 'message':
         this.recordMessage(sessionId);
         break;
-      case 'tool_use':
+      case 'tool_use': {
         const tool = data.tool as { name: string };
         if (tool?.name) {
           this.recordToolUse(sessionId, tool.name);
         }
         break;
-      case 'error':
+      }
+      case 'error': {
         const error = data.error as string;
         if (error) {
           this.recordError(sessionId, error);
         }
         break;
+      }
       case 'complete':
         this.completeSession(sessionId);
         break;
@@ -465,6 +468,6 @@ export class AgentMonitorService {
   }
 
   private emitMonitorEvent(type: string, data: Record<string, unknown>): void {
-    this.events.emit(`monitor:${type}` as any, data);
+    this.events.emit(`agent-monitor:${type}` as EventType, data);
   }
 }

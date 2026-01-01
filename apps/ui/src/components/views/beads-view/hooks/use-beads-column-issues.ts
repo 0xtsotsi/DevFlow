@@ -62,7 +62,9 @@ export function useBeadsColumnIssues({ issues, searchQuery }: UseBeadsColumnIssu
           return a.priority - b.priority;
         }
         // Then by creation date (older first)
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return aTime - bTime;
       });
     });
 

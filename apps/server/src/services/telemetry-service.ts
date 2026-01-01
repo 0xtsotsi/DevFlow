@@ -230,7 +230,7 @@ export class TelemetryService {
       featureId: params.featureId,
       model: params.model,
       provider: params.provider,
-    });
+    } as AgentTelemetryEvent);
   }
 
   /**
@@ -253,7 +253,7 @@ export class TelemetryService {
       provider: params.provider,
       messageCount: params.messageCount,
       duration: params.duration,
-    });
+    } as AgentTelemetryEvent);
   }
 
   /**
@@ -276,7 +276,7 @@ export class TelemetryService {
       provider: params.provider,
       error: params.error,
       duration: params.duration,
-    });
+    } as AgentTelemetryEvent);
   }
 
   /**
@@ -299,7 +299,7 @@ export class TelemetryService {
       fileCount: params.fileCount,
       sizeBytes: params.sizeBytes,
       operationTime: params.operationTime,
-    });
+    } as CheckpointTelemetryEvent);
   }
 
   /**
@@ -320,7 +320,7 @@ export class TelemetryService {
       checkpointId: params.checkpointId,
       fileCount: params.fileCount,
       operationTime: params.operationTime,
-    });
+    } as CheckpointTelemetryEvent);
   }
 
   /**
@@ -337,7 +337,7 @@ export class TelemetryService {
       sessionId: params.sessionId || this.currentSession || undefined,
       featureId: params.featureId,
       checkpointId: params.checkpointId,
-    });
+    } as CheckpointTelemetryEvent);
   }
 
   /**
@@ -358,7 +358,7 @@ export class TelemetryService {
       beadsIssueId: params.beadsIssueId,
       issueType: params.issueType,
       issueStatus: params.issueStatus,
-    });
+    } as BeadsTelemetryEvent);
   }
 
   /**
@@ -379,7 +379,7 @@ export class TelemetryService {
       beadsIssueId: params.beadsIssueId,
       issueType: params.issueType,
       issueStatus: params.issueStatus,
-    });
+    } as BeadsTelemetryEvent);
   }
 
   /**
@@ -396,7 +396,7 @@ export class TelemetryService {
       sessionId: params.sessionId || this.currentSession || undefined,
       featureId: params.featureId,
       dependencyType: params.dependencyType,
-    });
+    } as BeadsTelemetryEvent);
   }
 
   /**
@@ -417,7 +417,7 @@ export class TelemetryService {
       featureTitle: params.featureTitle,
       taskCount: params.taskCount,
       planningMode: params.planningMode,
-    });
+    } as FeatureTelemetryEvent);
   }
 
   /**
@@ -440,7 +440,7 @@ export class TelemetryService {
       taskCount: params.taskCount,
       planningMode: params.planningMode,
       duration: params.duration,
-    });
+    } as FeatureTelemetryEvent);
   }
 
   /**
@@ -461,7 +461,7 @@ export class TelemetryService {
       featureTitle: params.featureTitle,
       error: params.error,
       duration: params.duration,
-    });
+    } as FeatureTelemetryEvent);
   }
 
   /**
@@ -613,7 +613,7 @@ export class TelemetryService {
     }
 
     // Emit event for real-time monitoring
-    this.eventEmitter.emit('telemetry:event', event);
+    this.eventEmitter.emit('telemetry:started', event);
 
     // Persist to disk
     this.saveEvents();
@@ -625,9 +625,13 @@ export class TelemetryService {
   private async loadEvents(): Promise<void> {
     try {
       const content = await secureFs.readFile(this.eventsFile, 'utf-8');
-      const lines = content.trim().split('\n').filter(Boolean);
-      this.events = lines.map((line) => JSON.parse(line));
-    } catch (error) {
+      if (typeof content === 'string') {
+        const lines = content.trim().split('\n').filter(Boolean);
+        this.events = lines.map((line: string) => JSON.parse(line));
+      } else {
+        this.events = [];
+      }
+    } catch {
       // File doesn't exist yet, that's okay
       this.events = [];
     }
@@ -639,9 +643,13 @@ export class TelemetryService {
   private async loadSessions(): Promise<void> {
     try {
       const content = await secureFs.readFile(this.sessionsFile, 'utf-8');
-      const sessionsObj = JSON.parse(content);
-      this.sessions = new Map(Object.entries(sessionsObj));
-    } catch (error) {
+      if (typeof content === 'string') {
+        const sessionsObj = JSON.parse(content);
+        this.sessions = new Map(Object.entries(sessionsObj));
+      } else {
+        this.sessions = new Map();
+      }
+    } catch {
       // File doesn't exist yet, that's okay
       this.sessions = new Map();
     }

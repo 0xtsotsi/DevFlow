@@ -170,7 +170,19 @@ export class ClaudeProvider extends BaseProvider {
     console.log('[ClaudeProvider] Using API key authentication');
 
     // Build Claude SDK options
-    const defaultTools = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch'];
+    const defaultTools = [
+      'Read',
+      'Write',
+      'Edit',
+      'Glob',
+      'Grep',
+      'Bash',
+      'WebSearch',
+      'WebFetch',
+      'create_beads_issue', // NEW: Create Beads issues from agent tools
+      'query_beads_memory', // NEW: Search past issues for context
+      'spawn_helper_agent', // NEW: Spawn specialized helper agents
+    ];
     const toolsToUse = allowedTools || defaultTools;
 
     const sdkOptions: Options = {

@@ -13,6 +13,7 @@ import type {
   AgentExecutionContext,
   AgentExecutionResult,
   ExecuteOptions,
+  ConversationMessage,
 } from '@automaker/types';
 import { agentRegistry } from './agent-registry.js';
 import { taskClassifier } from './task-classifier.js';
@@ -66,7 +67,7 @@ export class SpecializedAgentService {
     model?: string,
     options?: {
       forceAgentType?: AgentType; // Override automatic classification
-      conversationHistory?: Array<{ role: string; content: string | Array<{ type: string; text?: string }> }>;
+      conversationHistory?: ConversationMessage[];
       previousContent?: string;
     }
   ): Promise<AgentExecutionResult> {
@@ -183,10 +184,12 @@ export class SpecializedAgentService {
       dependsOn?: string[]; // Names of previous steps this depends on
     }>,
     model?: string
-  ): Promise<Array<{
-    stepName: string;
-    result: AgentExecutionResult;
-  }>> {
+  ): Promise<
+    Array<{
+      stepName: string;
+      result: AgentExecutionResult;
+    }>
+  > {
     const results: Array<{ stepName: string; result: AgentExecutionResult }> = [];
     const stepOutputs = new Map<string, string>();
 
@@ -197,7 +200,7 @@ export class SpecializedAgentService {
 
       // Check if dependencies are met
       if (step.dependsOn) {
-        const missingDeps = step.dependsOn.filter(dep => !stepOutputs.has(dep));
+        const missingDeps = step.dependsOn.filter((dep) => !stepOutputs.has(dep));
         if (missingDeps.length > 0) {
           throw new Error(`Step ${i + 1} has missing dependencies: ${missingDeps.join(', ')}`);
         }
@@ -275,7 +278,7 @@ export class SpecializedAgentService {
     stats: ReturnType<typeof agentRegistry.getAgentStats>;
   }> {
     const agentTypes = agentRegistry.getAvailableAgentTypes();
-    const agents = agentTypes.map(type => {
+    const agents = agentTypes.map((type) => {
       const config = agentRegistry.getAgentConfig(type);
       const stats = agentRegistry.getAgentStats(type);
 

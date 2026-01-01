@@ -98,6 +98,13 @@ export type EventType =
   | 'beads:sync-error'
   | 'beads:task-ready'
   | 'beads:task-blocked'
-  | 'beads:cross-feature-resolved';
+  | 'beads:cross-feature-resolved'
+  | 'beads:agent-assigned'
+  | 'beads:agent-completed'
+  | 'beads:agent-failed'
+  | 'beads:agent-cleaned'
+  | 'beads:helper-spawned'
+  | 'beads:helper-completed'
+  | 'beads:helper-failed';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

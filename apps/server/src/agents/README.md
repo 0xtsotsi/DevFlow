@@ -40,11 +40,13 @@ The Specialized Worker Agents System provides a comprehensive framework for usin
 ## Available Agent Types
 
 ### 1. Planning Agent
+
 **Best for:** Creating specifications, breaking down features, designing architecture
 
 **Keywords:** plan, specification, design, architecture, requirements, user story
 
 **Capabilities:**
+
 - Create detailed feature specifications
 - Break down features into implementation tasks
 - Identify dependencies and risks
@@ -52,11 +54,13 @@ The Specialized Worker Agents System provides a comprehensive framework for usin
 **Tools:** Read, Glob, Grep (exploration-focused)
 
 ### 2. Implementation Agent
+
 **Best for:** Writing code, implementing features, building functionality
 
 **Keywords:** implement, create, build, add, develop, write code
 
 **Capabilities:**
+
 - Write new code following patterns
 - Modify existing code
 - Follow project conventions
@@ -64,11 +68,13 @@ The Specialized Worker Agents System provides a comprehensive framework for usin
 **Tools:** All tools (no restrictions)
 
 ### 3. Testing Agent
+
 **Best for:** Writing tests, verifying functionality, ensuring quality
 
 **Keywords:** test, verify, validate, assert, coverage
 
 **Capabilities:**
+
 - Write unit and integration tests
 - Verify implementations work correctly
 - Test edge cases and error conditions
@@ -76,11 +82,13 @@ The Specialized Worker Agents System provides a comprehensive framework for usin
 **Tools:** Write, Edit, Read, Bash (for running tests)
 
 ### 4. Review Agent
+
 **Best for:** Code review, quality assurance, security checks
 
 **Keywords:** review, audit, quality, best practices, security
 
 **Capabilities:**
+
 - Review code for quality and best practices
 - Identify bugs and security issues
 - Provide constructive feedback
@@ -88,11 +96,13 @@ The Specialized Worker Agents System provides a comprehensive framework for usin
 **Tools:** Read, Grep (analysis-focused)
 
 ### 5. Debug Agent
+
 **Best for:** Fixing bugs, diagnosing errors, troubleshooting issues
 
 **Keywords:** bug, error, fix, debug, issue, broken, crash
 
 **Capabilities:**
+
 - Diagnose and understand errors
 - Fix bugs and issues
 - Prevent future issues
@@ -100,11 +110,13 @@ The Specialized Worker Agents System provides a comprehensive framework for usin
 **Tools:** Edit, Write, Read, Bash (for debugging)
 
 ### 6. Documentation Agent
+
 **Best for:** Writing docs, updating README, creating guides
 
 **Keywords:** document, readme, comment, explain, guide, tutorial
 
 **Capabilities:**
+
 - Write user and developer documentation
 - Update README and project docs
 - Create clear, comprehensive documentation
@@ -112,11 +124,13 @@ The Specialized Worker Agents System provides a comprehensive framework for usin
 **Tools:** Write, Edit, Read
 
 ### 7. Refactoring Agent
+
 **Best for:** Improving code structure, reducing complexity, eliminating duplication
 
 **Keywords:** refactor, restructure, clean up, simplify, reorganize
 
 **Capabilities:**
+
 - Refactor code for better structure
 - Remove code duplication
 - Apply design patterns appropriately
@@ -124,11 +138,13 @@ The Specialized Worker Agents System provides a comprehensive framework for usin
 **Tools:** Edit, Read, Write
 
 ### 8. Generic Agent
+
 **Best for:** General-purpose tasks that don't require specialization
 
 **Keywords:** help, assist, task, general
 
 **Capabilities:**
+
 - Handle diverse software engineering tasks
 - Adapt approach based on task
 - Provide good judgment across domains
@@ -143,10 +159,9 @@ The Specialized Worker Agents System provides a comprehensive framework for usin
 import { specializedAgentService } from './agents';
 
 // Classify a task and get recommended agent
-const { recommendedAgent, classification, analysis } =
-  specializedAgentService.classifyTask(
-    "Write comprehensive tests for the user authentication module"
-  );
+const { recommendedAgent, classification, analysis } = specializedAgentService.classifyTask(
+  'Write comprehensive tests for the user authentication module'
+);
 
 console.log(`Recommended agent: ${recommendedAgent}`);
 console.log(`Confidence: ${classification.confidence}`);
@@ -166,13 +181,13 @@ const result = await specializedAgentService.executeTaskWithAgent(
     cwd: '/path/to/project',
     abortController: new AbortController(),
   },
-  "Write comprehensive tests for the user authentication module"
+  'Write comprehensive tests for the user authentication module'
 );
 
 console.log(`Agent used: ${result.agentType}`);
 console.log(`Success: ${result.success}`);
 console.log(`Duration: ${result.duration}ms`);
-console.log(`Tools used: ${result.toolsUsed.map(t => t.name).join(', ')}`);
+console.log(`Tools used: ${result.toolsUsed.map((t) => t.name).join(', ')}`);
 ```
 
 ### Force Specific Agent Type
@@ -186,7 +201,7 @@ const result = await specializedAgentService.executeTaskWithAgent(
     cwd: '/path/to/project',
     abortController: new AbortController(),
   },
-  "Implement the feature",
+  'Implement the feature',
   undefined, // model
   {
     forceAgentType: 'implementation', // Force implementation agent
@@ -267,18 +282,17 @@ const integration = createAutoModeAgentIntegration(events, {
 });
 
 // Use integration during feature execution
-const { agentType, duration, success } =
-  await integration.executeTaskWithSpecializedAgent({
-    task: { id: 'T001', description: 'Write tests', status: 'pending' },
-    phase: 'testing',
-    context: {
-      featureId: 'my-feature',
-      projectPath: '/path/to/project',
-      cwd: '/path/to/project',
-      abortController: new AbortController(),
-    },
-    taskPrompt: 'Write comprehensive tests for the auth module',
-  });
+const { agentType, duration, success } = await integration.executeTaskWithSpecializedAgent({
+  task: { id: 'T001', description: 'Write tests', status: 'pending' },
+  phase: 'testing',
+  context: {
+    featureId: 'my-feature',
+    projectPath: '/path/to/project',
+    cwd: '/path/to/project',
+    abortController: new AbortController(),
+  },
+  taskPrompt: 'Write comprehensive tests for the auth module',
+});
 
 // Get statistics and recommendations
 const stats = integration.getExecutionStats();
@@ -288,7 +302,9 @@ const recommendations = integration.getRecommendations();
 ## Agent Selection Process
 
 ### 1. Task Analysis
+
 The system analyzes the task prompt to extract:
+
 - Keywords and phrases
 - Programming languages mentioned
 - File types involved
@@ -297,21 +313,27 @@ The system analyzes the task prompt to extract:
 - Task characteristics (code, testing, docs, debugging)
 
 ### 2. Classification
+
 Based on the analysis, the system:
+
 - Matches keywords against agent-specific patterns
 - Calculates confidence scores for each agent type
 - Considers task characteristics (debugging, testing, etc.)
 - Adjusts scores based on complexity and file types
 
 ### 3. Historical Data
+
 If available, the system considers:
+
 - Similar tasks completed in the past
 - Success rates of different agents for those tasks
 - Performance metrics (duration, errors)
 - Recency of executions
 
 ### 4. Final Selection
+
 The system selects the agent with:
+
 - Highest confidence score from classification
 - Best historical performance for similar tasks
 - Highest priority among equally-matched agents
@@ -363,6 +385,7 @@ agentRegistry.registerCustomAgent('custom', {
 ## Performance Tracking
 
 The system automatically tracks:
+
 - Usage count per agent
 - Success rate (exponential moving average)
 - Average execution duration
@@ -370,6 +393,7 @@ The system automatically tracks:
 - Classification history
 
 Access this data via:
+
 ```typescript
 const stats = specializedAgentService.getAllAgentStats();
 const history = agentRegistry.getClassificationHistory(100);
@@ -400,6 +424,7 @@ npm test -- agents
 ```
 
 Tests cover:
+
 - Task classification accuracy
 - Agent registry management
 - Statistics tracking

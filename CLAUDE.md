@@ -115,3 +115,162 @@ npm run build --workspace=apps/ui
 ```bash
 npm run lint:lockfile
 ```
+
+## Beads Autonomous Memory System
+
+DevFlow includes an autonomous agent memory system built on Beads that provides:
+
+### Core Services
+
+1. **BeadsLiveLinkService** (`apps/server/src/services/beads-live-link-service.ts`)
+   - Automatically creates Beads issues from agent errors
+   - Supports agent-requested issue creation
+   - Rate limiting: 20 auto-issues/hour (configurable)
+   - Intelligent deduplication with 24-hour cache
+   - Severity assessment: Critical (P0), High (P1), Medium (P2), Low (P3)
+
+2. **BeadsMemoryService** (`apps/server/src/services/beads-memory-service.ts`)
+   - Queries past issues as agent context
+   - Semantic similarity search (>0.3 threshold)
+   - Extracts past decisions from closed issues
+   - AI-generated summaries with web search (via Exa MCP)
+   - 5-minute cache for performance
+   - Token estimation to prevent context overflow
+
+3. **BeadsAgentCoordinator** (`apps/server/src/services/beads-agent-coordinator.ts`)
+   - Autonomous agent coordination without central orchestrator
+   - Agent selection scoring: capability match (40%) + success rate (40%) + availability (20%)
+   - Auto-assigns ready work (issues with no blockers)
+   - Helper agent spawning for subtasks
+   - Issue locking prevents duplicate assignments
+   - Stale agent cleanup (2-hour timeout)
+
+### Agent Tools
+
+Agents can access these tools through ClaudeProvider:
+
+1. **create_beads_issue**: Track work items, bugs, or findings
+   - Input: `title`, `description?`, `type?`, `priority?`
+   - Automatically creates issues in Beads
+
+2. **query_beads_memory**: Search past issues for relevant context
+   - Input: `query`, `maxResults?` (default: 10)
+   - Returns categorized issues and AI summary
+
+3. **spawn_helper_agent**: Spawn specialized helper agents
+   - Input: `helperType`, `taskDescription`
+   - Creates helper agent with dedicated issue
+
+### Research Integration
+
+The ResearchService (`apps/server/src/services/research-service.ts`) now includes `researchForIssue()`:
+
+- Searches codebase for implementation examples (via Exa MCP)
+- Finds similar GitHub issues (via Grep MCP)
+- Analyzes dependencies (via TypeScript LSP)
+- Synthesizes actionable recommendations
+
+### Configuration
+
+Environment variables for customization:
+
+```bash
+# Beads Live Link
+BEADS_AUTO_ISSUES_ENABLED=true
+BEADS_MAX_AUTO_ISSUES_PER_HOUR=20
+BEADS_DEDUPLICATION_ENABLED=true
+
+# Beads Memory
+BEADS_MEMORY_CACHE_TTL=300000  # 5 minutes
+BEADS_MEMORY_MAX_RESULTS=10
+BEADS_MEMORY_INCLUDE_CLOSED=true
+
+# Beads Coordinator
+BEADS_COORDINATION_ENABLED=true
+BEADS_COORDINATION_INTERVAL=30000  # 30 seconds
+BEADS_MAX_CONCURRENT_AGENTS=5
+BEADS_HELPER_SPAWNING_ENABLED=true
+```
+
+### Architecture
+
+```
+Agent Error → Event Emitter → BeadsLiveLink → Auto-creates Issue
+                                            ↓
+Agent Query → BeadsMemory → Searches Issues → Returns Context
+                                            ↓
+Beads Issue → BeadsAgentCoordinator → Selects Agent → Assigns Work
+                                              ↓
+                                    Spawns Helper Agent
+```
+
+### Usage Examples
+
+**Automatic Error Tracking:**
+
+```typescript
+// When an agent encounters an error, BeadsLiveLink automatically
+// creates an issue with appropriate severity and priority
+```
+
+**Querying Memory:**
+
+```typescript
+const context = await beadsMemoryService.queryRelevantContext(
+  projectPath,
+  'Implement user authentication',
+  { maxResults: 10, includeClosed: true }
+);
+// Returns: related bugs, features, decisions, blockers, summary
+```
+
+**Spawning Helpers:**
+
+```typescript
+const result = await coordinator.spawnHelperAgent(
+  parentSessionId,
+  'testing',
+  'Write unit tests for auth module',
+  projectPath
+);
+```
+
+### Monitoring
+
+Services emit events for monitoring:
+
+- `beads:auto-issue-created` - New issue from agent
+- `beads:memory-query` - Memory query executed
+- `beads:agent-assigned` - Agent assigned to issue
+- `beads:helper-spawned` - Helper agent created
+- `beads:agent-completed` - Agent finished successfully
+- `beads:agent-failed` - Agent encountered error
+
+### Integration Points
+
+- **Events**: `apps/server/src/lib/events.ts` - All services use EventEmitter
+- **BeadsService**: `apps/server/src/services/beads-service.ts` - Core Beads API
+- **AgentService**: `apps/server/src/services/agent-service.ts` - Agent execution
+- **AgentRegistry**: `apps/server/src/agents/agent-registry.ts` - Available agents
+- **MCPBridge**: `apps/server/src/lib/mcp-bridge.ts` - Tool integration
+
+### File Locations
+
+**Services:**
+
+- `apps/server/src/services/beads-live-link-service.ts` (485 lines)
+- `apps/server/src/services/beads-memory-service.ts` (627 lines)
+- `apps/server/src/services/beads-agent-coordinator.ts` (803 lines)
+
+**Modified Files:**
+
+- `apps/server/src/providers/claude-provider.ts` - Added 3 tools
+- `apps/server/src/services/research-service.ts` - Added researchForIssue()
+- `apps/server/src/index.ts` - Service initialization
+- `libs/types/src/beads.ts` - Added 4 new interfaces
+
+**Tests:**
+
+- `apps/server/tests/unit/services/beads-live-link-service.test.ts`
+- `apps/server/tests/unit/services/beads-memory-service.test.ts`
+- `apps/server/tests/unit/services/beads-agent-coordinator.test.ts`

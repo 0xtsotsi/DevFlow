@@ -95,6 +95,10 @@ export type {
   ListBeadsIssuesFilters,
   BeadsValidationResult,
   BeadsStats,
+  CodeSearchResult,
+  GitHubIssue,
+  DependencyAnalysis,
+  IssueResearchResult,
 } from './beads.js';
 
 // Agent types

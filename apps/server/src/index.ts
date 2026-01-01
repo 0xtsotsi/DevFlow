@@ -55,6 +55,12 @@ import { createBeadsRoutes } from './routes/beads/index.js';
 import { BeadsService } from './services/beads-service.js';
 import { GitHubIssuePollerService } from './services/github-issue-poller-service.js';
 import { createOrchestratorRoutes } from './routes/orchestrator/index.js';
+import { BeadsLiveLinkService } from './services/beads-live-link-service.js';
+import { BeadsMemoryService } from './services/beads-memory-service.js';
+import { BeadsAgentCoordinator } from './services/beads-agent-coordinator.js';
+import { getMCPBridge } from './lib/mcp-bridge.js';
+import { AgentRegistry } from './agents/agent-registry.js';
+import { SpecializedAgentService } from './agents/specialized-agent-service.js';
 
 // Load environment variables
 dotenv.config();
@@ -191,6 +197,62 @@ const gitHubIssuePollerService = new GitHubIssuePollerService(events);
     console.warn('[Server] Failed to load auth config, using default:', error);
     setAuthConfig({ method: 'auto' });
   }
+
+  // ============================================================================
+  // Beads Autonomous Memory Services
+  // ============================================================================
+
+  // Initialize MCP bridge for all services
+  const mcpBridge = getMCPBridge(events);
+
+  // Initialize Beads Live Link (auto-creates issues from agent events)
+  const beadsLiveLinkService = new BeadsLiveLinkService(beadsService, events, {
+    autoCreateOnErrors: true,
+    autoCreateOnRequests: true,
+    maxAutoIssuesPerHour: 20,
+    enableDeduplication: true,
+  });
+  await beadsLiveLinkService.initialize(process.cwd());
+
+  // Initialize Beads Memory Service (context for agents)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const beadsMemoryService = new BeadsMemoryService(beadsService, mcpBridge);
+
+  // Initialize Agent Registry and Specialized Agent Service
+  const agentRegistry = new AgentRegistry();
+  const specializedAgentService = new SpecializedAgentService();
+
+  // Initialize Beads Agent Coordinator (autonomous coordination)
+  const beadsAgentCoordinator = new BeadsAgentCoordinator(
+    agentRegistry,
+    beadsService,
+    agentService,
+    events,
+    specializedAgentService,
+    {
+      coordinationInterval: 30000, // 30 seconds
+      maxConcurrentAgents: 5,
+      enableAutoAssignment: true,
+      enableHelperSpawning: true,
+      maxAgentAge: 7200000, // 2 hours
+    }
+  );
+
+  // Start coordination after server is ready
+  setTimeout(() => {
+    beadsAgentCoordinator.coordinateAgents(process.cwd()).catch((err) => {
+      console.error('[Server] Failed to start beads coordination:', err);
+    });
+  }, 5000); // Wait 5 seconds for server to stabilize
+
+  // Periodic coordination loop
+  setInterval(() => {
+    beadsAgentCoordinator.coordinateAgents(process.cwd()).catch((err) => {
+      console.error('[Server] Beads coordination error:', err);
+    });
+  }, 30000);
+
+  console.log('[Server] Beads autonomous memory services initialized');
 })();
 
 // ============================================================================

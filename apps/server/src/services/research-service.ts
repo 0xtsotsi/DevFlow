@@ -18,6 +18,10 @@ import type {
   GreptileSearchResult,
   ExaSearchResult,
   LSPCodeAnalysis,
+  CodeSearchResult,
+  GitHubIssue,
+  DependencyAnalysis,
+  IssueResearchResult,
 } from '@automaker/types';
 import { ExaResearchClient } from './exa-research-client.js';
 import { getGreptileClient } from './greptile-client.js';
@@ -721,6 +725,368 @@ export class ResearchService {
       totalResearches: researches.length,
       activeResearches: researches.length,
       avgResultsCount: researches.length > 0 ? totalResultsCount / researches.length : 0,
+    };
+  }
+
+  /**
+   * Research for a specific Beads issue
+   *
+   * This method coordinates research for a given issue by:
+   * 1. Searching the codebase for relevant code patterns
+   * 2. Searching GitHub for similar issues and solutions
+   * 3. Analyzing dependencies for potential conflicts
+   * 4. Synthesizing findings into actionable recommendations
+   *
+   * @param issueId - The Beads issue ID to research
+   * @param projectPath - The project path to search within
+   * @returns Research results with code examples, similar issues, and recommendations
+   */
+  async researchForIssue(issueId: string, projectPath: string): Promise<IssueResearchResult> {
+    const startTime = Date.now();
+
+    console.log(`[ResearchService] Starting research for issue ${issueId}`);
+
+    try {
+      // Extract search query from issue ID (use the ID itself as a starting point)
+      const searchQuery = issueId;
+
+      // Run all research in parallel with graceful fallback
+      const results = await Promise.allSettled([
+        this.searchCodebaseMCP(searchQuery),
+        this.searchGitHubMCP(searchQuery),
+        this.analyzeDependenciesMCP(issueId, projectPath),
+      ]);
+
+      // Extract results with fallbacks
+      const codeExamples =
+        results[0].status === 'fulfilled' ? results[0].value : ([] as CodeSearchResult[]);
+      const similarGitHubIssues =
+        results[1].status === 'fulfilled' ? results[1].value : ([] as GitHubIssue[]);
+      const depsAnalysis =
+        results[2].status === 'fulfilled' ? results[2].value : (null as DependencyAnalysis | null);
+
+      // Log any errors
+      for (const result of results) {
+        if (result.status === 'rejected') {
+          console.warn(
+            `[ResearchService] Research step failed for issue ${issueId}:`,
+            result.reason
+          );
+        }
+      }
+
+      // Synthesize recommendations
+      const recommendations = this.synthesizeIssueRecommendations(
+        codeExamples,
+        similarGitHubIssues,
+        depsAnalysis
+      );
+
+      // Extract dependency conflicts
+      const dependencyConflicts = depsAnalysis?.conflicts || [];
+
+      const researchResult: IssueResearchResult = {
+        issueId,
+        codeExamples,
+        similarGitHubIssues,
+        dependencyConflicts,
+        recommendations,
+        researchedAt: new Date().toISOString(),
+        duration: Date.now() - startTime,
+      };
+
+      console.log(
+        `[ResearchService] Research complete for issue ${issueId} (${Date.now() - startTime}ms)`
+      );
+
+      return researchResult;
+    } catch (error) {
+      throw new ResearchServiceError(
+        `Research failed for issue ${issueId}: ${(error as Error).message}`,
+        'RESEARCH_FAILED',
+        error
+      );
+    }
+  }
+
+  /**
+   * Search codebase using MCP tools
+   *
+   * Uses Exa code context search to find relevant code examples.
+   *
+   * @param query - Search query for code
+   * @returns Array of code search results
+   */
+  private async searchCodebaseMCP(query: string): Promise<CodeSearchResult[]> {
+    const bridge = getMCPBridge();
+
+    if (!bridge.isAvailable()) {
+      console.warn('[ResearchService] MCP not available - skipping codebase search');
+      return [];
+    }
+
+    try {
+      // Use Exa code context search
+      const response = await bridge.callTool('mcp__exa__get_code_context_exa', {
+        query,
+        tokensNum: 5000,
+      });
+
+      if (response.success && response.data) {
+        return this.normalizeCodeSearchResults(response.data);
+      }
+
+      return [];
+    } catch (error) {
+      console.warn('[ResearchService] Codebase search failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Search GitHub for similar issues using MCP tools
+   *
+   * Uses Grep GitHub search to find similar issues and their solutions.
+   *
+   * @param query - Search query for GitHub issues
+   * @returns Array of similar GitHub issues
+   */
+  private async searchGitHubMCP(query: string): Promise<GitHubIssue[]> {
+    const bridge = getMCPBridge();
+
+    if (!bridge.isAvailable()) {
+      console.warn('[ResearchService] MCP not available - skipping GitHub search');
+      return [];
+    }
+
+    try {
+      // Use Grep GitHub search - convert query to code pattern
+      // For issues, we search for common problem patterns
+      const searchPattern = query.includes('=') ? query : `'${query}'`;
+
+      const response = await bridge.callTool('mcp__grep__searchGitHub', {
+        query: searchPattern,
+        matchCase: false,
+        language: ['TypeScript', 'JavaScript', 'Python'],
+      });
+
+      if (response.success && response.data) {
+        return this.normalizeGitHubResults(response.data);
+      }
+
+      return [];
+    } catch (error) {
+      console.warn('[ResearchService] GitHub search failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Analyze dependencies for potential conflicts
+   *
+   * Uses TypeScript LSP to analyze project dependencies.
+   *
+   * @param issueId - Issue being researched (for logging)
+   * @param projectPath - Path to the project
+   * @returns Dependency analysis or null if unavailable
+   */
+  private async analyzeDependenciesMCP(
+    issueId: string,
+    projectPath: string
+  ): Promise<DependencyAnalysis | null> {
+    const bridge = getMCPBridge();
+
+    if (!bridge.isAvailable()) {
+      console.warn('[ResearchService] MCP not available - skipping dependency analysis');
+      return null;
+    }
+
+    try {
+      // Try to use TypeScript LSP to analyze dependencies
+      const response = await bridge.callTool('mcp__typescript_lsp__get_symbols', {
+        path: projectPath,
+      });
+
+      if (response.success && response.data) {
+        return this.normalizeDependencyAnalysis(response.data);
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`[ResearchService] Dependency analysis failed for issue ${issueId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Synthesize recommendations from research results
+   *
+   * @param codeResults - Code search results
+   * @param githubResults - GitHub issue results
+   * @param depsAnalysis - Dependency analysis
+   * @returns Array of actionable recommendations
+   */
+  private synthesizeIssueRecommendations(
+    codeResults: CodeSearchResult[],
+    githubResults: GitHubIssue[],
+    depsAnalysis: DependencyAnalysis | null
+  ): string[] {
+    const recommendations: string[] = [];
+
+    // From code examples
+    if (codeResults.length > 0) {
+      recommendations.push(`Found ${codeResults.length} relevant code examples in the codebase`);
+      recommendations.push('Review existing patterns before implementing changes');
+    }
+
+    // From GitHub issues
+    if (githubResults.length > 0) {
+      const openIssues = githubResults.filter((issue) => issue.state === 'open');
+      if (openIssues.length > 0) {
+        recommendations.push(
+          `Found ${openIssues.length} similar open issues on GitHub - review for potential solutions`
+        );
+      }
+      const closedIssues = githubResults.filter((issue) => issue.state === 'closed');
+      if (closedIssues.length > 0) {
+        recommendations.push(
+          `Found ${closedIssues.length} similar closed issues - review for proven solutions`
+        );
+      }
+    }
+
+    // From dependency analysis
+    if (depsAnalysis) {
+      if (depsAnalysis.conflicts.length > 0) {
+        recommendations.push(
+          `Warning: ${depsAnalysis.conflicts.length} potential dependency conflicts detected`
+        );
+        recommendations.push(`Conflicts: ${depsAnalysis.conflicts.join(', ')}`);
+      }
+      if (depsAnalysis.dependencies.length > 0) {
+        recommendations.push(
+          `Project has ${depsAnalysis.dependencies.length} dependencies - check for compatibility`
+        );
+      }
+    }
+
+    // Default recommendations if no specific findings
+    if (recommendations.length === 0) {
+      recommendations.push('Start with a minimal implementation');
+      recommendations.push('Add comprehensive tests');
+      recommendations.push('Document the implementation');
+      recommendations.push('Review similar implementations in the codebase');
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Normalize code search results from MCP tool response
+   *
+   * @param data - Raw MCP tool response data
+   * @returns Normalized code search results
+   */
+  private normalizeCodeSearchResults(data: unknown): CodeSearchResult[] {
+    // The structure depends on the Exa MCP tool response format
+    if (typeof data !== 'object' || data === null) {
+      return [];
+    }
+
+    const results: CodeSearchResult[] = [];
+    const response = data as Record<string, unknown>;
+
+    // Handle array response
+    const items =
+      (response.results as Array<Record<string, unknown>>) ||
+      (response.items as Array<Record<string, unknown>>);
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        if (typeof item === 'object' && item !== null) {
+          results.push({
+            filePath: (item.filePath as string) || (item.file as string) || '',
+            code: (item.code as string) || (item.snippet as string) || '',
+            line: (item.line as number) || 0,
+            repository: (item.repository as string) || 'local',
+          });
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Normalize GitHub search results from MCP tool response
+   *
+   * @param data - Raw MCP tool response data
+   * @returns Normalized GitHub issues
+   */
+  private normalizeGitHubResults(data: unknown): GitHubIssue[] {
+    if (typeof data !== 'object' || data === null) {
+      return [];
+    }
+
+    const results: GitHubIssue[] = [];
+    const response = data as Record<string, unknown>;
+
+    // Handle array response
+    const items =
+      (response.results as Array<Record<string, unknown>>) ||
+      (response.items as Array<Record<string, unknown>>);
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        if (typeof item === 'object' && item !== null) {
+          const state = (item.state as string) || 'unknown';
+          results.push({
+            title: (item.title as string) || '',
+            url: (item.url as string) || (item.html_url as string) || '',
+            repository: (item.repository as string) || (item.repo as string) || '',
+            state: (state === 'open' || state === 'closed' ? state : 'unknown') as
+              | 'open'
+              | 'closed'
+              | 'unknown',
+          });
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Normalize dependency analysis from MCP tool response
+   *
+   * @param data - Raw MCP tool response data
+   * @returns Normalized dependency analysis
+   */
+  private normalizeDependencyAnalysis(data: unknown): DependencyAnalysis | null {
+    if (typeof data !== 'object' || data === null) {
+      return null;
+    }
+
+    const response = data as Record<string, unknown>;
+    const conflicts: string[] = [];
+    const dependencies: string[] = [];
+
+    // Extract dependencies if available
+    const deps = response.dependencies as Array<Record<string, unknown>> | undefined;
+    if (Array.isArray(deps)) {
+      for (const dep of deps) {
+        const name = (dep.name as string) || '';
+        if (name) {
+          dependencies.push(name);
+          // Check for conflicts or warnings
+          if (dep.warning || dep.error) {
+            conflicts.push(name);
+          }
+        }
+      }
+    }
+
+    return {
+      conflicts,
+      dependencies,
     };
   }
 }

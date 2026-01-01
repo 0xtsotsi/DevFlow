@@ -120,7 +120,7 @@ export class ReviewWatcherService {
    *
    * Returns: Array of MCPTask objects
    */
-  async listTasks(projectId: string, options?: ListTasksOptions): Promise<MCPTask[]> {
+  async listTasks(_projectId: string, _options?: ListTasksOptions): Promise<MCPTask[]> {
     this.ensureInitialized();
     throw new Error(
       'This method is a placeholder. Use the mcp__vibe_kanban__list_tasks MCP tool directly.'
@@ -135,7 +135,7 @@ export class ReviewWatcherService {
    *
    * Returns: MCPTask object with full details
    */
-  async getTask(taskId: string): Promise<MCPTask> {
+  async getTask(_taskId: string): Promise<MCPTask> {
     this.ensureInitialized();
     throw new Error(
       'This method is a placeholder. Use the mcp__vibe_kanban__get_task MCP tool directly.'
@@ -152,7 +152,7 @@ export class ReviewWatcherService {
    *
    * Returns: Created MCPTask object
    */
-  async createTask(options: CreateTaskOptions): Promise<MCPTask> {
+  async createTask(_options: CreateTaskOptions): Promise<MCPTask> {
     this.ensureInitialized();
     throw new Error(
       'This method is a placeholder. Use the mcp__vibe_kanban__create_task MCP tool directly.'
@@ -170,7 +170,7 @@ export class ReviewWatcherService {
    *
    * Returns: Updated MCPTask object
    */
-  async updateTask(options: UpdateTaskOptions): Promise<MCPTask> {
+  async updateTask(_options: UpdateTaskOptions): Promise<MCPTask> {
     this.ensureInitialized();
     throw new Error(
       'This method is a placeholder. Use the mcp__vibe_kanban__update_task MCP tool directly.'
@@ -183,7 +183,7 @@ export class ReviewWatcherService {
    * Usage: Call mcp__vibe_kanban__delete_task MCP tool with:
    *   - task_id (required): UUID of the task
    */
-  async deleteTask(taskId: string): Promise<void> {
+  async deleteTask(_taskId: string): Promise<void> {
     this.ensureInitialized();
     throw new Error(
       'This method is a placeholder. Use the mcp__vibe_kanban__delete_task MCP tool directly.'
@@ -198,7 +198,7 @@ export class ReviewWatcherService {
    *
    * Returns: Array of MCPRepo objects
    */
-  async listRepos(projectId: string): Promise<MCPRepo[]> {
+  async listRepos(_projectId: string): Promise<MCPRepo[]> {
     this.ensureInitialized();
     throw new Error(
       'This method is a placeholder. Use the mcp__vibe_kanban__list_repos MCP tool directly.'
@@ -216,7 +216,7 @@ export class ReviewWatcherService {
    *
    * Returns: Workspace session information
    */
-  async startWorkspaceSession(options: StartWorkspaceSessionOptions): Promise<any> {
+  async startWorkspaceSession(_options: StartWorkspaceSessionOptions): Promise<unknown> {
     this.ensureInitialized();
     throw new Error(
       'This method is a placeholder. Use the mcp__vibe_kanban__start_workspace_session MCP tool directly.'
@@ -245,14 +245,3 @@ export class ReviewWatcherService {
     }
   }
 }
-
-// Export type definitions for use in other parts of the application
-export type {
-  MCPProject,
-  MCPTask,
-  MCPRepo,
-  ListTasksOptions,
-  CreateTaskOptions,
-  UpdateTaskOptions,
-  StartWorkspaceSessionOptions,
-};

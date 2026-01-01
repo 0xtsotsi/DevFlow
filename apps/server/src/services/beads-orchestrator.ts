@@ -7,8 +7,9 @@
  * HYBRID-M2: Enables intelligent agent orchestration based on Beads issue tracking.
  */
 
-import { BeadsService, type BeadsIssue } from './beads-service.js';
+import { BeadsService } from './beads-service.js';
 import type { EventEmitter } from '../lib/events.js';
+import type { BeadsIssue } from '@automaker/types';
 
 export interface FeatureExecutionPlan {
   featureId: string;
@@ -40,7 +41,7 @@ export interface OrchestrationOptions {
 export class BeadsOrchestrator {
   private beadsService: BeadsService;
   private eventEmitter: EventEmitter;
-  private activeExecutions: Map<string, Promise<any>> = new Map();
+  private activeExecutions: Map<string, Promise<unknown>> = new Map();
 
   constructor(eventEmitter: EventEmitter, beadsService?: BeadsService) {
     this.eventEmitter = eventEmitter;
@@ -76,7 +77,7 @@ export class BeadsOrchestrator {
           issueId,
           canStart: resolution.readyToStart,
           blockedBy: resolution.blockingFeatures,
-          priority: issue.priority,
+          priority: issue?.priority ?? 2,
         });
       }
 
@@ -134,10 +135,10 @@ export class BeadsOrchestrator {
    * Execute features with intelligent orchestration based on dependencies
    */
   async executeWithOrchestration(
-    features: Array<{ id: string; issueId: string; executor: () => Promise<any> }>,
+    features: Array<{ id: string; issueId: string; executor: () => Promise<unknown> }>,
     options: OrchestrationOptions
-  ): Promise<Map<string, any>> {
-    const results = new Map<string, any>();
+  ): Promise<Map<string, unknown>> {
+    const results = new Map<string, unknown>();
     const maxConcurrent = options.maxConcurrent || 3;
 
     try {
@@ -163,7 +164,7 @@ export class BeadsOrchestrator {
       const executeNext = async (): Promise<void> => {
         if (currentIndex >= executionQueue.length) return;
 
-        const { feature, plan } = executionQueue[currentIndex++];
+        const { feature } = executionQueue[currentIndex++];
         activeCount++;
 
         try {
@@ -224,7 +225,7 @@ export class BeadsOrchestrator {
   private async checkBlockedFeatures(
     blockedFeatures: FeatureExecutionPlan[],
     options: OrchestrationOptions,
-    completedResults: Map<string, any>
+    completedResults: Map<string, unknown>
   ): Promise<void> {
     for (const blocked of blockedFeatures) {
       // Check if all blocking features are complete
@@ -255,19 +256,21 @@ export class BeadsOrchestrator {
       const readyWork = await this.beadsService.getReadyWork(projectPath);
 
       // Sort by priority and type
-      readyWork.sort((a: any, b: any) => {
-        // P0 first, then P1, etc.
-        if (a.priority !== b.priority) {
-          return a.priority - b.priority;
+      readyWork.sort(
+        (a: { priority: number; type: string }, b: { priority: number; type: string }) => {
+          // P0 first, then P1, etc.
+          if (a.priority !== b.priority) {
+            return a.priority - b.priority;
+          }
+
+          // Within same priority: bugs first, then features, then tasks
+          const typeOrder = { bug: 0, feature: 1, task: 2, chore: 3, epic: 4 };
+          const typeA = typeOrder[a.type as keyof typeof typeOrder] ?? 99;
+          const typeB = typeOrder[b.type as keyof typeof typeOrder] ?? 99;
+
+          return typeA - typeB;
         }
-
-        // Within same priority: bugs first, then features, then tasks
-        const typeOrder = { bug: 0, feature: 1, task: 2, chore: 3, epic: 4 };
-        const typeA = typeOrder[a.type as keyof typeof typeOrder] ?? 99;
-        const typeB = typeOrder[b.type as keyof typeof typeOrder] ?? 99;
-
-        return typeA - typeB;
-      });
+      );
 
       return readyWork;
     } catch (error) {
@@ -298,7 +301,7 @@ export class BeadsOrchestrator {
   getExecutionStatus(): Map<string, 'running' | 'completed' | 'failed'> {
     const status = new Map<string, 'running' | 'completed' | 'failed'>();
 
-    for (const [id, promise] of this.activeExecutions) {
+    for (const [id] of this.activeExecutions) {
       // Check promise state (simplified - in real impl would use promise status tracking)
       status.set(id, 'running');
     }

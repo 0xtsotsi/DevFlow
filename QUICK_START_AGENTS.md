@@ -11,12 +11,13 @@ import { specializedAgentService } from './agents';
 ### 2. Classify a Task
 
 ```typescript
-const { recommendedAgent, classification, analysis } =
-  specializedAgentService.classifyTask(
-    "Your task description here"
-  );
+const { recommendedAgent, classification, analysis } = specializedAgentService.classifyTask(
+  'Your task description here'
+);
 
-console.log(`Recommended: ${recommendedAgent} (${(classification.confidence * 100).toFixed(0)}% confidence)`);
+console.log(
+  `Recommended: ${recommendedAgent} (${(classification.confidence * 100).toFixed(0)}% confidence)`
+);
 ```
 
 ### 3. Execute with Optimal Agent
@@ -29,7 +30,7 @@ const result = await specializedAgentService.executeTaskWithAgent(
     cwd: process.cwd(),
     abortController: new AbortController(),
   },
-  "Your task description here"
+  'Your task description here'
 );
 
 console.log(`${result.success ? '✓' : '✗'} ${result.agentType}: ${result.duration}ms`);
@@ -51,25 +52,22 @@ const result = await specializedAgentService.executeTaskWithAgent(
 ### Multi-Step Workflow
 
 ```typescript
-const results = await specializedAgentService.executeMultiAgentWorkflow(
-  context,
-  [
-    {
-      taskPrompt: 'Create specification for user authentication',
-      agentType: 'planning',
-    },
-    {
-      taskPrompt: 'Implement authentication based on spec above',
-      agentType: 'implementation',
-      dependsOn: ['Step 1'],
-    },
-    {
-      taskPrompt: 'Write tests for authentication',
-      agentType: 'testing',
-      dependsOn: ['Step 2'],
-    },
-  ]
-);
+const results = await specializedAgentService.executeMultiAgentWorkflow(context, [
+  {
+    taskPrompt: 'Create specification for user authentication',
+    agentType: 'planning',
+  },
+  {
+    taskPrompt: 'Implement authentication based on spec above',
+    agentType: 'implementation',
+    dependsOn: ['Step 1'],
+  },
+  {
+    taskPrompt: 'Write tests for authentication',
+    agentType: 'testing',
+    dependsOn: ['Step 2'],
+  },
+]);
 ```
 
 ### Get Agent Statistics
@@ -86,16 +84,16 @@ agents.forEach(({ type, config, stats }) => {
 
 ## Agent Types Cheat Sheet
 
-| Agent | Best For | Keywords |
-|-------|----------|----------|
-| **planning** | Specs, design, task breakdown | plan, spec, design, architecture, requirements |
-| **implementation** | Writing code, features | implement, create, build, develop |
-| **testing** | Tests, verification | test, verify, validate, coverage |
-| **review** | Code review, QA | review, audit, quality, security |
-| **debug** | Fixing bugs | bug, error, fix, debug, broken |
-| **documentation** | Docs, README | document, readme, guide, tutorial |
-| **refactoring** | Code improvement | refactor, clean up, simplify, restructure |
-| **generic** | General tasks | help, assist, task |
+| Agent              | Best For                      | Keywords                                       |
+| ------------------ | ----------------------------- | ---------------------------------------------- |
+| **planning**       | Specs, design, task breakdown | plan, spec, design, architecture, requirements |
+| **implementation** | Writing code, features        | implement, create, build, develop              |
+| **testing**        | Tests, verification           | test, verify, validate, coverage               |
+| **review**         | Code review, QA               | review, audit, quality, security               |
+| **debug**          | Fixing bugs                   | bug, error, fix, debug, broken                 |
+| **documentation**  | Docs, README                  | document, readme, guide, tutorial              |
+| **refactoring**    | Code improvement              | refactor, clean up, simplify, restructure      |
+| **generic**        | General tasks                 | help, assist, task                             |
 
 ## Integration with AutoMode
 
@@ -109,13 +107,12 @@ const integration = createAutoModeAgentIntegration(events, {
 });
 
 // Execute task
-const { agentType, success, duration } =
-  await integration.executeTaskWithSpecializedAgent({
-    task: parsedTask,
-    phase: 'implementation',
-    context: executionContext,
-    taskPrompt: taskPrompt,
-  });
+const { agentType, success, duration } = await integration.executeTaskWithSpecializedAgent({
+  task: parsedTask,
+  phase: 'implementation',
+  context: executionContext,
+  taskPrompt: taskPrompt,
+});
 
 // Get stats
 const stats = integration.getExecutionStats();
@@ -137,17 +134,20 @@ const stats = integration.getExecutionStats();
 ## Troubleshooting
 
 **Wrong agent selected?**
+
 - Check task description clarity
 - Consider forcing specific agent type
 - Review classification confidence
 
 **Poor results?**
+
 - Check agent statistics
 - Review system prompt
 - Verify tool access
 - Consider custom agent
 
 **Need customization?**
+
 - Register custom agent
 - Override system prompt
 - Adjust capabilities

@@ -9,7 +9,7 @@
 /**
  * Issue status in Beads
  */
-export type BeadsIssueStatus = 'open' | 'in_progress' | 'closed';
+export type BeadsIssueStatus = 'open' | 'in_progress' | 'blocked' | 'closed';
 
 /**
  * Issue type in Beads
@@ -49,15 +49,17 @@ export interface BeadsIssue {
   /** Labels for categorization */
   labels: string[];
   /** Dependencies on other issues */
-  dependencies: BeadsDependency[];
+  dependencies?: BeadsDependency[];
   /** ISO timestamp of creation */
-  createdAt: string;
+  createdAt?: string;
   /** ISO timestamp of last update */
-  updatedAt: string;
+  updatedAt?: string;
   /** ISO timestamp of closure (if closed) */
   closedAt?: string;
-  /** Parent issue ID (for child issues) */
+  /** Parent issue ID (for child issues) - also aliased as parentId for compatibility */
   parentIssueId?: string;
+  /** Alias for parentIssueId for CLI compatibility */
+  parentId?: string;
   /** Child issue IDs (for parent issues) */
   childIssueIds?: string[];
   /** Optional link to DevFlow feature */
@@ -69,9 +71,13 @@ export interface BeadsIssue {
  */
 export interface BeadsDependency {
   /** ID of the issue this depends on */
-  issueId: string;
+  issueId?: string;
   /** Type of dependency */
-  type: BeadsDependencyType;
+  type?: BeadsDependencyType;
+  /** Target issue ID (as returned by CLI) */
+  to?: string;
+  /** From issue ID (as returned by CLI) */
+  from?: string;
 }
 
 /**
@@ -82,6 +88,8 @@ export interface CreateBeadsIssueInput {
   title: string;
   /** Detailed description */
   description?: string;
+  /** Issue status */
+  status?: BeadsIssueStatus;
   /** Issue type */
   type?: BeadsIssueType;
   /** Priority (0=highest, 4=lowest) */
@@ -163,4 +171,62 @@ export interface BeadsStats {
   readyIssues: number;
   /** Number of blocked issues */
   blockedIssues: number;
+}
+
+/**
+ * Result from searching codebase
+ */
+export interface CodeSearchResult {
+  /** File path where code was found */
+  filePath: string;
+  /** Matching code snippet */
+  code: string;
+  /** Line number where code appears */
+  line: number;
+  /** Repository name */
+  repository: string;
+}
+
+/**
+ * Result from searching GitHub issues
+ */
+export interface GitHubIssue {
+  /** Issue title */
+  title: string;
+  /** Issue URL */
+  url: string;
+  /** Repository name */
+  repository: string;
+  /** Issue state */
+  state: 'open' | 'closed' | 'unknown';
+}
+
+/**
+ * Dependency analysis result
+ */
+export interface DependencyAnalysis {
+  /** List of conflicting dependencies */
+  conflicts: string[];
+  /** List of all dependencies */
+  dependencies: string[];
+}
+
+/**
+ * Research result for a Beads issue
+ */
+export interface IssueResearchResult {
+  /** Issue ID that was researched */
+  issueId: string;
+  /** Code examples found during research */
+  codeExamples: CodeSearchResult[];
+  /** Similar issues found on GitHub */
+  similarGitHubIssues: GitHubIssue[];
+  /** Dependency conflicts detected */
+  dependencyConflicts: string[];
+  /** Actionable recommendations */
+  recommendations: string[];
+  /** ISO timestamp when research was completed */
+  researchedAt: string;
+  /** Optional: Research duration in milliseconds */
+  duration?: number;
 }

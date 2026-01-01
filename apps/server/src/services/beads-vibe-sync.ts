@@ -7,7 +7,7 @@
  * HYBRID-M2: Enables seamless integration between local issue tracking and remote kanban.
  */
 
-import { BeadsService, type BeadsIssue } from './beads-service.js';
+import { BeadsService } from './beads-service.js';
 import type { EventEmitter } from '../lib/events.js';
 
 // VibeKanban MCP interface (would use actual MCP client in production)
@@ -89,7 +89,10 @@ export class BeadsVibeSync {
     listProjects(): Promise<VibeKanbanProject[]>;
     listTasks(projectId: string): Promise<VibeKanbanTask[]>;
     createTask(projectId: string, title: string, description?: string): Promise<VibeKanbanTask>;
-    updateTask(taskId: string, updates: { title?: string; description?: string; status?: string }): Promise<VibeKanbanTask>;
+    updateTask(
+      taskId: string,
+      updates: { title?: string; description?: string; status?: string }
+    ): Promise<VibeKanbanTask>;
     deleteTask(taskId: string): Promise<void>;
   };
 
@@ -103,8 +106,22 @@ export class BeadsVibeSync {
     this.vibeClient = {
       listProjects: async () => [],
       listTasks: async () => [],
-      createTask: async () => ({ id: '', title: '', project_id: '', created_at: '', updated_at: '' }),
-      updateTask: async () => ({ id: '', title: '', project_id: '', created_at: '', updated_at: '' }),
+      createTask: async () => ({
+        id: '',
+        title: '',
+        status: 'todo',
+        project_id: '',
+        created_at: '',
+        updated_at: '',
+      }),
+      updateTask: async () => ({
+        id: '',
+        title: '',
+        status: 'todo',
+        project_id: '',
+        created_at: '',
+        updated_at: '',
+      }),
       deleteTask: async () => {},
     };
   }
@@ -130,7 +147,7 @@ export class BeadsVibeSync {
       for (const mapping of mappings) {
         this.syncMappings.set(mapping.beadsIssueId, mapping);
       }
-    } catch (error) {
+    } catch {
       // No existing mappings - start fresh
       this.syncMappings.clear();
     }
@@ -202,7 +219,9 @@ export class BeadsVibeSync {
   /**
    * Sync Beads issues to VibeKanban tasks
    */
-  private async syncBeadsToVibe(options: SyncOptions): Promise<{ created: number; updated: number; failed: number }> {
+  private async syncBeadsToVibe(
+    options: SyncOptions
+  ): Promise<{ created: number; updated: number; failed: number }> {
     let created = 0;
     let updated = 0;
     let failed = 0;
@@ -216,16 +235,14 @@ export class BeadsVibeSync {
 
           if (mapping) {
             // Update existing task
-            const vibeStatus = STATUS_MAPPING[issue.status] || 'todo';
             await this.vibeClient.updateTask(mapping.vibeTaskId, {
               title: issue.title,
               description: issue.description,
-              status: vibeStatus,
+              status: STATUS_MAPPING[issue.status] || 'todo',
             });
             updated++;
           } else {
             // Create new task
-            const vibeStatus = STATUS_MAPPING[issue.status] || 'todo';
             const task = await this.vibeClient.createTask(
               options.vibeProjectId,
               issue.title,
@@ -256,7 +273,9 @@ export class BeadsVibeSync {
   /**
    * Sync VibeKanban tasks to Beads issues
    */
-  private async syncVibeToBeads(options: SyncOptions): Promise<{ created: number; updated: number; failed: number }> {
+  private async syncVibeToBeads(
+    options: SyncOptions
+  ): Promise<{ created: number; updated: number; failed: number }> {
     let created = 0;
     let updated = 0;
     let failed = 0;
@@ -275,7 +294,11 @@ export class BeadsVibeSync {
             }
           }
 
-          const beadsStatus = REVERSE_STATUS_MAPPING[task.status] || 'open';
+          const beadsStatus = (REVERSE_STATUS_MAPPING[task.status] || 'open') as
+            | 'open'
+            | 'in_progress'
+            | 'blocked'
+            | 'closed';
 
           if (beadsIssueId) {
             // Update existing issue
