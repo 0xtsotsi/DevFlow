@@ -164,35 +164,111 @@ export class HttpApiClient implements ElectronAPI {
   }
 
   private async post<T>(endpoint: string, body?: unknown): Promise<T> {
-    const response = await fetch(`${this.serverUrl}${endpoint}`, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return response.json();
+    try {
+      const response = await fetch(`${this.serverUrl}${endpoint}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`[HTTP] POST ${endpoint} failed:`, error);
+
+      // Provide helpful error message for connection failures
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error(
+          `Failed to connect to DevFlow server. Ensure it's running on port 3008.\n` +
+            `Run 'npm run dev:server' to start the server.`
+        );
+      }
+
+      throw error;
+    }
   }
 
   private async get<T>(endpoint: string): Promise<T> {
-    const headers = this.getHeaders();
-    const response = await fetch(`${this.serverUrl}${endpoint}`, { headers });
-    return response.json();
+    try {
+      const headers = this.getHeaders();
+      const response = await fetch(`${this.serverUrl}${endpoint}`, { headers });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`[HTTP] GET ${endpoint} failed:`, error);
+
+      // Provide helpful error message for connection failures
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error(
+          `Failed to connect to DevFlow server. Ensure it's running on port 3008.\n` +
+            `Run 'npm run dev:server' to start the server.`
+        );
+      }
+
+      throw error;
+    }
   }
 
   private async put<T>(endpoint: string, body?: unknown): Promise<T> {
-    const response = await fetch(`${this.serverUrl}${endpoint}`, {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return response.json();
+    try {
+      const response = await fetch(`${this.serverUrl}${endpoint}`, {
+        method: 'PUT',
+        headers: this.getHeaders(),
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`[HTTP] PUT ${endpoint} failed:`, error);
+
+      // Provide helpful error message for connection failures
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error(
+          `Failed to connect to DevFlow server. Ensure it's running on port 3008.\n` +
+            `Run 'npm run dev:server' to start the server.`
+        );
+      }
+
+      throw error;
+    }
   }
 
   private async httpDelete<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.serverUrl}${endpoint}`, {
-      method: 'DELETE',
-      headers: this.getHeaders(),
-    });
-    return response.json();
+    try {
+      const response = await fetch(`${this.serverUrl}${endpoint}`, {
+        method: 'DELETE',
+        headers: this.getHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`[HTTP] DELETE ${endpoint} failed:`, error);
+
+      // Provide helpful error message for connection failures
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error(
+          `Failed to connect to DevFlow server. Ensure it's running on port 3008.\n` +
+            `Run 'npm run dev:server' to start the server.`
+        );
+      }
+
+      throw error;
+    }
   }
 
   // Basic operations

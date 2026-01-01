@@ -200,114 +200,130 @@ let hooksService!: HooksService;
 
 // Initialize services
 (async () => {
-  await agentService.initialize();
-  console.log('[Server] Agent service initialized');
-
-  // Load Claude authentication configuration from settings
   try {
-    const globalSettings = await settingsService.getGlobalSettings();
-    const authMethod = globalSettings.claudeAuthMethod || 'auto';
-    setAuthConfig({ method: authMethod });
-    console.log(`[Server] Claude auth config loaded: ${authMethod}`);
+    // Core Agent Service
+    await agentService.initialize();
+    console.log('[Server] ✓ Agent service initialized');
+
+    // Load Claude authentication configuration from settings
+    try {
+      const globalSettings = await settingsService.getGlobalSettings();
+      const authMethod = globalSettings.claudeAuthMethod || 'auto';
+      setAuthConfig({ method: authMethod });
+      console.log(`[Server] ✓ Claude auth config loaded: ${authMethod}`);
+    } catch (error) {
+      console.warn('[Server] ⚠ Failed to load auth config, using default:', error);
+      setAuthConfig({ method: 'auto' });
+    }
+
+    // ============================================================================
+    // Beads Autonomous Memory Services
+    // ============================================================================
+
+    // Initialize MCP bridge for all services
+    const mcpBridge = getMCPBridge(events);
+    console.log('[Server] ✓ MCP bridge initialized');
+
+    // Initialize Beads Live Link (auto-creates issues from agent events)
+    const beadsLiveLinkService = new BeadsLiveLinkService(beadsService, events, {
+      autoCreateOnErrors: true,
+      autoCreateOnRequests: true,
+      maxAutoIssuesPerHour: 20,
+      enableDeduplication: true,
+    });
+    await beadsLiveLinkService.initialize(process.cwd());
+    console.log('[Server] ✓ Beads LiveLink initialized');
+
+    // Initialize Beads Memory Service (context for agents)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const beadsMemoryService = new BeadsMemoryService(beadsService, mcpBridge);
+    console.log('[Server] ✓ Beads Memory Service initialized');
+
+    // Initialize Agent Registry and Specialized Agent Service
+    const agentRegistry = new AgentRegistry();
+    const specializedAgentService = new SpecializedAgentService();
+    console.log('[Server] ✓ Agent Registry and Specialized Agent Service initialized');
+
+    // Initialize Beads Agent Coordinator (autonomous coordination)
+    const beadsAgentCoordinator = new BeadsAgentCoordinator(
+      agentRegistry,
+      beadsService,
+      agentService,
+      events,
+      specializedAgentService,
+      {
+        coordinationInterval: 30000, // 30 seconds
+        maxConcurrentAgents: 5,
+        enableAutoAssignment: true,
+        enableHelperSpawning: true,
+        maxAgentAge: 7200000, // 2 hours
+      }
+    );
+    console.log('[Server] ✓ Beads Agent Coordinator initialized');
+
+    // Start coordination after server is ready
+    setTimeout(() => {
+      beadsAgentCoordinator.coordinateAgents(process.cwd()).catch((err) => {
+        console.error('[Server] Failed to start beads coordination:', err);
+      });
+    }, 5000); // Wait 5 seconds for server to stabilize
+
+    // Periodic coordination loop
+    setInterval(() => {
+      beadsAgentCoordinator.coordinateAgents(process.cwd()).catch((err) => {
+        console.error('[Server] Beads coordination error:', err);
+      });
+    }, 30000);
+
+    // ============================================================================
+    // Skills & Hooks System
+    // ============================================================================
+
+    // Initialize MCP Configuration Service
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const mcpConfigurationService = new MCPConfigurationService(DATA_DIR, events);
+    console.log('[Server] ✓ MCP Configuration Service initialized');
+
+    // Initialize Hooks Manager and Service
+    hooksService = new HooksService(DATA_DIR, events);
+    await hooksService.initialize();
+    console.log('[Server] ✓ Hooks service initialized');
+
+    // Initialize Skill Services
+    researchSkillService = new ResearchSkillService(events);
+    implementationSkillService = new ImplementationSkillService(events);
+    cicdSkillService = new CICDSkillService(events);
+    workflowOrchestratorService = new WorkflowOrchestratorService(events);
+    console.log('[Server] ✓ Skill services initialized');
+
+    // Wire up event listeners for skill coordination
+    events.subscribe(async (type: string, result: unknown) => {
+      if (type === 'agent:completed') {
+        // Notify hooks service of agent completion
+        const payload = result as { sessionId?: string; projectPath?: string };
+        await hooksService.executeHooks('post-task', {
+          sessionId: payload.sessionId || '',
+          projectPath: payload.projectPath || process.cwd(),
+        });
+      } else if (type === 'agent:error') {
+        // Notify hooks service of agent errors
+        const payload = result as { sessionId?: string; projectPath?: string };
+        await hooksService.executeHooks('post-task', {
+          sessionId: payload.sessionId || '',
+          projectPath: payload.projectPath || process.cwd(),
+        });
+      }
+    });
+    console.log('[Server] ✓ Event listeners for skill coordination wired');
+
+    console.log('[Server] ✅ All services initialized successfully');
   } catch (error) {
-    console.warn('[Server] Failed to load auth config, using default:', error);
-    setAuthConfig({ method: 'auto' });
+    console.error('[Server] ❌ FATAL: Service initialization failed:', error);
+    console.error('[Server] ⚠ Server will start but some features may not work correctly');
+    console.error(
+      '[Server] ⚠ Check the error above for details on which service failed to initialize'
+    );
   }
-
-  // ============================================================================
-  // Beads Autonomous Memory Services
-  // ============================================================================
-
-  // Initialize MCP bridge for all services
-  const mcpBridge = getMCPBridge(events);
-
-  // Initialize Beads Live Link (auto-creates issues from agent events)
-  const beadsLiveLinkService = new BeadsLiveLinkService(beadsService, events, {
-    autoCreateOnErrors: true,
-    autoCreateOnRequests: true,
-    maxAutoIssuesPerHour: 20,
-    enableDeduplication: true,
-  });
-  await beadsLiveLinkService.initialize(process.cwd());
-
-  // Initialize Beads Memory Service (context for agents)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const beadsMemoryService = new BeadsMemoryService(beadsService, mcpBridge);
-
-  // Initialize Agent Registry and Specialized Agent Service
-  const agentRegistry = new AgentRegistry();
-  const specializedAgentService = new SpecializedAgentService();
-
-  // Initialize Beads Agent Coordinator (autonomous coordination)
-  const beadsAgentCoordinator = new BeadsAgentCoordinator(
-    agentRegistry,
-    beadsService,
-    agentService,
-    events,
-    specializedAgentService,
-    {
-      coordinationInterval: 30000, // 30 seconds
-      maxConcurrentAgents: 5,
-      enableAutoAssignment: true,
-      enableHelperSpawning: true,
-      maxAgentAge: 7200000, // 2 hours
-    }
-  );
-
-  // Start coordination after server is ready
-  setTimeout(() => {
-    beadsAgentCoordinator.coordinateAgents(process.cwd()).catch((err) => {
-      console.error('[Server] Failed to start beads coordination:', err);
-    });
-  }, 5000); // Wait 5 seconds for server to stabilize
-
-  // Periodic coordination loop
-  setInterval(() => {
-    beadsAgentCoordinator.coordinateAgents(process.cwd()).catch((err) => {
-      console.error('[Server] Beads coordination error:', err);
-    });
-  }, 30000);
-
-  console.log('[Server] Beads autonomous memory services initialized');
-
-  // ============================================================================
-  // Skills & Hooks System
-  // ============================================================================
-
-  // Initialize MCP Configuration Service
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const mcpConfigurationService = new MCPConfigurationService(DATA_DIR, events);
-
-  // Initialize Hooks Manager and Service
-  hooksService = new HooksService(DATA_DIR, events);
-  await hooksService.initialize();
-
-  // Initialize Skill Services
-  researchSkillService = new ResearchSkillService(events);
-  implementationSkillService = new ImplementationSkillService(events);
-  cicdSkillService = new CICDSkillService(events);
-  workflowOrchestratorService = new WorkflowOrchestratorService(events);
-
-  // Wire up event listeners for skill coordination
-  events.subscribe(async (type: string, result: unknown) => {
-    if (type === 'agent:completed') {
-      // Notify hooks service of agent completion
-      const payload = result as { sessionId?: string; projectPath?: string };
-      await hooksService.executeHooks('post-task', {
-        sessionId: payload.sessionId || '',
-        projectPath: payload.projectPath || process.cwd(),
-      });
-    } else if (type === 'agent:error') {
-      // Notify hooks service of agent errors
-      const payload = result as { sessionId?: string; projectPath?: string };
-      await hooksService.executeHooks('post-task', {
-        sessionId: payload.sessionId || '',
-        projectPath: payload.projectPath || process.cwd(),
-      });
-    }
-  });
-
-  console.log('[Server] Skills & Hooks system initialized');
 })();
 
 // ============================================================================
