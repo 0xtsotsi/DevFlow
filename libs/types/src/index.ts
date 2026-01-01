@@ -120,14 +120,13 @@ export type {
 export { DEFAULT_ORCHESTRATOR_CONFIG } from './orchestrator.js';
 
 // Agent types
-export type {
+export {
   AgentType,
-  AgentConfig,
-  AgentCapability,
-  TaskClassification,
-  TaskAnalysis,
-  AgentRegistryEntry,
-  AgentExecutionContext,
-  AgentExecutionResult,
+  type AgentConfig,
+  type AgentCapability,
+  type TaskClassification,
+  type TaskAnalysis,
+  type AgentRegistryEntry,
+  type AgentExecutionContext,
+  type AgentExecutionResult,
 } from './agent-types.js';
-export { AgentType } from './agent-types.js';

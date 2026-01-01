@@ -15,17 +15,22 @@ import {
 import { getAgentConfigurations } from './agent-prompts.js';
 
 /**
+ * Classification history entry
+ */
+type ClassificationHistoryEntry = {
+  timestamp: number;
+  task: string;
+  classifiedAs: AgentType;
+  confidence: number;
+  success: boolean;
+};
+
+/**
  * Agent Registry - manages available agents and their statistics
  */
 export class AgentRegistry {
   private agents: Map<AgentType, AgentRegistryEntry>;
-  private classificationHistory: Array<{
-    timestamp: number;
-    task: string;
-    classifiedAs: AgentType;
-    confidence: number;
-    success: boolean;
-  }> = [];
+  private classificationHistory: ClassificationHistoryEntry[] = [];
 
   constructor() {
     // Initialize with all agent configurations
@@ -290,7 +295,7 @@ export class AgentRegistry {
    */
   exportState(): {
     agents: Record<string, AgentRegistryEntry>;
-    history: typeof this.classificationHistory;
+    history: ClassificationHistoryEntry[];
   } {
     const agents: Record<string, AgentRegistryEntry> = {};
     for (const [key, value] of this.agents.entries()) {
@@ -308,7 +313,7 @@ export class AgentRegistry {
    */
   importState(state: {
     agents: Record<string, AgentRegistryEntry>;
-    history: typeof this.classificationHistory;
+    history: ClassificationHistoryEntry[];
   }): void {
     this.agents = new Map();
     for (const [key, value] of Object.entries(state.agents)) {
