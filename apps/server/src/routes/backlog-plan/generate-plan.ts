@@ -10,7 +10,7 @@ import type { Feature, BacklogPlanResult, BacklogChange, DependencyUpdate } from
 import { DEFAULT_PHASE_MODELS } from '@automaker/types';
 import { FeatureLoader } from '../../services/feature-loader.js';
 import { ProviderFactory } from '../../providers/provider-factory.js';
-import { extractJson } from '../../lib/json-extractor.js';
+import { extractJsonWithArray } from '../../lib/json-extractor.js';
 import { logger, setRunningState, getErrorMessage } from './common.js';
 import type { SettingsService } from '../../services/settings-service.js';
 import { getAutoLoadClaudeMdSetting, getPromptCustomization } from '../../lib/settings-helpers.js';
@@ -45,17 +45,19 @@ function formatFeaturesForPrompt(features: Feature[]): string {
  */
 function parsePlanResponse(response: string): BacklogPlanResult {
   // Use shared JSON extraction utility for robust parsing
-  const parsed = extractJson<BacklogPlanResult>(response, {
+  // extractJsonWithArray validates that 'changes' exists AND is an array
+  const parsed = extractJsonWithArray<BacklogPlanResult>(response, 'changes', {
     logger,
-    requiredKey: 'changes',
   });
 
   if (parsed) {
     return parsed;
   }
 
-  // If parsing fails, return an empty result
+  // If parsing fails, log details and return an empty result
   logger.warn('[BacklogPlan] Failed to parse AI response as JSON');
+  logger.debug('[BacklogPlan] Response text length:', response.length);
+  logger.debug('[BacklogPlan] Response preview:', response.slice(0, 500));
   return {
     changes: [],
     summary: 'Failed to parse AI response',
@@ -149,6 +151,7 @@ export async function generateBacklogPlan(
       } else if (msg.type === 'result' && msg.subtype === 'success' && msg.result) {
         // Use result if it's a final accumulated message (from Cursor provider)
         if (msg.result.length > responseText.length) {
+          logger.debug('[BacklogPlan] Received result from Cursor, length:', msg.result.length);
           responseText = msg.result;
         }
       }
