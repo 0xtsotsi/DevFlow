@@ -216,6 +216,14 @@ const claudeUsageService = new ClaudeUsageService();
 const mcpTestService = new MCPTestService(settingsService);
 const ideationService = new IdeationService(events, settingsService, featureLoader);
 
+// Declare skill services (initialized in IIFE below)
+// Definite assignment assertion (!) is safe because IIFE runs synchronously for assignment
+let researchSkillService!: ResearchSkillService;
+let implementationSkillService!: ImplementationSkillService;
+let cicdSkillService!: CICDSkillService;
+let workflowOrchestratorService!: WorkflowOrchestratorService;
+let hooksService!: HooksService;
+
 // Initialize services
 (async () => {
   await agentService.initialize();

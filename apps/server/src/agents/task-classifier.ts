@@ -124,6 +124,26 @@ const AGENT_KEYWORDS: Record<string, string[]> = {
     'code smell',
   ],
 
+  orchestration: [
+    'workflow',
+    'orchestrate',
+    'orchestration',
+    'pipeline',
+    'end-to-end',
+    'end to end',
+    'full feature',
+    'complete implementation',
+    'multi-phase',
+    'multiphase',
+    'coordinate',
+    'coordination',
+    'entire feature',
+    'whole feature',
+    'from start to finish',
+    'start to finish',
+    'comprehensive implementation',
+  ],
+
   generic: ['help', 'assist', 'task', 'work', 'general'],
 };
 
@@ -153,6 +173,11 @@ export const AGENT_FILE_PATTERNS: Record<string, RegExp[]> = {
   refactoring: [
     // Refactoring agents work on any code file
     /\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h)$/i,
+  ],
+
+  orchestration: [
+    // Orchestration agents work on any file or project-level tasks
+    /.*/, // Matches anything - orchestration is project-wide
   ],
 
   generic: [
