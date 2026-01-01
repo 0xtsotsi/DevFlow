@@ -280,6 +280,11 @@ export interface BeadsAPI {
     version?: string;
     error?: string;
   }>;
+  getAssignments: (projectPath: string) => Promise<{
+    success: boolean;
+    assignments?: AgentAssignment[];
+    error?: string;
+  }>;
 }
 
 // GitHub types

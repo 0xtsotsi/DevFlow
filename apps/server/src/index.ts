@@ -223,6 +223,7 @@ let implementationSkillService!: ImplementationSkillService;
 let cicdSkillService!: CICDSkillService;
 let workflowOrchestratorService!: WorkflowOrchestratorService;
 let hooksService!: HooksService;
+let beadsAgentCoordinator!: BeadsAgentCoordinator;
 
 // Initialize services
 (async () => {

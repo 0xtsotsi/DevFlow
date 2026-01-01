@@ -1,73 +1,71 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { EventEmitter } from 'events';
 import { WorkflowOrchestratorService } from '@/services/workflow-orchestrator-service.js';
 
 describe('WorkflowOrchestratorService', () => {
   let service: WorkflowOrchestratorService;
-  let mockBeadsService: any;
-  let mockAgentService: any;
-  let mockHooksService: any;
-  let mockEvents: any;
+  let mockEvents: EventEmitter;
 
   beforeEach(() => {
-    mockBeadsService = {
-      updateIssue: vi.fn(),
-    };
-    mockAgentService = {
-      startConversation: vi.fn(),
-    };
-    mockHooksService = {
-      executeHooks: vi.fn(),
-    };
-    mockEvents = {
-      emit: vi.fn(),
-      on: vi.fn(),
-    };
-    service = new WorkflowOrchestratorService(
-      mockBeadsService,
-      mockAgentService,
-      mockHooksService,
-      mockEvents
-    );
+    mockEvents = new EventEmitter();
+    service = new WorkflowOrchestratorService(mockEvents);
   });
 
-  describe('executeWorkflow', () => {
-    it('should execute workflow in auto mode', async () => {
-      const request = {
-        issueId: 'issue-1',
-        projectPath: '/test',
-        mode: 'auto' as const,
-      };
-
-      // Test skeleton
+  describe('constructor', () => {
+    it('should create service instance', () => {
       expect(service).toBeDefined();
-      expect(typeof service.executeWorkflow).toBe('function');
-    });
-
-    it('should execute workflow in semi mode with checkpoints', async () => {
-      const request = {
-        issueId: 'issue-1',
-        projectPath: '/test',
-        mode: 'semi' as const,
-      };
-
-      // Test skeleton
-      expect(true).toBe(true);
     });
   });
 
-  describe('onIssueCreated', () => {
-    it('should trigger workflow on issue creation in auto mode', async () => {
-      const issue = { id: 'issue-1' };
+  describe('execute', () => {
+    it('should execute workflow and return result', async () => {
+      const result = await service.execute({
+        projectPath: '/test',
+        task: 'Test task',
+        mode: 'auto',
+        phases: [], // Skip all phases for testing
+      });
 
-      // Test skeleton
-      expect(typeof service.onIssueCreated).toBe('function');
+      expect(result).toBeDefined();
+      expect(result.success).toBeDefined();
+      expect(result.phases).toBeDefined();
+      expect(result.checkpoints).toEqual([]);
+      expect(result.totalDuration).toBeGreaterThanOrEqual(0);
+      expect(result.timestamp).toBeDefined();
+    });
+
+    it('should handle errors gracefully', async () => {
+      // Test with semi mode which requires checkpoints
+      const result = service.execute({
+        projectPath: '/test',
+        task: 'Test task',
+        mode: 'semi',
+        phases: [], // Skip all phases for testing
+      });
+
+      // Should not throw even in semi mode with no phases
+      await expect(result).resolves.toBeDefined();
     });
   });
 
   describe('isAvailable', () => {
-    it('should return availability status', async () => {
-      const available = await service.isAvailable();
+    it('should return availability status (boolean)', () => {
+      const available = service.isAvailable();
       expect(typeof available).toBe('boolean');
+    });
+  });
+
+  describe('approveCheckpoint', () => {
+    it('should return false for non-existent workflow', () => {
+      const result = service.approveCheckpoint('non-existent', 'cp-1');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('rejectCheckpoint', () => {
+    it('should return false for non-existent workflow', () => {
+      const result = service.rejectCheckpoint('non-existent', 'cp-1');
+      expect(result).toBe(false);
     });
   });
 });

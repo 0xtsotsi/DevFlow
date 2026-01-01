@@ -2,6 +2,7 @@ import { createRootRoute, Outlet, useLocation, useNavigate } from '@tanstack/rea
 import { useEffect, useState, useCallback, useDeferredValue, useRef } from 'react';
 import { createLogger } from '@automaker/utils/logger';
 import { Sidebar } from '@/components/layout/sidebar';
+import { AgentActivityFeed } from '@/components/agent-activity-feed';
 import {
   FileBrowserProvider,
   useFileBrowser,
@@ -40,6 +41,7 @@ function RootLayoutContent() {
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
   const [streamerPanelOpen, setStreamerPanelOpen] = useState(false);
+  const [activityFeedOpen, setActivityFeedOpen] = useState(false);
   const [setupHydrated, setSetupHydrated] = useState(
     () => useSetupStore.persist?.hasHydrated?.() ?? false
   );
@@ -85,6 +87,12 @@ function RootLayoutContent() {
       event.preventDefault();
       setStreamerPanelOpen((prev) => !prev);
     }
+
+    // Toggle agent activity feed with 'A' key
+    if (event.key === 'a' || event.key === 'A') {
+      event.preventDefault();
+      setActivityFeedOpen((prev) => !prev);
+    }
   }, []);
 
   useEffect(() => {
@@ -93,6 +101,18 @@ function RootLayoutContent() {
       window.removeEventListener('keydown', handleStreamerPanelShortcut);
     };
   }, [handleStreamerPanelShortcut]);
+
+  // Listen for toggle activity feed event from sidebar
+  useEffect(() => {
+    const handleToggleFeed = () => {
+      setActivityFeedOpen((prev) => !prev);
+    };
+
+    window.addEventListener('toggle-activity-feed', handleToggleFeed);
+    return () => {
+      window.removeEventListener('toggle-activity-feed', handleToggleFeed);
+    };
+  }, []);
 
   const effectiveTheme = getEffectiveTheme();
   // Defer the theme value to keep UI responsive during rapid hover changes
@@ -395,8 +415,15 @@ function RootLayoutContent() {
         />
       )}
       <Sidebar />
+
+      {/* Agent Activity Feed - left sidebar panel */}
+      <AgentActivityFeed open={activityFeedOpen} onOpenChange={setActivityFeedOpen} />
+
       <div
-        className="flex-1 flex flex-col overflow-hidden transition-all duration-300"
+        className={cn(
+          'flex-1 flex flex-col overflow-hidden transition-all duration-300',
+          activityFeedOpen && 'ml-80'
+        )}
         style={{ marginRight: streamerPanelOpen ? '250px' : '0' }}
       >
         <Outlet />

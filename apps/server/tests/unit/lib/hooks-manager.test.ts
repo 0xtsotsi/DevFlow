@@ -94,7 +94,7 @@ describe('HooksManager', () => {
     });
 
     it('should reject invalid implementation', () => {
-      const result = hooksManager.validateImplementation('return true');
+      const result = hooksManager.validateImplementation('if (true) {'); // Missing closing brace
       expect(result.valid).toBe(false);
       expect(result.error).toBeDefined();
     });

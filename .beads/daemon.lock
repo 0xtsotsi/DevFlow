@@ -1,7 +1,7 @@
 {
-  "pid": 276363,
-  "parent_pid": 276308,
-  "database": "/workspaces/DevFlow/.beads/beads.db",
-  "version": "0.35.0",
-  "started_at": "2025-12-24T19:35:19.932411855Z"
+  "pid": 27767,
+  "parent_pid": 27732,
+  "database": "/home/oxtsotsi/Webrnds/DevFlow/.beads/beads.db",
+  "version": "0.34.0",
+  "started_at": "2026-01-01T16:25:49.595037919Z"
 }

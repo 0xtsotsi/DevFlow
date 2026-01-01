@@ -1,7 +1,7 @@
 import type { NavigateOptions } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import { formatShortcut } from '@/store/app-store';
-import { BookOpen, Activity, Settings } from 'lucide-react';
+import { BookOpen, Activity, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 interface SidebarFooterProps {
   sidebarOpen: boolean;
@@ -13,6 +13,8 @@ interface SidebarFooterProps {
   shortcuts: {
     settings: string;
   };
+  activityFeedOpen?: boolean;
+  onToggleActivityFeed?: () => void;
 }
 
 export function SidebarFooter({
@@ -23,6 +25,8 @@ export function SidebarFooter({
   hideRunningAgents,
   runningAgentsCount,
   shortcuts,
+  activityFeedOpen = false,
+  onToggleActivityFeed,
 }: SidebarFooterProps) {
   return (
     <div
@@ -118,7 +122,7 @@ export function SidebarFooter({
               sidebarOpen ? 'justify-start' : 'justify-center',
               'hover:scale-[1.02] active:scale-[0.97]'
             )}
-            title={!sidebarOpen ? 'Running Agents' : undefined}
+            title={!sidebarOpen ? 'Running Agents (press A for activity feed)' : undefined}
             data-testid="running-agents-link"
           >
             <div className="relative">
@@ -179,7 +183,7 @@ export function SidebarFooter({
                   'translate-x-1 group-hover:translate-x-0'
                 )}
               >
-                Running Agents
+                Running Agents (press A for activity feed)
                 {runningAgentsCount > 0 && (
                   <span className="ml-2 px-1.5 py-0.5 bg-brand-500 text-white rounded-full text-[10px] font-semibold">
                     {runningAgentsCount}
@@ -187,6 +191,40 @@ export function SidebarFooter({
                 )}
               </span>
             )}
+          </button>
+        </div>
+      )}
+
+      {/* Activity Feed Toggle */}
+      {sidebarOpen && onToggleActivityFeed && (
+        <div className="p-2 pb-0">
+          <button
+            onClick={onToggleActivityFeed}
+            className={cn(
+              'group flex items-center w-full px-3 py-2 rounded-lg relative overflow-hidden titlebar-no-drag',
+              'transition-all duration-200 ease-out',
+              activityFeedOpen
+                ? [
+                    'bg-brand-500/10 text-brand-600 dark:text-brand-400 font-medium',
+                    'border border-brand-500/30',
+                  ]
+                : [
+                    'text-muted-foreground hover:text-foreground',
+                    'hover:bg-accent/50',
+                    'border border-transparent',
+                  ],
+              'justify-start'
+            )}
+            title="Toggle Agent Activity Feed (A)"
+            data-testid="activity-feed-toggle"
+          >
+            {activityFeedOpen ? (
+              <PanelLeftClose className="w-4 h-4 shrink-0" />
+            ) : (
+              <PanelLeftOpen className="w-4 h-4 shrink-0" />
+            )}
+            <span className="ml-2 text-xs">Activity Feed</span>
+            <span className="ml-auto text-[10px] font-mono text-muted-foreground">A</span>
           </button>
         </div>
       )}

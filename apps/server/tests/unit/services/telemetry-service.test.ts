@@ -404,6 +404,9 @@ describe('TelemetryService', () => {
         featureId: 'feature-1',
       });
 
+      // Wait for async file write to complete (saveEvents is called without await)
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       const eventsFile = join(testDataDir, 'telemetry', 'events.jsonl');
       const content = await secureFs.readFile(eventsFile, 'utf-8');
       const lines = content.trim().split('\n');
@@ -418,6 +421,9 @@ describe('TelemetryService', () => {
       service.recordAgentStart({ sessionId: 's1', featureId: 'f1' });
       service.recordCheckpointCreated({ sessionId: 's1', checkpointId: 'cp-1' });
 
+      // Wait for async file writes to complete
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       // Create a new service instance (should load existing events)
       const service2 = new TelemetryService(testDataDir, eventEmitter as any);
       await service2.initialize();
@@ -430,6 +436,9 @@ describe('TelemetryService', () => {
       service.startSession('session-1');
       service.recordAgentStart({ featureId: 'f1' });
       service.endSession();
+
+      // Wait for async file writes to complete (saveSessions is called without await)
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const sessionsFile = join(testDataDir, 'telemetry', 'sessions.json');
       const content = await secureFs.readFile(sessionsFile, 'utf-8');
@@ -477,7 +486,7 @@ describe('TelemetryService', () => {
   describe('Event Emission', () => {
     it('should emit event when recording telemetry', async () => {
       const eventPromise = new Promise<any>((resolve) => {
-        eventEmitter.once('telemetry:event', (event) => {
+        eventEmitter.once('telemetry:started', (event) => {
           resolve(event);
         });
       });

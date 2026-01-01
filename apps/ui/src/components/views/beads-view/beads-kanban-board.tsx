@@ -11,6 +11,7 @@ import {
 import { BEADS_COLUMNS, type BeadsColumnId } from './constants';
 import { BeadsColumn } from './components/beads-column';
 import { BeadsCard } from './components/beads-card';
+import { useAgentAssignments } from './hooks/use-agent-assignments';
 import type { BeadsIssue } from '@automaker/types';
 import { useAppStore } from '@/store/app-store';
 import { useBoardBackgroundSettings } from '@/hooks/use-board-background-settings';
@@ -41,6 +42,12 @@ export const BeadsKanbanBoard = memo(function BeadsKanbanBoard({
 }: BeadsKanbanBoardProps) {
   const store = useAppStore();
   const bgSettings = useBoardBackgroundSettings();
+
+  // Fetch agent assignments
+  const { assignments } = useAgentAssignments({
+    currentProject: store.currentProject || null,
+    enabled: true,
+  });
 
   const projectPath = store.currentProject?.path;
   const settings = projectPath
@@ -117,6 +124,7 @@ export const BeadsKanbanBoard = memo(function BeadsKanbanBoard({
                       issue={issue}
                       blockingCount={blockingCount}
                       blockedCount={blockedCount}
+                      agentAssignment={assignments[issue.id]}
                       onEdit={() => onEditIssue(issue)}
                       onDelete={() => onDeleteIssue(issue)}
                       onStart={() => onStartIssue(issue)}

@@ -147,7 +147,7 @@ describe('TaskClassifier', () => {
       const classification = classifier.classifyTask(analysis);
 
       expect(classification.alternatives.length).toBeGreaterThan(0);
-      expect(classification.alternatives[0]).toHaveProperty('agentType');
+      expect(classification.alternatives[0]).toHaveProperty('type');
       expect(classification.alternatives[0]).toHaveProperty('confidence');
     });
 

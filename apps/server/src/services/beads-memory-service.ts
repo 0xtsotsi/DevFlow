@@ -96,12 +96,26 @@ export class BeadsMemoryService {
     const maxResults = options.maxResults || 10;
 
     let allIssues: BeadsIssue[] = [];
-    for (const keyword of keywords.slice(0, 2)) {
-      // Search with each keyword to get broader results
-      const results = await this.beadsService.searchIssues(projectPath, keyword, {
-        limit: maxResults * 2, // Get more to filter later
-      });
-      allIssues = allIssues.concat(results);
+    try {
+      for (const keyword of keywords.slice(0, 2)) {
+        // Search with each keyword to get broader results
+        const results = await this.beadsService.searchIssues(projectPath, keyword, {
+          limit: maxResults * 2, // Get more to filter later
+        });
+        allIssues = allIssues.concat(results);
+      }
+    } catch (error) {
+      console.warn('[BeadsMemory] Search failed, returning empty context:', error);
+      // Return empty context instead of throwing
+      return {
+        relatedBugs: [],
+        relatedFeatures: [],
+        pastDecisions: [],
+        blockedBy: [],
+        similarIssues: [],
+        summary: '## Memory Context\n\nNo results available due to search error.',
+        totalTokenEstimate: 0,
+      };
     }
 
     // Deduplicate by ID

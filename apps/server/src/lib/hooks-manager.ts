@@ -309,6 +309,4 @@ interface AsyncFunctionConstructor extends FunctionConstructor {
   new (...args: string[]): (...args: unknown[]) => Promise<unknown>;
 }
 
-const AsyncFunction = function () {} as unknown as AsyncFunctionConstructor;
-
-Object.setPrototypeOf(AsyncFunction, async function () {}.constructor);
+const AsyncFunction = async function () {}.constructor as unknown as AsyncFunctionConstructor;
