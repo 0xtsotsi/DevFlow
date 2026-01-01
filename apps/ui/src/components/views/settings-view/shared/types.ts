@@ -19,8 +19,6 @@ export interface CliStatus {
   error?: string;
 }
 
-export type KanbanDetailLevel = 'minimal' | 'standard' | 'detailed';
-
 export interface Project {
   id: string;
   name: string;
