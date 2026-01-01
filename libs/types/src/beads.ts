@@ -230,3 +230,26 @@ export interface IssueResearchResult {
   /** Optional: Research duration in milliseconds */
   duration?: number;
 }
+
+/**
+ * Agent assignment status for a Beads issue
+ */
+export interface AgentAssignment {
+  /** Issue ID that is assigned */
+  issueId: string;
+  /** Type of agent assigned */
+  agentType: string;
+  /** Agent session ID */
+  sessionId: string;
+  /** Assignment status */
+  status: 'working' | 'waiting' | 'blocked';
+  /** ISO timestamp when assignment started */
+  assignedAt: string;
+  /** Optional: Agent display name */
+  agentName?: string;
+}
+
+/**
+ * Map of issue IDs to their agent assignments
+ */
+export type AgentAssignments = Record<string, AgentAssignment>;

@@ -600,8 +600,8 @@ describe('BeadsMemoryService', () => {
     it('should include token warning for large context', async () => {
       const mockIssues: BeadsIssue[] = Array.from({ length: 10 }, (_, i) => ({
         id: `bd-${i}`,
-        title: 'a'.repeat(100),
-        description: 'b'.repeat(1000),
+        title: 'a'.repeat(500),
+        description: 'b'.repeat(6000),
         type: 'bug',
         priority: 2,
         status: 'open',

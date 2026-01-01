@@ -466,7 +466,7 @@ describe('AgentMonitorService', () => {
     it('should emit metrics reset event', () => {
       monitorService.resetMetrics();
 
-      const resetEvent = emittedEvents.find((e) => e.type === 'monitor:metrics:reset');
+      const resetEvent = emittedEvents.find((e) => e.type === 'agent-monitor:metrics:reset');
       expect(resetEvent).toBeDefined();
     });
   });

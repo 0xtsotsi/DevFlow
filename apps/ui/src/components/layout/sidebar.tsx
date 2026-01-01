@@ -304,6 +304,11 @@ export function Sidebar() {
         hideRunningAgents={hideRunningAgents}
         runningAgentsCount={runningAgentsCount}
         shortcuts={{ settings: shortcuts.settings }}
+        activityFeedOpen={false}
+        onToggleActivityFeed={() => {
+          // Emit event to root layout to toggle activity feed
+          window.dispatchEvent(new CustomEvent('toggle-activity-feed'));
+        }}
       />
       <TrashDialog
         open={showTrashDialog}

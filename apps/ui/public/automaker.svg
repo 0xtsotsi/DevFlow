@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Code icon">
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="DevFlow Ghost Icon">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#6B5BFF"></stop>
@@ -13,15 +13,9 @@
   <!-- Rounded square background -->
   <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#bg)"></rect>
 
-  <!-- </> icon (slightly reduced overall size) -->
-  <g fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" filter="url(#iconShadow)">
-    <!-- Left bracket < -->
-    <path d="M92 92 L52 128 L92 164"></path>
-
-    <!-- Slash / -->
-    <path d="M144 72 L116 184"></path>
-
-    <!-- Right bracket > -->
-    <path d="M164 92 L204 128 L164 164"></path>
+  <!-- Snapchat Ghost Icon representing flow -->
+  <g fill="#FFFFFF" filter="url(#iconShadow)">
+    <!-- Ghost body with eyes -->
+    <path d="M128 48 C 100 48, 76 68, 76 96 C 76 110, 82 122, 92 130 L 92 130 C 92 130, 88 142, 80 148 C 80 148, 96 152, 108 146 C 108 146, 116 156, 128 156 C 140 156, 148 146, 148 146 C 160 152, 176 148, 176 148 C 168 142, 164 130, 164 130 C 174 122, 180 110, 180 96 C 180 68, 156 48, 128 48 Z M 118 104 C 118 108, 114 108, 114 104 C 114 100, 118 100, 118 104 Z M 142 104 C 142 108, 138 108, 138 104 C 138 100, 142 100, 142 104 Z"></path>
   </g>
 </svg>

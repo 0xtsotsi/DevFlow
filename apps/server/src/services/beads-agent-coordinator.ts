@@ -175,6 +175,10 @@ export class BeadsAgentCoordinator {
       this.eventUnsubscribe = undefined;
     }
 
+    // Clear active agents and issue locks
+    this.activeAgents.clear();
+    this.issueLocks.clear();
+
     console.log('[BeadsCoordinator] Coordinator stopped');
   }
 
@@ -329,7 +333,7 @@ export class BeadsAgentCoordinator {
 
       // Build keyword list from issue
       const issueText =
-        `${issue.title} ${issue.description} ${issue.type} ${issue.labels.join(' ')}`.toLowerCase();
+        `${issue.title} ${issue.description || ''} ${issue.type} ${(issue.labels || []).join(' ')}`.toLowerCase();
 
       // Count matching capabilities
       let matchCount = 0;
@@ -352,10 +356,18 @@ export class BeadsAgentCoordinator {
         }
       }
 
-      return matchCount / capabilities.length;
+      const capabilityScore = matchCount / capabilities.length;
+
+      // Fallback to agent priority if no explicit capability match
+      if (capabilityScore === 0) {
+        // Map priority 1-10 to score 0.1-0.5
+        return 0.1 + config.priority * 0.04;
+      }
+
+      return capabilityScore;
     } catch (error) {
       console.error('[BeadsCoordinator] Error calculating capability match:', error);
-      return 0;
+      return 0.1; // Minimum score for any agent
     }
   }
 
@@ -400,6 +412,14 @@ export class BeadsAgentCoordinator {
         abortController: new AbortController(),
       };
 
+      // Emit started event
+      this.events.emit('beads:agent-started', {
+        issueId: issue.id,
+        sessionId,
+        agentType,
+        timestamp: new Date().toISOString(),
+      });
+
       // Execute with specialized agent (fire and forget)
       this.specializedAgentService
         .executeTaskWithAgent(context, prompt, undefined, undefined, {
@@ -429,6 +449,7 @@ export class BeadsAgentCoordinator {
             sessionId,
             agentType,
             success: result.success,
+            timestamp: new Date().toISOString(),
           });
         })
         .catch((error) => {
@@ -564,6 +585,15 @@ export class BeadsAgentCoordinator {
         abortController: new AbortController(),
       };
 
+      // Emit helper started event
+      this.events.emit('beads:helper-started', {
+        issueId: helperIssue.id,
+        sessionId: session.id,
+        parentSessionId,
+        agentType: helperType,
+        timestamp: new Date().toISOString(),
+      });
+
       // Execute with specialized agent (fire and forget)
       this.specializedAgentService
         .executeTaskWithAgent(context, prompt, undefined, undefined, {
@@ -596,6 +626,7 @@ export class BeadsAgentCoordinator {
             parentSessionId,
             agentType: helperType,
             success: result.success,
+            timestamp: new Date().toISOString(),
           });
         })
         .catch((error) => {
@@ -623,6 +654,7 @@ export class BeadsAgentCoordinator {
             parentSessionId,
             agentType: helperType,
             error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString(),
           });
         });
 
@@ -646,6 +678,7 @@ export class BeadsAgentCoordinator {
         parentIssueId: parentAgent.issueId,
         parentSessionId,
         agentType: helperType,
+        timestamp: new Date().toISOString(),
       });
 
       return {
@@ -757,7 +790,7 @@ ${issue.description || 'No description provided.'}
 
 **Type**: ${issue.type}
 
-${issue.labels.length > 0 ? `**Labels**: ${issue.labels.join(', ')}\n` : ''}
+${(issue.labels?.length ?? 0) > 0 ? `**Labels**: ${issue.labels!.join(', ')}\n` : ''}
 
 Please analyze this task and implement a solution following best practices.
 

@@ -10,9 +10,9 @@ import {
   BlockedBadge,
   LabelsList,
 } from './beads-badges';
-import type { BeadsIssue } from '@automaker/types';
+import type { BeadsIssue, AgentAssignment } from '@automaker/types';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit2, Trash2, Play, Check } from 'lucide-react';
+import { MoreHorizontal, Edit2, Trash2, Play, Check, Bot } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +25,7 @@ interface BeadsCardProps {
   issue: BeadsIssue;
   blockingCount: number;
   blockedCount: number;
+  agentAssignment?: AgentAssignment;
   onEdit?: () => void;
   onDelete?: () => void;
   onStart?: () => void;
@@ -35,6 +36,7 @@ export const BeadsCard = memo(function BeadsCard({
   issue,
   blockingCount,
   blockedCount,
+  agentAssignment,
   onEdit,
   onDelete,
   onStart,
@@ -52,6 +54,28 @@ export const BeadsCard = memo(function BeadsCard({
   };
 
   const canDrag = issue.status !== 'closed';
+
+  // Format agent type for display
+  const formatAgentType = (type: string) => {
+    return type
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Get agent status color
+  const getAgentStatusColor = (status: string) => {
+    switch (status) {
+      case 'working':
+        return 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30';
+      case 'waiting':
+        return 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/30';
+      case 'blocked':
+        return 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
 
   return (
     <Card
@@ -96,6 +120,22 @@ export const BeadsCard = memo(function BeadsCard({
 
         {/* Labels */}
         <LabelsList labels={issue.labels} className="mb-2" />
+
+        {/* Agent Assignment Badge */}
+        {agentAssignment && (
+          <div className="mb-2">
+            <Badge
+              variant="outline"
+              className={cn(
+                'text-xs font-normal gap-1.5',
+                getAgentStatusColor(agentAssignment.status)
+              )}
+            >
+              <Bot className="h-3 w-3" />
+              <span>{formatAgentType(agentAssignment.agentType)}</span>
+            </Badge>
+          </div>
+        )}
 
         {/* Status Badge */}
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">

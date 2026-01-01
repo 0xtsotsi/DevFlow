@@ -2,8 +2,9 @@
  * Beads routes - HTTP API for Beads issue tracker integration
  */
 
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { BeadsService } from '../../services/beads-service.js';
+import type { BeadsAgentCoordinator } from '../../services/beads-agent-coordinator.js';
 import { validatePathParams } from '../../middleware/validate-paths.js';
 import { createListHandler } from './routes/list.js';
 import { createCreateHandler } from './routes/create.js';
@@ -14,12 +15,20 @@ import { createValidateHandler } from './routes/validate.js';
 import { createShowHandler } from './routes/show.js';
 import { createConnectHandler } from './routes/connect.js';
 import { createSyncHandler } from './routes/sync.js';
+import { createAssignmentsHandler } from './routes/assignments.js';
+
+// Global reference to coordinator that will be set after initialization
+let coordinatorRef: BeadsAgentCoordinator | undefined;
+
+export function setBeadsCoordinator(coordinator: BeadsAgentCoordinator): void {
+  coordinatorRef = coordinator;
+}
 
 /**
  * Create an Express Router configured with Beads-related endpoints.
  *
  * @param beadsService - Service used by route handlers to perform Beads operations
- * @returns The configured Express Router containing the Beads endpoints (POST /list, /create, /update, /delete, /ready, /validate, /sync, /connect and GET /show/:id)
+ * @returns The configured Express Router containing the Beads endpoints (POST /list, /create, /update, /delete, /ready, /validate, /sync, /connect and GET /show/:id, /assignments)
  */
 export function createBeadsRoutes(beadsService: BeadsService): Router {
   const router = Router();
@@ -33,6 +42,17 @@ export function createBeadsRoutes(beadsService: BeadsService): Router {
   router.get('/show/:id', createShowHandler());
   router.post('/connect', validatePathParams('projectPath'), createConnectHandler());
   router.post('/sync', createSyncHandler());
+
+  // Assignments endpoint - coordinator will be set after initialization
+  router.get('/assignments', async (req: Request, res: Response) => {
+    if (!coordinatorRef) {
+      res.status(503).json({ success: false, error: 'Beads Agent Coordinator not initialized' });
+      return;
+    }
+    // Use the handler
+    const handler = createAssignmentsHandler(coordinatorRef);
+    return handler(req, res);
+  });
 
   return router;
 }

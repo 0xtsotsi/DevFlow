@@ -855,6 +855,7 @@ export class HttpApiClient implements ElectronAPI {
     getReady: (projectPath: string, limit?: number) =>
       this.post('/api/beads/ready', { projectPath, limit }),
     validate: (projectPath: string) => this.post('/api/beads/validate', { projectPath }),
+    getAssignments: (_projectPath: string) => this.get('/api/beads/assignments'),
   };
 
   // Workspace API

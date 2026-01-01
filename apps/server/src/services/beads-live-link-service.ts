@@ -400,8 +400,7 @@ export class BeadsLiveLinkService {
       .replace(/\b\d+\b/g, 'N') // Numbers
       .replace(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi, 'UUID') // UUIDs
       .replace(/0x[a-f0-9]+/gi, 'ADDR') // Memory addresses
-      .replace(/[/][w/.-]+/g, 'PATH') // File paths
-      .replace(/\\[\w.\\-]+/g, 'PATH') // Windows paths
+      .replace(/[/\\][\w./\\-]+/g, 'PATH') // File paths (both Unix and Windows)
       .replace(/:\d+/g, ':LINE') // Line numbers
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();

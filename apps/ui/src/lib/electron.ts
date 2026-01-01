@@ -6,6 +6,7 @@ import type {
   ListBeadsIssuesFilters,
   CreateBeadsIssueInput,
   UpdateBeadsIssueInput,
+  AgentAssignment,
 } from '@automaker/types';
 import { getJSON, setJSON, removeItem } from './storage';
 
@@ -145,6 +146,11 @@ export interface BeadsAPI {
     installed?: boolean;
     initialized?: boolean;
     version?: string;
+    error?: string;
+  }>;
+  getAssignments: (projectPath: string) => Promise<{
+    success: boolean;
+    assignments?: AgentAssignment[];
     error?: string;
   }>;
 }

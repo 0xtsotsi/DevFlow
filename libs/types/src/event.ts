@@ -100,10 +100,12 @@ export type EventType =
   | 'beads:task-blocked'
   | 'beads:cross-feature-resolved'
   | 'beads:agent-assigned'
+  | 'beads:agent-started'
   | 'beads:agent-completed'
   | 'beads:agent-failed'
   | 'beads:agent-cleaned'
   | 'beads:helper-spawned'
+  | 'beads:helper-started'
   | 'beads:helper-completed'
   | 'beads:helper-failed'
   // Agent events

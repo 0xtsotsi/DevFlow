@@ -114,9 +114,9 @@ describe('provider-factory.ts', () => {
       expect(hasClaudeProvider).toBe(true);
     });
 
-    it('should return exactly 1 provider', () => {
+    it('should return exactly 2 providers', () => {
       const providers = ProviderFactory.getAllProviders();
-      expect(providers).toHaveLength(1);
+      expect(providers).toHaveLength(2);
     });
 
     it('should create new instances each time', () => {
@@ -145,7 +145,7 @@ describe('provider-factory.ts', () => {
       const keys = Object.keys(statuses);
 
       expect(keys).toContain('claude');
-      expect(keys).toHaveLength(1);
+      expect(keys).toHaveLength(2);
     });
   });
 

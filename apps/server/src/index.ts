@@ -51,7 +51,7 @@ import { ClaudeUsageService } from './services/claude-usage-service.js';
 import { createGitHubRoutes } from './routes/github/index.js';
 import { PRWatcherService } from './services/github-pr-watcher.js';
 import { createContextRoutes } from './routes/context/index.js';
-import { createBeadsRoutes } from './routes/beads/index.js';
+import { createBeadsRoutes, setBeadsCoordinator } from './routes/beads/index.js';
 import { BeadsService } from './services/beads-service.js';
 import { GitHubIssuePollerService } from './services/github-issue-poller-service.js';
 import { createOrchestratorRoutes } from './routes/orchestrator/index.js';
@@ -197,6 +197,7 @@ let implementationSkillService!: ImplementationSkillService;
 let cicdSkillService!: CICDSkillService;
 let workflowOrchestratorService!: WorkflowOrchestratorService;
 let hooksService!: HooksService;
+let beadsAgentCoordinator!: BeadsAgentCoordinator;
 
 // Initialize services
 (async () => {
@@ -245,7 +246,7 @@ let hooksService!: HooksService;
     console.log('[Server] ✓ Agent Registry and Specialized Agent Service initialized');
 
     // Initialize Beads Agent Coordinator (autonomous coordination)
-    const beadsAgentCoordinator = new BeadsAgentCoordinator(
+    beadsAgentCoordinator = new BeadsAgentCoordinator(
       agentRegistry,
       beadsService,
       agentService,
@@ -260,6 +261,9 @@ let hooksService!: HooksService;
       }
     );
     console.log('[Server] ✓ Beads Agent Coordinator initialized');
+
+    // Set coordinator reference for routes that need it
+    setBeadsCoordinator(beadsAgentCoordinator);
 
     // Start coordination after server is ready
     setTimeout(() => {

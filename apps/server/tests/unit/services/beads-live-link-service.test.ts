@@ -81,7 +81,9 @@ describe('BeadsLiveLinkService', () => {
 
       await service.initialize(testProjectPath);
 
-      expect(mockEvents.subscribe).toHaveBeenCalled();
+      // When Beads is not installed, the service returns early without subscribing
+      // to events since it cannot create issues anyway
+      expect(mockEvents.subscribe).not.toHaveBeenCalled();
     });
   });
 
@@ -130,15 +132,17 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      // Wait for async handling
-      await vi.runAllTimersAsync();
+      // Use real timers for the microtask wait
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledWith(
         testProjectPath,
         expect.objectContaining({
           type: 'bug',
           priority: 2,
-          labels: expect.arrayContaining(['auto-created', 'agent-error', 'medium']),
+          labels: ['auto-created', 'agent-error', 'medium'],
         })
       );
     });
@@ -156,7 +160,9 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledWith(
         testProjectPath,
@@ -180,7 +186,9 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledWith(
         testProjectPath,
@@ -204,7 +212,9 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledWith(
         testProjectPath,
@@ -228,7 +238,9 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledWith(
         testProjectPath,
@@ -252,7 +264,7 @@ describe('BeadsLiveLinkService', () => {
     });
 
     it('should allow creating issues up to the limit', async () => {
-      // Create 20 issues
+      // Create 20 issues one at a time, waiting for each to process
       for (let i = 0; i < 20; i++) {
         callback('agent:stream', {
           type: 'error',
@@ -264,15 +276,17 @@ describe('BeadsLiveLinkService', () => {
             timestamp: new Date().toISOString(),
           },
         });
+        // Small delay to allow each error to be processed
+        vi.useRealTimers();
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        vi.useFakeTimers();
       }
-
-      await vi.runAllTimersAsync();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledTimes(20);
     });
 
     it('should reject issue creation beyond rate limit', async () => {
-      // Create 20 issues
+      // Create 20 issues one at a time, waiting for each to process
       for (let i = 0; i < 20; i++) {
         callback('agent:stream', {
           type: 'error',
@@ -284,7 +298,14 @@ describe('BeadsLiveLinkService', () => {
             timestamp: new Date().toISOString(),
           },
         });
+        // Small delay to allow each error to be processed
+        vi.useRealTimers();
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        vi.useFakeTimers();
       }
+
+      // Reset mock to clear the 20 previous calls
+      mockBeadsService.createIssue.mockClear();
 
       // 21st issue should be rate limited
       callback('agent:stream', {
@@ -298,13 +319,15 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
-      expect(mockBeadsService.createIssue).toHaveBeenCalledTimes(20);
+      expect(mockBeadsService.createIssue).not.toHaveBeenCalled();
     });
 
     it('should reset rate limit after 1 hour', async () => {
-      // Create 20 issues
+      // Create 20 issues one at a time
       for (let i = 0; i < 20; i++) {
         callback('agent:stream', {
           type: 'error',
@@ -316,7 +339,12 @@ describe('BeadsLiveLinkService', () => {
             timestamp: new Date().toISOString(),
           },
         });
+        vi.useRealTimers();
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        vi.useFakeTimers();
       }
+
+      expect(mockBeadsService.createIssue).toHaveBeenCalledTimes(20);
 
       // Fast forward 1 hour
       vi.advanceTimersByTime(60 * 60 * 1000 + 1);
@@ -333,7 +361,9 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledTimes(21);
     });
@@ -381,6 +411,14 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
+      // Wait for first error to be processed and cached
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      vi.useFakeTimers();
+
+      // Reset the mock to clear the first call
+      mockBeadsService.createIssue.mockClear();
+
       // Second same error - should be deduplicated
       callback('agent:stream', {
         type: 'error',
@@ -393,9 +431,11 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
-      expect(mockBeadsService.createIssue).toHaveBeenCalledTimes(1);
+      expect(mockBeadsService.createIssue).not.toHaveBeenCalled();
     });
 
     it('should normalize error for deduplication', async () => {
@@ -426,6 +466,14 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
+      // Wait for first error to be processed and cached
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      vi.useFakeTimers();
+
+      // Reset the mock to clear the first call
+      mockBeadsService.createIssue.mockClear();
+
       // Same error with different path - should be deduplicated
       callback('agent:stream', {
         type: 'error',
@@ -438,9 +486,11 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
-      expect(mockBeadsService.createIssue).toHaveBeenCalledTimes(1);
+      expect(mockBeadsService.createIssue).not.toHaveBeenCalled();
     });
 
     it('should expire deduplication cache after 24 hours', async () => {
@@ -472,6 +522,10 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
+
       // Fast forward 24 hours
       vi.advanceTimersByTime(24 * 60 * 60 * 1000 + 1);
 
@@ -487,7 +541,9 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledTimes(2);
     });
@@ -526,6 +582,11 @@ describe('BeadsLiveLinkService', () => {
         priority: 1,
       });
 
+      // Use real timers for the microtask wait
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
+
       expect(mockBeadsService.createIssue).toHaveBeenCalledWith(
         testProjectPath,
         expect.objectContaining({
@@ -560,6 +621,11 @@ describe('BeadsLiveLinkService', () => {
         title: 'Task',
       });
 
+      // Use real timers for the microtask wait
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
+
       expect(mockBeadsService.createIssue).toHaveBeenCalledWith(
         testProjectPath,
         expect.objectContaining({
@@ -593,7 +659,10 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      // Use real timers for the microtask wait
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledWith(
         testProjectPath,
@@ -615,7 +684,10 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      // Use real timers for the microtask wait
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       expect(mockBeadsService.createIssue).toHaveBeenCalledWith(
         testProjectPath,
@@ -639,7 +711,10 @@ describe('BeadsLiveLinkService', () => {
         },
       });
 
-      await vi.runAllTimersAsync();
+      // Use real timers for the microtask wait
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.useFakeTimers();
 
       const callArgs = mockBeadsService.createIssue.mock.calls[0][1];
       expect(callArgs.title.length).toBeLessThanOrEqual(63); // 60 + '...'

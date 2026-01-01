@@ -99,6 +99,8 @@ export type {
   GitHubIssue,
   DependencyAnalysis,
   IssueResearchResult,
+  AgentAssignment,
+  AgentAssignments,
 } from './beads.js';
 
 // Agent types

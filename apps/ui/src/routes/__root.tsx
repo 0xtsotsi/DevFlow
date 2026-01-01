@@ -1,6 +1,7 @@
 import { createRootRoute, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState, useCallback, useDeferredValue } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
+import { AgentActivityFeed } from '@/components/agent-activity-feed';
 import {
   FileBrowserProvider,
   useFileBrowser,
@@ -11,6 +12,7 @@ import { useSetupStore } from '@/store/setup-store';
 import { getElectronAPI } from '@/lib/electron';
 import { Toaster } from 'sonner';
 import { ThemeOption, themeOptions } from '@/config/theme-options';
+import { cn } from '@/lib/utils';
 
 function RootLayoutContent() {
   const location = useLocation();
@@ -19,6 +21,7 @@ function RootLayoutContent() {
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
   const [streamerPanelOpen, setStreamerPanelOpen] = useState(false);
+  const [activityFeedOpen, setActivityFeedOpen] = useState(false);
   const [setupHydrated, setSetupHydrated] = useState(
     () => useSetupStore.persist?.hasHydrated?.() ?? false
   );
@@ -53,6 +56,12 @@ function RootLayoutContent() {
       event.preventDefault();
       setStreamerPanelOpen((prev) => !prev);
     }
+
+    // Toggle agent activity feed with 'A' key
+    if (event.key === 'a' || event.key === 'A') {
+      event.preventDefault();
+      setActivityFeedOpen((prev) => !prev);
+    }
   }, []);
 
   useEffect(() => {
@@ -61,6 +70,18 @@ function RootLayoutContent() {
       window.removeEventListener('keydown', handleStreamerPanelShortcut);
     };
   }, [handleStreamerPanelShortcut]);
+
+  // Listen for toggle activity feed event from sidebar
+  useEffect(() => {
+    const handleToggleFeed = () => {
+      setActivityFeedOpen((prev) => !prev);
+    };
+
+    window.addEventListener('toggle-activity-feed', handleToggleFeed);
+    return () => {
+      window.removeEventListener('toggle-activity-feed', handleToggleFeed);
+    };
+  }, []);
 
   const effectiveTheme = getEffectiveTheme();
   // Defer the theme value to keep UI responsive during rapid hover changes
@@ -161,8 +182,15 @@ function RootLayoutContent() {
   return (
     <main className="flex h-screen overflow-hidden" data-testid="app-container">
       <Sidebar />
+
+      {/* Agent Activity Feed - left sidebar panel */}
+      <AgentActivityFeed open={activityFeedOpen} onOpenChange={setActivityFeedOpen} />
+
       <div
-        className="flex-1 flex flex-col overflow-hidden transition-all duration-300"
+        className={cn(
+          'flex-1 flex flex-col overflow-hidden transition-all duration-300',
+          activityFeedOpen && 'ml-80'
+        )}
         style={{ marginRight: streamerPanelOpen ? '250px' : '0' }}
       >
         <Outlet />
