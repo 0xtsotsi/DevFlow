@@ -118,6 +118,50 @@ export interface AgentStats {
 }
 
 /**
+ * Tool usage record
+ */
+export interface ToolUsageRecord {
+  /** Unique usage record ID */
+  id: string;
+  /** Agent ID that used the tool */
+  agentId: string;
+  /** Tool name (e.g., 'create_beads_issue', 'query_beads_memory', 'spawn_helper_agent') */
+  toolName: string;
+  /** Timestamp of usage */
+  timestamp: number;
+  /** Additional metadata about the tool usage */
+  metadata: Record<string, unknown> | null;
+}
+
+/**
+ * Tool usage statistics
+ */
+export interface ToolUsageStats {
+  /** Tool name */
+  toolName: string;
+  /** Usage count */
+  count: number;
+  /** First used timestamp */
+  firstUsed: number;
+  /** Last used timestamp */
+  lastUsed: number;
+  /** Number of unique agents that used this tool */
+  uniqueAgents: number;
+}
+
+/**
+ * Agent tool usage summary
+ */
+export interface AgentToolUsage {
+  /** Agent ID */
+  agentId: string;
+  /** Tools used by this agent with counts */
+  tools: Record<string, number>;
+  /** Total tool usage count */
+  totalUsage: number;
+}
+
+/**
  * Agent Monitor Service class
  *
  * Singleton service for tracking AI agent executions.
@@ -186,6 +230,20 @@ export class AgentMonitorService {
       CREATE INDEX IF NOT EXISTS idx_agents_beads ON agents(beads_id);
       CREATE INDEX IF NOT EXISTS idx_agents_pid ON agents(pid);
       CREATE INDEX IF NOT EXISTS idx_agents_created ON agents(created_at);
+
+      CREATE TABLE IF NOT EXISTS tool_usage (
+        id TEXT PRIMARY KEY,
+        agent_id TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        timestamp INTEGER NOT NULL,
+        metadata_json TEXT,
+        FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_tool_usage_agent ON tool_usage(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_tool_usage_name ON tool_usage(tool_name);
+      CREATE INDEX IF NOT EXISTS idx_tool_usage_timestamp ON tool_usage(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_tool_usage_agent_name ON tool_usage(agent_id, tool_name);
     `);
   }
 
@@ -712,6 +770,285 @@ export class AgentMonitorService {
       metadata: r.metadata_json
         ? (JSON.parse(String(r.metadata_json)) as Record<string, unknown>)
         : null,
+    };
+  }
+
+  /**
+   * Track tool usage by an agent
+   *
+   * Records when an agent uses a specific tool (e.g., Beads tools).
+   * Uses atomic operation to prevent race conditions.
+   *
+   * @param agentId Agent ID that used the tool
+   * @param toolName Tool name (e.g., 'create_beads_issue', 'query_beads_memory', 'spawn_helper_agent')
+   * @param metadata Optional metadata about the tool usage
+   * @returns The created tool usage record ID, or null if agent not found
+   */
+  trackToolUsage(
+    agentId: string,
+    toolName: string,
+    metadata?: Record<string, unknown>
+  ): string | null {
+    // Verify agent exists
+    const agent = this.getAgent(agentId);
+    if (!agent) {
+      console.warn(`[AgentMonitor] Cannot track tool usage: agent ${agentId} not found`);
+      return null;
+    }
+
+    // Generate unique usage record ID
+    const usageId = `${agentId}-${toolName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const timestamp = Date.now();
+
+    const stmt = this.db.prepare(`
+      INSERT INTO tool_usage (id, agent_id, tool_name, timestamp, metadata_json)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    try {
+      stmt.run(usageId, agentId, toolName, timestamp, metadata ? JSON.stringify(metadata) : null);
+      return usageId;
+    } catch (error) {
+      console.error(`[AgentMonitor] Failed to track tool usage:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get tool usage statistics for all tools
+   *
+   * Returns aggregated statistics about tool usage across all agents.
+   *
+   * @returns Array of tool usage statistics sorted by usage count (descending)
+   */
+  getToolUsageStats(): ToolUsageStats[] {
+    const stmt = this.db.prepare(`
+      SELECT
+        tool_name,
+        COUNT(*) as count,
+        MIN(timestamp) as first_used,
+        MAX(timestamp) as last_used,
+        COUNT(DISTINCT agent_id) as unique_agents
+      FROM tool_usage
+      GROUP BY tool_name
+      ORDER BY count DESC
+    `);
+
+    const rows = stmt.all() as unknown[];
+    return rows
+      .map((r) => this.rowToToolUsageStats(r))
+      .filter((r): r is ToolUsageStats => r !== null);
+  }
+
+  /**
+   * Get tool usage for a specific agent
+   *
+   * Returns detailed information about which tools an agent has used.
+   *
+   * @param agentId Agent ID
+   * @returns Agent tool usage summary, or null if agent not found
+   */
+  getAgentToolUsage(agentId: string): AgentToolUsage | null {
+    // Verify agent exists
+    const agent = this.getAgent(agentId);
+    if (!agent) {
+      return null;
+    }
+
+    const stmt = this.db.prepare(`
+      SELECT tool_name, COUNT(*) as count
+      FROM tool_usage
+      WHERE agent_id = ?
+      GROUP BY tool_name
+      ORDER BY count DESC
+    `);
+
+    const rows = stmt.all(agentId) as unknown[];
+    const tools: Record<string, number> = {};
+    let totalUsage = 0;
+
+    for (const row of rows) {
+      if (row && typeof row === 'object') {
+        const r = row as Record<string, unknown>;
+        const toolName = String(r.tool_name ?? '');
+        const count = Number(r.count ?? 0);
+        tools[toolName] = count;
+        totalUsage += count;
+      }
+    }
+
+    return {
+      agentId,
+      tools,
+      totalUsage,
+    };
+  }
+
+  /**
+   * Get most frequently used tools
+   *
+   * Returns the most frequently used tools across all agents.
+   *
+   * @param limit Maximum number of tools to return (default: 10)
+   * @returns Array of tool usage statistics
+   */
+  getMostUsedTools(limit: number = 10): ToolUsageStats[] {
+    const stats = this.getToolUsageStats();
+    return stats.slice(0, limit);
+  }
+
+  /**
+   * Get tool usage history for a specific agent
+   *
+   * Returns chronological history of tool usage for an agent.
+   *
+   * @param agentId Agent ID
+   * @param toolName Optional tool name filter
+   * @param limit Maximum number of records to return (default: 100)
+   * @returns Array of tool usage records
+   */
+  getToolUsageHistory(agentId: string, toolName?: string, limit: number = 100): ToolUsageRecord[] {
+    let query = 'SELECT * FROM tool_usage WHERE agent_id = ?';
+    const params: unknown[] = [agentId];
+
+    if (toolName) {
+      query += ' AND tool_name = ?';
+      params.push(toolName);
+    }
+
+    query += ' ORDER BY timestamp DESC LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(query);
+    const rows = stmt.all(...params) as unknown[];
+    return rows.map((r) => this.rowToToolUsage(r)).filter((r): r is ToolUsageRecord => r !== null);
+  }
+
+  /**
+   * Get tool usage records by tool name
+   *
+   * Returns all usage records for a specific tool across all agents.
+   *
+   * @param toolName Tool name
+   * @param limit Maximum number of records to return (default: 100)
+   * @returns Array of tool usage records
+   */
+  getToolUsageByName(toolName: string, limit: number = 100): ToolUsageRecord[] {
+    const stmt = this.db.prepare(`
+      SELECT * FROM tool_usage
+      WHERE tool_name = ?
+      ORDER BY timestamp DESC
+      LIMIT ?
+    `);
+
+    const rows = stmt.all(toolName, limit) as unknown[];
+    return rows.map((r) => this.rowToToolUsage(r)).filter((r): r is ToolUsageRecord => r !== null);
+  }
+
+  /**
+   * Get recent tool usage across all agents
+   *
+   * Returns the most recent tool usage records.
+   *
+   * @param limit Maximum number of records to return (default: 50)
+   * @param toolName Optional tool name filter
+   * @returns Array of tool usage records
+   */
+  getRecentToolUsage(limit: number = 50, toolName?: string): ToolUsageRecord[] {
+    let query = 'SELECT * FROM tool_usage';
+    const params: unknown[] = [];
+
+    if (toolName) {
+      query += ' WHERE tool_name = ?';
+      params.push(toolName);
+    }
+
+    query += ' ORDER BY timestamp DESC LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(query);
+    const rows = stmt.all(...params) as unknown[];
+    return rows.map((r) => this.rowToToolUsage(r)).filter((r): r is ToolUsageRecord => r !== null);
+  }
+
+  /**
+   * Delete tool usage records for an agent
+   *
+   * Removes all tool usage records associated with an agent.
+   * Called automatically when an agent is deleted due to CASCADE.
+   *
+   * @param agentId Agent ID
+   * @returns Number of records deleted
+   */
+  deleteToolUsageForAgent(agentId: string): number {
+    const stmt = this.db.prepare(`
+      DELETE FROM tool_usage WHERE agent_id = ?
+    `);
+
+    const result = stmt.run(agentId);
+    return result.changes;
+  }
+
+  /**
+   * Clean up old tool usage records
+   *
+   * Removes tool usage records older than the specified timestamp.
+   *
+   * @param olderThan Delete records older than this timestamp
+   * @returns Number of records deleted
+   */
+  cleanupToolUsage(olderThan: number): number {
+    const stmt = this.db.prepare(`
+      DELETE FROM tool_usage WHERE timestamp < ?
+    `);
+
+    const result = stmt.run(olderThan);
+    return result.changes;
+  }
+
+  /**
+   * Convert a database row to ToolUsageRecord
+   *
+   * @param row Database row
+   * @returns Tool usage record or null
+   */
+  private rowToToolUsage(row: unknown): ToolUsageRecord | null {
+    if (!row || typeof row !== 'object') {
+      return null;
+    }
+
+    const r = row as Record<string, unknown>;
+
+    return {
+      id: String(r.id ?? ''),
+      agentId: String(r.agent_id ?? ''),
+      toolName: String(r.tool_name ?? ''),
+      timestamp: Number(r.timestamp ?? 0),
+      metadata: r.metadata_json
+        ? (JSON.parse(String(r.metadata_json)) as Record<string, unknown>)
+        : null,
+    };
+  }
+
+  /**
+   * Convert a database row to ToolUsageStats
+   *
+   * @param row Database row
+   * @returns Tool usage stats or null
+   */
+  private rowToToolUsageStats(row: unknown): ToolUsageStats | null {
+    if (!row || typeof row !== 'object') {
+      return null;
+    }
+
+    const r = row as Record<string, unknown>;
+
+    return {
+      toolName: String(r.tool_name ?? ''),
+      count: Number(r.count ?? 0),
+      firstUsed: Number(r.first_used ?? 0),
+      lastUsed: Number(r.last_used ?? 0),
+      uniqueAgents: Number(r.unique_agents ?? 0),
     };
   }
 
