@@ -23,6 +23,11 @@ import type {
   SuggestionType,
   GitHubAPI,
   BeadsAPI,
+  BeadsAgentEvent,
+  BeadsAgentErrorEvent,
+  BeadsHelperEvent,
+  BeadsIssueEvent,
+  BeadsIssueDeletedEvent,
 } from './electron';
 import type { Message, SessionListItem } from '@/types/electron';
 import type { Feature, ClaudeUsageResponse } from '@/store/app-store';
@@ -55,7 +60,20 @@ type EventType =
   | 'agent:stream'
   | 'auto-mode:event'
   | 'suggestions:event'
-  | 'spec-regeneration:event';
+  | 'spec-regeneration:event'
+  | 'beads:agent-assigned'
+  | 'beads:agent-completed'
+  | 'beads:agent-failed'
+  | 'beads:agent-started'
+  | 'beads:helper-spawned'
+  | 'beads:helper-started'
+  | 'beads:helper-completed'
+  | 'beads:helper-failed'
+  | 'beads:issue-created'
+  | 'beads:issue-updated'
+  | 'beads:issue-deleted'
+  | 'beads:task-ready'
+  | 'beads:task-blocked';
 
 type EventCallback = (payload: unknown) => void;
 
@@ -103,6 +121,17 @@ export class HttpApiClient implements ElectronAPI {
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+
+          // Handle ping/pong heartbeat
+          if (data.type === 'ping') {
+            // Respond to server ping to keep connection alive
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+              this.ws.send(JSON.stringify({ type: 'pong' }));
+            }
+            return;
+          }
+
+          // Handle normal events
           const callbacks = this.eventCallbacks.get(data.type);
           if (callbacks) {
             callbacks.forEach((cb) => cb(data.payload));
@@ -172,7 +201,19 @@ export class HttpApiClient implements ElectronAPI {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Try to read error details from response body
+        let errorDetails = '';
+        try {
+          const errorBody = await response.json();
+          if (errorBody.message) {
+            errorDetails = ` - ${errorBody.message}`;
+          } else if (errorBody.error) {
+            errorDetails = ` - ${errorBody.error}`;
+          }
+        } catch {
+          // Response body is not JSON, ignore
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}${errorDetails}`);
       }
 
       return await response.json();
@@ -197,7 +238,19 @@ export class HttpApiClient implements ElectronAPI {
       const response = await fetch(`${this.serverUrl}${endpoint}`, { headers });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Try to read error details from response body
+        let errorDetails = '';
+        try {
+          const errorBody = await response.json();
+          if (errorBody.message) {
+            errorDetails = ` - ${errorBody.message}`;
+          } else if (errorBody.error) {
+            errorDetails = ` - ${errorBody.error}`;
+          }
+        } catch {
+          // Response body is not JSON, ignore
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}${errorDetails}`);
       }
 
       return await response.json();
@@ -225,7 +278,19 @@ export class HttpApiClient implements ElectronAPI {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Try to read error details from response body
+        let errorDetails = '';
+        try {
+          const errorBody = await response.json();
+          if (errorBody.message) {
+            errorDetails = ` - ${errorBody.message}`;
+          } else if (errorBody.error) {
+            errorDetails = ` - ${errorBody.error}`;
+          }
+        } catch {
+          // Response body is not JSON, ignore
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}${errorDetails}`);
       }
 
       return await response.json();
@@ -252,7 +317,19 @@ export class HttpApiClient implements ElectronAPI {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Try to read error details from response body
+        let errorDetails = '';
+        try {
+          const errorBody = await response.json();
+          if (errorBody.message) {
+            errorDetails = ` - ${errorBody.message}`;
+          } else if (errorBody.error) {
+            errorDetails = ` - ${errorBody.error}`;
+          }
+        } catch {
+          // Response body is not JSON, ignore
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}${errorDetails}`);
       }
 
       return await response.json();
@@ -855,7 +932,37 @@ export class HttpApiClient implements ElectronAPI {
     getReady: (projectPath: string, limit?: number) =>
       this.post('/api/beads/ready', { projectPath, limit }),
     validate: (projectPath: string) => this.post('/api/beads/validate', { projectPath }),
+    initialize: (projectPath: string) =>
+      this.post<{ success: boolean; error?: string }>('/api/beads/initialize', { projectPath }),
     getAssignments: (_projectPath: string) => this.get('/api/beads/assignments'),
+    onAgentAssigned: (callback) =>
+      this.subscribeToEvent('beads:agent-assigned', (payload) =>
+        callback(payload as BeadsAgentEvent)
+      ),
+    onAgentCompleted: (callback) =>
+      this.subscribeToEvent('beads:agent-completed', (payload) =>
+        callback(payload as BeadsAgentEvent)
+      ),
+    onAgentFailed: (callback) =>
+      this.subscribeToEvent('beads:agent-failed', (payload) =>
+        callback(payload as BeadsAgentErrorEvent)
+      ),
+    onHelperSpawned: (callback) =>
+      this.subscribeToEvent('beads:helper-spawned', (payload) =>
+        callback(payload as BeadsHelperEvent)
+      ),
+    onIssueUpdated: (callback) =>
+      this.subscribeToEvent('beads:issue-updated', (payload) =>
+        callback(payload as BeadsIssueEvent)
+      ),
+    onIssueCreated: (callback) =>
+      this.subscribeToEvent('beads:issue-created', (payload) =>
+        callback(payload as BeadsIssueEvent)
+      ),
+    onIssueDeleted: (callback) =>
+      this.subscribeToEvent('beads:issue-deleted', (payload) =>
+        callback(payload as BeadsIssueDeletedEvent)
+      ),
   };
 
   // Workspace API

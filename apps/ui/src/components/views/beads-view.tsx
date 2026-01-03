@@ -10,12 +10,14 @@ import { useBeadsIssues } from './beads-view/hooks/use-beads-issues';
 import { useBeadsColumnIssues } from './beads-view/hooks/use-beads-column-issues';
 import { useBeadsActions } from './beads-view/hooks/use-beads-actions';
 import { useBeadsDragDrop } from './beads-view/hooks/use-beads-drag-drop';
+import { useBeadsRealtimeEvents } from './beads-view/hooks/use-beads-realtime-events';
 import { BeadsHeader } from './beads-view/beads-header';
 import { BeadsKanbanBoard } from './beads-view/beads-kanban-board';
 import { BeadsErrorDiagnostics } from './beads-view/components/beads-error-diagnostics';
 import { CreateIssueDialog } from './beads-view/dialogs/create-issue-dialog';
 import { EditIssueDialog } from './beads-view/dialogs/edit-issue-dialog';
 import { DeleteIssueDialog } from './beads-view/dialogs/delete-issue-dialog';
+import { InitializeBeadsDialog } from './beads-view/dialogs/initialize-beads-dialog';
 import type { BeadsIssue, CreateBeadsIssueInput } from '@automaker/types';
 import { getElectronAPI } from '@/lib/electron';
 import { toast } from 'sonner';
@@ -50,10 +52,18 @@ export function BeadsView() {
     handleStatusChange,
   });
 
+  // Real-time Beads events (agent assignments, activity feed)
+  const { agentAssignments } = useBeadsRealtimeEvents({
+    currentProject,
+    issues,
+  });
+
   // Dialog states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showInitDialog, setShowInitDialog] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<BeadsIssue | null>(null);
 
   // Helper to get blocking counts for an issue
@@ -149,9 +159,8 @@ export function BeadsView() {
   const handleCreateClick = useCallback(async () => {
     const isValid = await validateBeads();
     if (!isValid) {
-      toast.error('Beads not initialized', {
-        description: 'Please initialize Beads in this project first by running "bd init"',
-      });
+      // Show initialization dialog instead of toast error
+      setShowInitDialog(true);
       return;
     }
     setShowCreateDialog(true);
@@ -165,6 +174,42 @@ export function BeadsView() {
     },
     [handleCreateIssue]
   );
+
+  // Handle initialize Beads
+  const handleInitializeBeads = useCallback(async () => {
+    if (!currentProject) return;
+
+    setIsInitializing(true);
+    try {
+      const api = getElectronAPI();
+      if (!api.beads) {
+        toast.error('Beads API not available');
+        setShowInitDialog(false);
+        return;
+      }
+
+      const result = await api.beads.initialize(currentProject.path);
+
+      if (result.success) {
+        toast.success('Beads initialized successfully', {
+          description: 'You can now create issues in this project',
+        });
+        setShowInitDialog(false);
+        // Reload issues to refresh the view
+        await loadIssues();
+      } else {
+        toast.error('Failed to initialize Beads', {
+          description: result.error || 'Unknown error occurred',
+        });
+      }
+    } catch (error) {
+      toast.error('Failed to initialize Beads', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    } finally {
+      setIsInitializing(false);
+    }
+  }, [currentProject, loadIssues]);
 
   // Show loading state
   if (isLoading) {
@@ -217,6 +262,7 @@ export function BeadsView() {
         onDeleteIssue={handleDeleteIssueClick}
         onStartIssue={handleStartIssue}
         onCloseIssue={handleCloseIssue}
+        agentAssignments={agentAssignments}
       />
 
       {/* Dialogs */}
@@ -224,6 +270,14 @@ export function BeadsView() {
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         onCreate={handleCreateFromDialog}
+      />
+
+      <InitializeBeadsDialog
+        open={showInitDialog}
+        onOpenChange={setShowInitDialog}
+        projectPath={currentProject?.path || ''}
+        onInitialize={handleInitializeBeads}
+        isInitializing={isInitializing}
       />
 
       <EditIssueDialog

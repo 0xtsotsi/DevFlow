@@ -16,6 +16,7 @@ import { createShowHandler } from './routes/show.js';
 import { createConnectHandler } from './routes/connect.js';
 import { createSyncHandler } from './routes/sync.js';
 import { createAssignmentsHandler } from './routes/assignments.js';
+import { createInitializeHandler } from './routes/initialize.js';
 
 // Global reference to coordinator that will be set after initialization
 let coordinatorRef: BeadsAgentCoordinator | undefined;
@@ -28,7 +29,7 @@ export function setBeadsCoordinator(coordinator: BeadsAgentCoordinator): void {
  * Create an Express Router configured with Beads-related endpoints.
  *
  * @param beadsService - Service used by route handlers to perform Beads operations
- * @returns The configured Express Router containing the Beads endpoints (POST /list, /create, /update, /delete, /ready, /validate, /sync, /connect and GET /show/:id, /assignments)
+ * @returns The configured Express Router containing the Beads endpoints (POST /list, /create, /update, /delete, /ready, /validate, /sync, /connect, /initialize and GET /show/:id, /assignments)
  */
 export function createBeadsRoutes(beadsService: BeadsService): Router {
   const router = Router();
@@ -42,6 +43,11 @@ export function createBeadsRoutes(beadsService: BeadsService): Router {
   router.get('/show/:id', createShowHandler());
   router.post('/connect', validatePathParams('projectPath'), createConnectHandler());
   router.post('/sync', createSyncHandler());
+  router.post(
+    '/initialize',
+    validatePathParams('projectPath'),
+    createInitializeHandler(beadsService)
+  );
 
   // Assignments endpoint - coordinator will be set after initialization
   router.get('/assignments', async (req: Request, res: Response) => {

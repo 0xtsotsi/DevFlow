@@ -417,6 +417,7 @@ export class BeadsAgentCoordinator {
         issueId: issue.id,
         sessionId,
         agentType,
+        projectPath,
         timestamp: new Date().toISOString(),
       });
 
@@ -448,6 +449,7 @@ export class BeadsAgentCoordinator {
             issueId: issue.id,
             sessionId,
             agentType,
+            projectPath,
             success: result.success,
             timestamp: new Date().toISOString(),
           });
@@ -478,6 +480,7 @@ export class BeadsAgentCoordinator {
             issueId: issue.id,
             sessionId,
             agentType,
+            projectPath,
             error: error instanceof Error ? error.message : String(error),
           });
         });
@@ -500,6 +503,7 @@ export class BeadsAgentCoordinator {
         issueId: issue.id,
         sessionId,
         agentType,
+        projectPath,
         issue,
       });
 
@@ -653,6 +657,7 @@ export class BeadsAgentCoordinator {
             sessionId: session.id,
             parentSessionId,
             agentType: helperType,
+            projectPath,
             error: error instanceof Error ? error.message : String(error),
             timestamp: new Date().toISOString(),
           });
@@ -678,6 +683,7 @@ export class BeadsAgentCoordinator {
         parentIssueId: parentAgent.issueId,
         parentSessionId,
         agentType: helperType,
+        projectPath,
         timestamp: new Date().toISOString(),
       });
 
