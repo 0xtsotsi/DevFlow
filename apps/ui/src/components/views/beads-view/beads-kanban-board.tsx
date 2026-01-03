@@ -11,8 +11,7 @@ import {
 import { BEADS_COLUMNS, type BeadsColumnId } from './constants';
 import { BeadsColumn } from './components/beads-column';
 import { BeadsCard } from './components/beads-card';
-import { useAgentAssignments } from './hooks/use-agent-assignments';
-import type { BeadsIssue } from '@automaker/types';
+import type { BeadsIssue, AgentAssignment } from '@automaker/types';
 import { useAppStore } from '@/store/app-store';
 import { useBoardBackgroundSettings } from '@/hooks/use-board-background-settings';
 import { cn } from '@/lib/utils';
@@ -27,6 +26,7 @@ interface BeadsKanbanBoardProps {
   onDeleteIssue: (issue: BeadsIssue) => void;
   onStartIssue: (issue: BeadsIssue) => void;
   onCloseIssue: (issue: BeadsIssue) => void;
+  agentAssignments: Map<string, AgentAssignment>;
 }
 
 export const BeadsKanbanBoard = memo(function BeadsKanbanBoard({
@@ -39,15 +39,10 @@ export const BeadsKanbanBoard = memo(function BeadsKanbanBoard({
   onDeleteIssue,
   onStartIssue,
   onCloseIssue,
+  agentAssignments,
 }: BeadsKanbanBoardProps) {
   const store = useAppStore();
   const bgSettings = useBoardBackgroundSettings();
-
-  // Fetch agent assignments
-  const { assignments } = useAgentAssignments({
-    currentProject: store.currentProject || null,
-    enabled: true,
-  });
 
   const projectPath = store.currentProject?.path;
   const settings = projectPath
@@ -124,7 +119,7 @@ export const BeadsKanbanBoard = memo(function BeadsKanbanBoard({
                       issue={issue}
                       blockingCount={blockingCount}
                       blockedCount={blockedCount}
-                      agentAssignment={assignments[issue.id]}
+                      agentAssignment={agentAssignments.get(issue.id)}
                       onEdit={() => onEditIssue(issue)}
                       onDelete={() => onDeleteIssue(issue)}
                       onStart={() => onStartIssue(issue)}
@@ -140,14 +135,29 @@ export const BeadsKanbanBoard = memo(function BeadsKanbanBoard({
 
       {/* Drag Overlay */}
       <DragOverlay>
-        {activeIssue ? (
-          <div
-            className={cn('w-72 opacity-80 rotate-2', cardGlassmorphism && 'backdrop-blur-sm')}
-            style={{ opacity: cardOpacity / 100 }}
-          >
-            <BeadsCard issue={activeIssue} blockingCount={0} blockedCount={0} />
-          </div>
-        ) : null}
+        {activeIssue
+          ? (() => {
+              const { blockingCount, blockedCount } = blockingCountsMap.get(activeIssue.id) ?? {
+                blockingCount: 0,
+                blockedCount: 0,
+              };
+              return (
+                <div
+                  className={cn(
+                    'w-72 opacity-80 rotate-2',
+                    cardGlassmorphism && 'backdrop-blur-sm'
+                  )}
+                  style={{ opacity: cardOpacity / 100 }}
+                >
+                  <BeadsCard
+                    issue={activeIssue}
+                    blockingCount={blockingCount}
+                    blockedCount={blockedCount}
+                  />
+                </div>
+              );
+            })()
+          : null}
       </DragOverlay>
     </DndContext>
   );
