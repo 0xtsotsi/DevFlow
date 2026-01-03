@@ -84,6 +84,9 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
     const unsubAgentAssigned = api.beads.onAgentAssigned((event: BeadsAgentEvent) => {
       console.log('[BeadsRealtime] Agent assigned:', event);
 
+      // Filter events by project
+      if (event.projectPath !== currentProject.path) return;
+
       // Create agent assignment
       const assignment: AgentAssignment = {
         issueId: event.issueId,
@@ -115,6 +118,9 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
     const unsubAgentCompleted = api.beads.onAgentCompleted((event: BeadsAgentEvent) => {
       console.log('[BeadsRealtime] Agent completed:', event);
 
+      // Filter events by project
+      if (event.projectPath !== currentProject.path) return;
+
       // Remove from assignments
       setAgentAssignments((prev) => {
         const updated = new Map(prev);
@@ -137,6 +143,9 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
     // Handler: Agent failed on an issue
     const unsubAgentFailed = api.beads.onAgentFailed((event: BeadsAgentErrorEvent) => {
       console.error('[BeadsRealtime] Agent failed:', event);
+
+      // Filter events by project
+      if (event.projectPath !== currentProject.path) return;
 
       // Remove from assignments
       setAgentAssignments((prev) => {
@@ -162,6 +171,9 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
     const unsubHelperSpawned = api.beads.onHelperSpawned((event: BeadsHelperEvent) => {
       console.log('[BeadsRealtime] Helper spawned:', event);
 
+      // Filter events by project
+      if (event.projectPath !== currentProject.path) return;
+
       // Add to activity feed
       addActivity({
         id: `helper-${event.helperSessionId}-${Date.now()}`,
@@ -182,6 +194,9 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
     const unsubIssueUpdated = api.beads.onIssueUpdated((event: BeadsIssueEvent) => {
       console.log('[BeadsRealtime] Issue updated:', event);
 
+      // Filter events by project
+      if (event.projectPath !== currentProject.path) return;
+
       // If issue was closed, remove assignment
       if (event.issue.status === 'closed') {
         setAgentAssignments((prev) => {
@@ -195,6 +210,9 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
     // Handler: Issue deleted
     const unsubIssueDeleted = api.beads.onIssueDeleted((event: BeadsIssueDeletedEvent) => {
       console.log('[BeadsRealtime] Issue deleted:', event);
+
+      // Filter events by project
+      if (event.projectPath !== currentProject.path) return;
 
       // Remove assignment
       setAgentAssignments((prev) => {

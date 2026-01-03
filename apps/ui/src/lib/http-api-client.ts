@@ -1450,7 +1450,37 @@ export class HttpApiClient implements ElectronAPI {
     getReady: (projectPath: string, limit?: number) =>
       this.post('/api/beads/ready', { projectPath, limit }),
     validate: (projectPath: string) => this.post('/api/beads/validate', { projectPath }),
+    initialize: (projectPath: string) =>
+      this.post<{ success: boolean; error?: string }>('/api/beads/initialize', { projectPath }),
     getAssignments: (_projectPath: string) => this.get('/api/beads/assignments'),
+    onAgentAssigned: (callback) =>
+      this.subscribeToEvent('beads:agent-assigned', (payload) =>
+        callback(payload as BeadsAgentEvent)
+      ),
+    onAgentCompleted: (callback) =>
+      this.subscribeToEvent('beads:agent-completed', (payload) =>
+        callback(payload as BeadsAgentEvent)
+      ),
+    onAgentFailed: (callback) =>
+      this.subscribeToEvent('beads:agent-failed', (payload) =>
+        callback(payload as BeadsAgentErrorEvent)
+      ),
+    onHelperSpawned: (callback) =>
+      this.subscribeToEvent('beads:helper-spawned', (payload) =>
+        callback(payload as BeadsHelperEvent)
+      ),
+    onIssueUpdated: (callback) =>
+      this.subscribeToEvent('beads:issue-updated', (payload) =>
+        callback(payload as BeadsIssueEvent)
+      ),
+    onIssueCreated: (callback) =>
+      this.subscribeToEvent('beads:issue-created', (payload) =>
+        callback(payload as BeadsIssueEvent)
+      ),
+    onIssueDeleted: (callback) =>
+      this.subscribeToEvent('beads:issue-deleted', (payload) =>
+        callback(payload as BeadsIssueDeletedEvent)
+      ),
   };
 
   // Workspace API

@@ -280,11 +280,62 @@ export interface BeadsAPI {
     version?: string;
     error?: string;
   }>;
+  initialize: (projectPath: string) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
   getAssignments: (projectPath: string) => Promise<{
     success: boolean;
     assignments?: AgentAssignment[];
     error?: string;
   }>;
+  onAgentAssigned: (callback: (event: BeadsAgentEvent) => void) => () => void;
+  onAgentCompleted: (callback: (event: BeadsAgentEvent) => void) => () => void;
+  onAgentFailed: (callback: (event: BeadsAgentErrorEvent) => void) => () => void;
+  onHelperSpawned: (callback: (event: BeadsHelperEvent) => void) => () => void;
+  onIssueUpdated: (callback: (event: BeadsIssueEvent) => void) => () => void;
+  onIssueCreated: (callback: (event: BeadsIssueEvent) => void) => () => void;
+  onIssueDeleted: (callback: (event: BeadsIssueDeletedEvent) => void) => () => void;
+}
+
+// Beads event types
+export interface BeadsAgentEvent {
+  issueId: string;
+  sessionId: string;
+  agentType: string;
+  issue?: BeadsIssue;
+  timestamp?: string;
+  projectPath: string;
+}
+
+export interface BeadsAgentErrorEvent {
+  issueId: string;
+  sessionId: string;
+  agentType: string;
+  error: string;
+  projectPath: string;
+}
+
+export interface BeadsHelperEvent {
+  parentSessionId: string;
+  helperSessionId: string;
+  helperIssueId: string;
+  parentIssueId: string;
+  helperAgentType: string;
+  taskDescription: string;
+  projectPath: string;
+}
+
+export interface BeadsIssueEvent {
+  issue: BeadsIssue;
+  projectPath: string;
+  updates?: UpdateBeadsIssueInput;
+}
+
+export interface BeadsIssueDeletedEvent {
+  issueId: string;
+  projectPath: string;
+  force: boolean;
 }
 
 // GitHub types
