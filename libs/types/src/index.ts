@@ -115,6 +115,10 @@ export type {
   TaskAnalysis,
 } from './agent-types.js';
 
+// Agent model preference types
+export type { AgentModelConfig, AgentModelSettings } from './agent-models.js';
+export { DEFAULT_AGENT_MODELS, AGENT_TYPE_METADATA, AGENT_MODEL_INFO } from './agent-models.js';
+
 // Orchestrator types
 export type {
   OrchestratorTaskState,
@@ -164,3 +168,11 @@ export type {
   ResolvedEnhancementPrompts,
   ResolvedPrompts,
 } from './prompts.js';
+
+// Pipeline types
+export type {
+  PipelineStep,
+  PipelineConfig,
+  PipelineStatus,
+  FeatureStatusWithPipeline,
+} from './pipeline.js';

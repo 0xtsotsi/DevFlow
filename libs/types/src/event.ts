@@ -108,9 +108,17 @@ export type EventType =
   | 'beads:helper-started'
   | 'beads:helper-completed'
   | 'beads:helper-failed'
+  // Beads tool events
+  | 'beads:tool-issue-created'
+  | 'beads:tool-memory-queried'
+  | 'beads:tool-helper-spawned'
+  | 'beads:tool-response'
   // Agent events
   | 'agent:completed'
   | 'agent:error'
+  | 'agent:tool-use'
+  | 'agent:session-start'
+  | 'agent:session-end'
   // Hooks events
   | 'hook:registered'
   | 'hook:updated'
@@ -147,6 +155,15 @@ export type EventType =
   | 'mcp:server-added'
   | 'mcp:server-removed'
   | 'mcp:server-toggled'
-  | 'mcp:permissions-updated';
+  | 'mcp:permissions-updated'
+  // Pipeline events (PHASE_3)
+  | 'pipeline:epic-created'
+  | 'pipeline:step-ready'
+  | 'pipeline:workflow-complete'
+  | 'pipeline:step-started'
+  | 'pipeline:step-completed'
+  | 'pipeline:step-failed'
+  | 'pipeline:configured'
+  | 'pipeline:config-saved';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

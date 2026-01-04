@@ -71,6 +71,8 @@ import { ResearchSkillService } from './services/research-skill-service.js';
 import { ImplementationSkillService } from './services/implementation-skill-service.js';
 import { CICDSkillService } from './services/cicd-skill-service.js';
 import { WorkflowOrchestratorService } from './services/workflow-orchestrator-service.js';
+import { PipelineService } from './services/pipeline-service.js';
+import { createPipelineRoutes } from './routes/pipeline/index.js';
 
 // Load environment variables
 dotenv.config();
@@ -184,7 +186,8 @@ const agentService = new AgentService(DATA_DIR, events);
 const featureLoader = new FeatureLoader();
 const settingsService = new SettingsService(DATA_DIR);
 const beadsService = new BeadsService();
-const autoModeService = new AutoModeService(events, beadsService, settingsService);
+const pipelineService = new PipelineService();
+const autoModeService = new AutoModeService(events, beadsService, settingsService, pipelineService);
 const claudeUsageService = new ClaudeUsageService();
 const prWatcherService = new PRWatcherService({
   webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
@@ -373,6 +376,7 @@ app.use(
 );
 app.use('/api/context', apiLimiter, createContextRoutes());
 app.use('/api/beads', beadsLimiter, createBeadsRoutes(beadsService));
+app.use('/api/pipeline', apiLimiter, createPipelineRoutes(pipelineService));
 app.use('/api/orchestrator', apiLimiter, createOrchestratorRoutes(events));
 app.use(
   '/api/skills',

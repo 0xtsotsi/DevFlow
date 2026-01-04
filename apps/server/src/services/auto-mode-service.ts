@@ -29,6 +29,8 @@ import { BeadsOrchestrator } from './beads-orchestrator.js';
 import { CheckpointService, type AgentState } from './checkpoint-service.js';
 import type { SettingsService } from './settings-service.js';
 import { getPromptCustomization } from '../lib/settings-helpers.js';
+import { PipelineService } from './pipeline-service.js';
+import type { PipelineStep } from '@automaker/types';
 
 const execAsync = promisify(exec);
 
@@ -197,13 +199,18 @@ export class AutoModeService {
   // Settings service for prompt customization
   private settingsService?: SettingsService;
 
+  // Pipeline service for workflow automation
+  private pipelineService?: PipelineService;
+
   constructor(
     events: EventEmitter,
     beadsService?: BeadsService,
-    settingsService?: SettingsService
+    settingsService?: SettingsService,
+    pipelineService?: PipelineService
   ) {
     this.events = events;
     this.settingsService = settingsService;
+    this.pipelineService = pipelineService;
 
     // Initialize Beads services if provided
     if (beadsService) {
@@ -508,6 +515,24 @@ export class AutoModeService {
           systemPrompt: contextFilesPrompt || undefined,
         }
       );
+
+      // Check for pipeline steps and execute them
+      if (this.pipelineService) {
+        const pipelineConfig = await this.pipelineService.getPipelineConfig(projectPath);
+        const sortedSteps = [...(pipelineConfig?.steps || [])].sort((a, b) => a.order - b.order);
+
+        if (sortedSteps.length > 0) {
+          // Execute pipeline steps sequentially
+          await this.executePipelineSteps(
+            projectPath,
+            featureId,
+            feature,
+            sortedSteps,
+            workDir,
+            abortController
+          );
+        }
+      }
 
       // Determine final status based on testing mode:
       // - skipTests=false (automated testing): go directly to 'verified' (no manual verify needed)
@@ -3010,5 +3035,191 @@ Begin implementing task ${task.id} now.`;
       console.error(`[AutoMode] Failed to list checkpoints for feature ${featureId}:`, error);
       return [];
     }
+  }
+
+  /**
+   * Execute pipeline steps sequentially after initial feature implementation
+   */
+  private async executePipelineSteps(
+    projectPath: string,
+    featureId: string,
+    feature: Feature,
+    steps: PipelineStep[],
+    workDir: string,
+    abortController: AbortController
+  ): Promise<void> {
+    console.log(`[AutoMode] Executing ${steps.length} pipeline step(s) for feature ${featureId}`);
+
+    // Load context files once
+    const contextResult = await loadContextFiles({
+      projectPath,
+      fsModule: secureFs as Parameters<typeof loadContextFiles>[0]['fsModule'],
+    });
+
+    const contextFilesPrompt = contextResult
+      ? `### Project Context Files\n${contextResult.files?.map((f: { path: string }) => `- ${f.path}`).join('\n') || 'None'}\n\n`
+      : '';
+
+    // Load previous agent output for context continuity
+    const featureDir = getFeatureDir(projectPath, featureId);
+    const contextPath = path.join(featureDir, 'agent-output.md');
+    let previousContext = '';
+    try {
+      previousContext = (await secureFs.readFile(contextPath, 'utf-8')) as string;
+    } catch {
+      // No previous context
+    }
+
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      const pipelineStatus = `pipeline_${step.id}`;
+
+      // Update feature status to current pipeline step
+      await this.updateFeatureStatus(projectPath, featureId, pipelineStatus);
+
+      this.emitAutoModeEvent('auto_mode_progress', {
+        featureId,
+        content: `Starting pipeline step ${i + 1}/${steps.length}: ${step.name}`,
+        projectPath,
+      });
+
+      this.emitAutoModeEvent('pipeline_step_started', {
+        featureId,
+        stepId: step.id,
+        stepName: step.name,
+        stepIndex: i,
+        totalSteps: steps.length,
+        projectPath,
+      });
+
+      // Check if step should spawn Beads helper agent
+      if (step.spawnBeadsHelper && step.beadsHelperType && this.beadsService) {
+        // Create Beads helper issue for this step
+        try {
+          const helperIssue = await this.beadsService.createIssue(projectPath, {
+            title: `[Pipeline Helper] ${step.name} for ${featureId}`,
+            description: `Helper agent task for pipeline step: ${step.name}\n\nFeature: ${featureId}\n\nInstructions:\n${step.instructions}`,
+            type: 'task',
+            priority: 2,
+            labels: ['pipeline-helper', step.id, featureId],
+          });
+
+          previousContext += `\n\n## ${step.name} (Beads Helper)\nHelper Issue: ${helperIssue.id}\n`;
+
+          this.emitAutoModeEvent('pipeline_step_complete', {
+            featureId,
+            stepId: step.id,
+            stepName: step.name,
+            stepIndex: i,
+            totalSteps: steps.length,
+            projectPath,
+          });
+
+          console.log(
+            `[AutoMode] Pipeline step ${i + 1}/${steps.length} (${step.name}) created Beads helper ${helperIssue.id}`
+          );
+
+          continue; // Skip normal agent execution for Beads helper steps
+        } catch (beadsError) {
+          console.warn(
+            '[AutoMode] Failed to create Beads helper issue, continuing with normal execution:',
+            beadsError
+          );
+          // Fall through to normal execution
+        }
+      }
+
+      // Build prompt for this pipeline step
+      const prompt = this.buildPipelineStepPrompt(
+        step,
+        feature,
+        previousContext,
+        contextFilesPrompt
+      );
+
+      // Get model from feature
+      const model = resolveModelString(feature.model, DEFAULT_MODELS.claude);
+
+      // Run the agent for this pipeline step
+      await this.runAgent(
+        workDir,
+        featureId,
+        prompt,
+        abortController,
+        projectPath,
+        undefined, // no images for pipeline steps
+        model,
+        {
+          projectPath,
+          planningMode: 'skip', // Pipeline steps don't need planning
+          requirePlanApproval: false,
+          previousContent: previousContext,
+          systemPrompt: contextFilesPrompt || undefined,
+        }
+      );
+
+      // Load updated context for next step
+      try {
+        previousContext = (await secureFs.readFile(contextPath, 'utf-8')) as string;
+      } catch {
+        // No context update
+      }
+
+      this.emitAutoModeEvent('pipeline_step_complete', {
+        featureId,
+        stepId: step.id,
+        stepName: step.name,
+        stepIndex: i,
+        totalSteps: steps.length,
+        projectPath,
+      });
+
+      console.log(
+        `[AutoMode] Pipeline step ${i + 1}/${steps.length} (${step.name}) completed for feature ${featureId}`
+      );
+    }
+
+    console.log(`[AutoMode] All pipeline steps completed for feature ${featureId}`);
+  }
+
+  /**
+   * Build the prompt for a pipeline step
+   */
+  private buildPipelineStepPrompt(
+    step: PipelineStep,
+    feature: Feature,
+    previousContext: string,
+    contextFilesPrompt?: string
+  ): string {
+    let prompt = `## Pipeline Step: ${step.name}
+
+This is an automated pipeline step following the initial feature implementation.
+
+### Feature Context
+${this.buildFeaturePrompt(feature)}
+`;
+
+    if (contextFilesPrompt) {
+      prompt += `### Project Context
+${contextFilesPrompt}
+`;
+    }
+
+    if (previousContext) {
+      prompt += `### Previous Work
+The following is the output from the previous work on this feature:
+
+${previousContext}
+
+`;
+    }
+
+    prompt += `### Pipeline Step Instructions
+${step.instructions}
+
+### Task
+Complete the pipeline step instructions above. Review the previous work and apply the required changes or actions.`;
+
+    return prompt;
   }
 }

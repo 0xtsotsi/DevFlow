@@ -16,7 +16,8 @@ import { Feature } from '@/store/app-store';
 import { FastForward, Lightbulb, Archive } from 'lucide-react';
 import { useKeyboardShortcutsConfig } from '@/hooks/use-keyboard-shortcuts';
 import { useResponsiveKanban } from '@/hooks/use-responsive-kanban';
-import { COLUMNS, ColumnId } from './constants';
+import { COLUMNS } from './constants';
+import type { FeatureStatusWithPipeline } from '@automaker/types';
 
 interface KanbanBoardProps {
   sensors: SensorDescriptor<SensorOptions>[];
@@ -24,7 +25,7 @@ interface KanbanBoardProps {
   onDragStart: (event: DragStartEvent) => void;
   onDragEnd: (event: DragEndEvent) => void;
   activeFeature: Feature | null;
-  getColumnFeatures: (columnId: ColumnId) => Feature[];
+  getColumnFeatures: (columnId: FeatureStatusWithPipeline) => Feature[];
   backgroundImageStyle: React.CSSProperties;
   backgroundSettings: {
     columnOpacity: number;

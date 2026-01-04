@@ -206,6 +206,53 @@ export interface BeadsIssueDeletedEvent {
   force: boolean;
 }
 
+// Pipeline API
+export interface PipelineAPI {
+  getConfig: (projectPath: string) => Promise<{
+    success: boolean;
+    config?: import('@automaker/types').PipelineConfig;
+    error?: string;
+  }>;
+  saveConfig: (
+    projectPath: string,
+    config: import('@automaker/types').PipelineConfig
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  addStep: (
+    projectPath: string,
+    step: Omit<import('@automaker/types').PipelineStep, 'id' | 'createdAt' | 'updatedAt'>
+  ) => Promise<{
+    success: boolean;
+    step?: import('@automaker/types').PipelineStep;
+    error?: string;
+  }>;
+  updateStep: (
+    projectPath: string,
+    stepId: string,
+    updates: Partial<Omit<import('@automaker/types').PipelineStep, 'id' | 'createdAt'>>
+  ) => Promise<{
+    success: boolean;
+    step?: import('@automaker/types').PipelineStep;
+    error?: string;
+  }>;
+  deleteStep: (
+    projectPath: string,
+    stepId: string
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+  reorderSteps: (
+    projectPath: string,
+    stepIds: string[]
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+}
+
 // GitHub types
 export interface GitHubLabel {
   name: string;
