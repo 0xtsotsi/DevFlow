@@ -5,6 +5,7 @@ import { Feature } from '@/store/app-store';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
 import { COLUMNS, ColumnId } from '../constants';
+import type { FeatureStatusWithPipeline } from '@automaker/types';
 
 const logger = createLogger('BoardDragDrop');
 
@@ -71,7 +72,7 @@ export function useBoardDragDrop({
         }
       }
 
-      let targetStatus: ColumnId | null = null;
+      let targetStatus: FeatureStatusWithPipeline | null = null;
 
       // Check if we dropped on a column
       const column = COLUMNS.find((c) => c.id === overId);
@@ -99,8 +100,8 @@ export function useBoardDragDrop({
           // Server will derive workDir from feature.branchName
           await handleStartImplementation(draggedFeature);
         } else {
-          moveFeature(featureId, targetStatus);
-          persistFeatureUpdate(featureId, { status: targetStatus });
+          moveFeature(featureId, targetStatus as ColumnId);
+          persistFeatureUpdate(featureId, { status: targetStatus as ColumnId });
         }
       } else if (draggedFeature.status === 'waiting_approval') {
         // waiting_approval features can be dragged to verified for manual verification

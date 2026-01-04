@@ -17,7 +17,7 @@ interface KanbanBoardProps {
   onDragStart: (event: DragStartEvent) => void;
   onDragEnd: (event: DragEndEvent) => void;
   activeFeature: Feature | null;
-  getColumnFeatures: (columnId: ColumnId) => Feature[];
+  getColumnFeatures: (columnId: FeatureStatusWithPipeline) => Feature[];
   backgroundImageStyle: React.CSSProperties;
   backgroundSettings: {
     columnOpacity: number;

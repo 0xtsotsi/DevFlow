@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { Feature, useAppStore } from '@/store/app-store';
 import { resolveDependencies, getBlockingDependencies } from '@automaker/dependency-resolver';
+import type { FeatureStatusWithPipeline } from '@automaker/types';
 
 type ColumnId = Feature['status'];
 
@@ -73,7 +74,17 @@ export function useBoardColumnFeatures({
           : false;
       } else {
         // Match by branch name
-        matchesWorktree = featureBranch === effectiveBranch;
+        // Special case: If viewing main worktree (currentWorktreePath === null),
+        // show ALL features regardless of their branch assignment.
+        // This ensures features don't disappear from the main board when assigned to worktrees.
+        const isViewingPrimary = currentWorktreePath === null;
+        if (isViewingPrimary) {
+          // On main board, show all features
+          matchesWorktree = true;
+        } else {
+          // On a worktree, only show features assigned to that worktree's branch
+          matchesWorktree = featureBranch === effectiveBranch;
+        }
       }
 
       // Use the feature's status (fallback to backlog for unknown statuses)

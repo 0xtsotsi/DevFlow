@@ -42,6 +42,8 @@ import type {
   ListBeadsIssuesFilters,
   CreateBeadsIssueInput,
   UpdateBeadsIssueInput,
+  PipelineConfig,
+  PipelineStep,
 } from '@automaker/types';
 import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
@@ -1481,6 +1483,44 @@ export class HttpApiClient implements ElectronAPI {
       this.subscribeToEvent('beads:issue-deleted', (payload) =>
         callback(payload as BeadsIssueDeletedEvent)
       ),
+  };
+
+  // Pipeline API
+  pipeline: PipelineAPI = {
+    getConfig: (projectPath: string) =>
+      this.post<{ success: boolean; config?: PipelineConfig; error?: string }>(
+        '/api/pipeline/config',
+        { projectPath }
+      ),
+    saveConfig: (projectPath: string, config: PipelineConfig) =>
+      this.post<{ success: boolean; error?: string }>('/api/pipeline/config/save', {
+        projectPath,
+        config,
+      }),
+    addStep: (projectPath: string, step: Omit<PipelineStep, 'id' | 'createdAt' | 'updatedAt'>) =>
+      this.post<{ success: boolean; step?: PipelineStep; error?: string }>(
+        '/api/pipeline/steps/add',
+        { projectPath, step }
+      ),
+    updateStep: (
+      projectPath: string,
+      stepId: string,
+      updates: Partial<Omit<PipelineStep, 'id' | 'createdAt'>>
+    ) =>
+      this.post<{ success: boolean; step?: PipelineStep; error?: string }>(
+        '/api/pipeline/steps/update',
+        { projectPath, stepId, updates }
+      ),
+    deleteStep: (projectPath: string, stepId: string) =>
+      this.post<{ success: boolean; error?: string }>('/api/pipeline/steps/delete', {
+        projectPath,
+        stepId,
+      }),
+    reorderSteps: (projectPath: string, stepIds: string[]) =>
+      this.post<{ success: boolean; error?: string }>('/api/pipeline/steps/reorder', {
+        projectPath,
+        stepIds,
+      }),
   };
 
   // Workspace API
