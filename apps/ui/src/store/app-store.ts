@@ -14,6 +14,7 @@ import type {
   BeadsIssue,
   BeadsIssueStatus,
   BeadsIssueType,
+  PromptCustomization,
 } from '@automaker/types';
 
 // Re-export types for convenience
@@ -565,6 +566,9 @@ export interface AppState {
     searchQuery?: string;
   };
   selectedBeadsIssue: BeadsIssue | null;
+
+  // Prompt Customization
+  promptCustomization: PromptCustomization;
 }
 
 // Claude Usage interface matching the server response
@@ -897,6 +901,11 @@ export interface AppActions {
   setClaudeUsageLastUpdated: (timestamp: number) => void;
   setClaudeUsage: (usage: ClaudeUsage | null) => void;
 
+  // Prompt Customization actions
+  setPromptCustomization: (customization: PromptCustomization) => void;
+  updatePromptCustomization: (updates: Partial<PromptCustomization>) => void;
+  resetPromptCustomization: () => void;
+
   // Reset
   reset: () => void;
 }
@@ -1007,6 +1016,8 @@ const initialState: AppState = {
   claudeRefreshInterval: 60,
   claudeUsage: null,
   claudeUsageLastUpdated: null,
+
+  promptCustomization: {},
 };
 
 export const useAppStore = create<AppState & AppActions>()(
@@ -2772,6 +2783,20 @@ export const useAppStore = create<AppState & AppActions>()(
         });
       },
 
+      // Prompt Customization actions
+      setPromptCustomization: (customization) => set({ promptCustomization: customization }),
+
+      updatePromptCustomization: (updates) => {
+        set({
+          promptCustomization: {
+            ...get().promptCustomization,
+            ...updates,
+          },
+        });
+      },
+
+      resetPromptCustomization: () => set({ promptCustomization: {} }),
+
       // Reset
       reset: () => set(initialState),
     }),
@@ -2921,6 +2946,8 @@ export const useAppStore = create<AppState & AppActions>()(
           defaultPlanningMode: state.defaultPlanningMode,
           defaultRequirePlanApproval: state.defaultRequirePlanApproval,
           defaultAIProfileId: state.defaultAIProfileId,
+          // Prompt customization
+          promptCustomization: state.promptCustomization,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any,
     }

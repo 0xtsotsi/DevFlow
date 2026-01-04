@@ -149,3 +149,18 @@ export type {
   HookStats,
   HookExecutionOptions,
 } from './hooks.js';
+
+// Prompt customization types
+export type {
+  CustomPrompt,
+  AutoModePrompts,
+  AgentPrompts,
+  BacklogPlanPrompts,
+  EnhancementPrompts,
+  PromptCustomization,
+  ResolvedAutoModePrompts,
+  ResolvedAgentPrompts,
+  ResolvedBacklogPlanPrompts,
+  ResolvedEnhancementPrompts,
+  ResolvedPrompts,
+} from './prompts.js';

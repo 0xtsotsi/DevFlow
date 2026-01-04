@@ -27,6 +27,8 @@ import { FeatureLoader } from './feature-loader.js';
 import { BeadsService } from './beads-service.js';
 import { BeadsOrchestrator } from './beads-orchestrator.js';
 import { CheckpointService, type AgentState } from './checkpoint-service.js';
+import type { SettingsService } from './settings-service.js';
+import { getPromptCustomization } from '../lib/settings-helpers.js';
 
 const execAsync = promisify(exec);
 
@@ -53,162 +55,6 @@ interface PlanSpec {
   currentTaskId?: string;
   tasks?: ParsedTask[];
 }
-
-const PLANNING_PROMPTS = {
-  lite: `## Planning Phase (Lite Mode)
-
-IMPORTANT: Do NOT output exploration text, tool usage, or thinking before the plan. Start DIRECTLY with the planning outline format below. Silently analyze the codebase first, then output ONLY the structured plan.
-
-Create a brief planning outline:
-
-1. **Goal**: What are we accomplishing? (1 sentence)
-2. **Approach**: How will we do it? (2-3 sentences)
-3. **Files to Touch**: List files and what changes
-4. **Tasks**: Numbered task list (3-7 items)
-5. **Risks**: Any gotchas to watch for
-
-After generating the outline, output:
-"[PLAN_GENERATED] Planning outline complete."
-
-Then proceed with implementation.`,
-
-  lite_with_approval: `## Planning Phase (Lite Mode)
-
-IMPORTANT: Do NOT output exploration text, tool usage, or thinking before the plan. Start DIRECTLY with the planning outline format below. Silently analyze the codebase first, then output ONLY the structured plan.
-
-Create a brief planning outline:
-
-1. **Goal**: What are we accomplishing? (1 sentence)
-2. **Approach**: How will we do it? (2-3 sentences)
-3. **Files to Touch**: List files and what changes
-4. **Tasks**: Numbered task list (3-7 items)
-5. **Risks**: Any gotchas to watch for
-
-After generating the outline, output:
-"[SPEC_GENERATED] Please review the planning outline above. Reply with 'approved' to proceed or provide feedback for revisions."
-
-DO NOT proceed with implementation until you receive explicit approval.`,
-
-  spec: `## Specification Phase (Spec Mode)
-
-IMPORTANT: Do NOT output exploration text, tool usage, or thinking before the spec. Start DIRECTLY with the specification format below. Silently analyze the codebase first, then output ONLY the structured specification.
-
-Generate a specification with an actionable task breakdown. WAIT for approval before implementing.
-
-### Specification Format
-
-1. **Problem**: What problem are we solving? (user perspective)
-
-2. **Solution**: Brief approach (1-2 sentences)
-
-3. **Acceptance Criteria**: 3-5 items in GIVEN-WHEN-THEN format
-   - GIVEN [context], WHEN [action], THEN [outcome]
-
-4. **Files to Modify**:
-   | File | Purpose | Action |
-   |------|---------|--------|
-   | path/to/file | description | create/modify/delete |
-
-5. **Implementation Tasks**:
-   Use this EXACT format for each task (the system will parse these):
-   \`\`\`tasks
-   - [ ] T001: [Description] | File: [path/to/file]
-   - [ ] T002: [Description] | File: [path/to/file]
-   - [ ] T003: [Description] | File: [path/to/file]
-   \`\`\`
-
-   Task ID rules:
-   - Sequential: T001, T002, T003, etc.
-   - Description: Clear action (e.g., "Create user model", "Add API endpoint")
-   - File: Primary file affected (helps with context)
-   - Order by dependencies (foundational tasks first)
-
-6. **Verification**: How to confirm feature works
-
-After generating the spec, output on its own line:
-"[SPEC_GENERATED] Please review the specification above. Reply with 'approved' to proceed or provide feedback for revisions."
-
-DO NOT proceed with implementation until you receive explicit approval.
-
-When approved, execute tasks SEQUENTIALLY in order. For each task:
-1. BEFORE starting, output: "[TASK_START] T###: Description"
-2. Implement the task
-3. AFTER completing, output: "[TASK_COMPLETE] T###: Brief summary"
-
-This allows real-time progress tracking during implementation.`,
-
-  full: `## Full Specification Phase (Full SDD Mode)
-
-IMPORTANT: Do NOT output exploration text, tool usage, or thinking before the spec. Start DIRECTLY with the specification format below. Silently analyze the codebase first, then output ONLY the structured specification.
-
-Generate a comprehensive specification with phased task breakdown. WAIT for approval before implementing.
-
-### Specification Format
-
-1. **Problem Statement**: 2-3 sentences from user perspective
-
-2. **User Story**: As a [user], I want [goal], so that [benefit]
-
-3. **Acceptance Criteria**: Multiple scenarios with GIVEN-WHEN-THEN
-   - **Happy Path**: GIVEN [context], WHEN [action], THEN [expected outcome]
-   - **Edge Cases**: GIVEN [edge condition], WHEN [action], THEN [handling]
-   - **Error Handling**: GIVEN [error condition], WHEN [action], THEN [error response]
-
-4. **Technical Context**:
-   | Aspect | Value |
-   |--------|-------|
-   | Affected Files | list of files |
-   | Dependencies | external libs if any |
-   | Constraints | technical limitations |
-   | Patterns to Follow | existing patterns in codebase |
-
-5. **Non-Goals**: What this feature explicitly does NOT include
-
-6. **Implementation Tasks**:
-   Use this EXACT format for each task (the system will parse these):
-   \`\`\`tasks
-   ## Phase 1: Foundation
-   - [ ] T001: [Description] | File: [path/to/file]
-   - [ ] T002: [Description] | File: [path/to/file]
-
-   ## Phase 2: Core Implementation
-   - [ ] T003: [Description] | File: [path/to/file]
-   - [ ] T004: [Description] | File: [path/to/file]
-
-   ## Phase 3: Integration & Testing
-   - [ ] T005: [Description] | File: [path/to/file]
-   - [ ] T006: [Description] | File: [path/to/file]
-   \`\`\`
-
-   Task ID rules:
-   - Sequential across all phases: T001, T002, T003, etc.
-   - Description: Clear action verb + target
-   - File: Primary file affected
-   - Order by dependencies within each phase
-   - Phase structure helps organize complex work
-
-7. **Success Metrics**: How we know it's done (measurable criteria)
-
-8. **Risks & Mitigations**:
-   | Risk | Mitigation |
-   |------|------------|
-   | description | approach |
-
-After generating the spec, output on its own line:
-"[SPEC_GENERATED] Please review the comprehensive specification above. Reply with 'approved' to proceed or provide feedback for revisions."
-
-DO NOT proceed with implementation until you receive explicit approval.
-
-When approved, execute tasks SEQUENTIALLY by phase. For each task:
-1. BEFORE starting, output: "[TASK_START] T###: Description"
-2. Implement the task
-3. AFTER completing, output: "[TASK_COMPLETE] T###: Brief summary"
-
-After completing all tasks in a phase, output:
-"[PHASE_COMPLETE] Phase N complete"
-
-This allows real-time progress tracking during implementation.`,
-};
 
 /**
  * Parse tasks from generated spec content
@@ -348,8 +194,16 @@ export class AutoModeService {
   private beadsOrchestrator?: BeadsOrchestrator;
   private useBeadsOrchestration = false;
 
-  constructor(events: EventEmitter, beadsService?: BeadsService) {
+  // Settings service for prompt customization
+  private settingsService?: SettingsService;
+
+  constructor(
+    events: EventEmitter,
+    beadsService?: BeadsService,
+    settingsService?: SettingsService
+  ) {
     this.events = events;
+    this.settingsService = settingsService;
 
     // Initialize Beads services if provided
     if (beadsService) {
@@ -485,6 +339,43 @@ export class AutoModeService {
       throw new Error('already running');
     }
 
+    // CIRCUIT BREAKER: Check if feature has failed too many times
+    const feature = await this.loadFeature(projectPath, featureId);
+    if (!feature) {
+      throw new Error(`Feature ${featureId} not found`);
+    }
+
+    const failureCount = feature.failureCount || 0;
+    const lastFailedAt = feature.lastFailedAt ? new Date(feature.lastFailedAt).getTime() : 0;
+    const now = Date.now();
+    const timeSinceLastFailure = now - lastFailedAt;
+
+    // If feature permanently failed, don't execute
+    if (feature.permanentlyFailed) {
+      console.warn(
+        `[AutoMode] Feature ${featureId} is permanently failed and will not be retried. ` +
+          `Reason: ${feature.permanentFailureReason || 'Unknown'}`
+      );
+      throw new Error(
+        `Feature ${featureId} is permanently failed: ${feature.permanentFailureReason}`
+      );
+    }
+
+    // If feature failed recently (within 15 minutes), skip execution to prevent rapid retry loop
+    const COOLDOWN_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
+    if (timeSinceLastFailure < COOLDOWN_PERIOD_MS && failureCount > 0) {
+      const cooldownRemaining = Math.ceil((COOLDOWN_PERIOD_MS - timeSinceLastFailure) / 1000 / 60);
+      console.warn(
+        `[AutoMode] Feature ${featureId} failed ${failureCount} time(s) recently. ` +
+          `Waiting ${cooldownRemaining} minutes before retry.`
+      );
+      throw new Error(
+        `Feature ${featureId} is in cooldown period. ` +
+          `Failed ${failureCount} time(s) recently. ` +
+          `Wait ${cooldownRemaining} minutes before retry or manually reset.`
+      );
+    }
+
     // Add to running features immediately to prevent race conditions
     const abortController = new AbortController();
     const tempRunningFeature: RunningFeature = {
@@ -526,11 +417,8 @@ export class AutoModeService {
           description: 'Feature is starting',
         },
       });
-      // Load feature details FIRST to get branchName
-      const feature = await this.loadFeature(projectPath, featureId);
-      if (!feature) {
-        throw new Error(`Feature ${featureId} not found`);
-      }
+      // Feature already loaded above for circuit breaker check
+      // No need to load again
 
       // Derive workDir from feature.branchName
       // Worktrees should already be created when the feature is added/edited
@@ -581,7 +469,7 @@ export class AutoModeService {
       } else {
         // Normal flow: build prompt with planning phase
         const featurePrompt = this.buildFeaturePrompt(feature);
-        const planningPrefix = this.getPlanningPromptPrefix(feature);
+        const planningPrefix = await this.getPlanningPromptPrefix(feature);
         prompt = planningPrefix + featurePrompt;
 
         // Emit planning mode info
@@ -625,6 +513,14 @@ export class AutoModeService {
       // - skipTests=false (automated testing): go directly to 'verified' (no manual verify needed)
       // - skipTests=true (manual verification): go to 'waiting_approval' for manual review
       const finalStatus = feature.skipTests ? 'waiting_approval' : 'verified';
+
+      // Reset failure tracking on successful completion
+      feature.failureCount = 0;
+      feature.lastFailedAt = undefined;
+      feature.permanentlyFailed = false;
+      feature.permanentFailureReason = undefined;
+      await this.saveFeature(projectPath, feature);
+
       await this.updateFeatureStatus(projectPath, featureId, finalStatus);
 
       this.emitAutoModeEvent('auto_mode_feature_complete', {
@@ -647,13 +543,68 @@ export class AutoModeService {
         });
       } else {
         console.error(`[AutoMode] Feature ${featureId} failed:`, error);
-        await this.updateFeatureStatus(projectPath, featureId, 'backlog');
-        this.emitAutoModeEvent('auto_mode_error', {
-          featureId,
-          error: errorInfo.message,
-          errorType: errorInfo.type,
-          projectPath,
-        });
+
+        // Track failure count and timestamp
+        const currentFailureCount = (feature.failureCount || 0) + 1;
+        const MAX_FAILURES = 5;
+
+        // Reload feature to get latest state before updating
+        const updatedFeature = await this.loadFeature(projectPath, featureId);
+        if (updatedFeature) {
+          updatedFeature.failureCount = currentFailureCount;
+          updatedFeature.lastFailedAt = new Date().toISOString();
+
+          // Check if we've hit max failures
+          if (currentFailureCount >= MAX_FAILURES) {
+            updatedFeature.permanentlyFailed = true;
+            updatedFeature.permanentFailureReason = `Failed ${MAX_FAILURES} times consecutively. Last error: ${errorInfo.message || String(error)}`;
+
+            console.warn(
+              `[AutoMode] Feature ${featureId} hit MAX CONSECUTIVE FAILURES (${MAX_FAILURES}). Marking as permanently failed.`
+            );
+
+            // Move to waiting_approval instead of backlog to prevent auto-retry
+            await this.updateFeatureStatus(projectPath, featureId, 'waiting_approval');
+
+            // Save the updated failure tracking
+            await this.saveFeature(projectPath, updatedFeature);
+
+            this.emitAutoModeEvent('auto_mode_error', {
+              featureId,
+              error: `MAX CONSECUTIVE FAILURES REACHED (${MAX_FAILURES}). ${updatedFeature.permanentFailureReason}`,
+              errorType: 'execution',
+              projectPath,
+            });
+          } else {
+            // Normal error - update failure tracking and move to backlog
+            await this.saveFeature(projectPath, updatedFeature);
+
+            console.warn(
+              `[AutoMode] Feature ${featureId} failure ${currentFailureCount}/${MAX_FAILURES}. ` +
+                `Moving to backlog with cooldown.`
+            );
+
+            await this.updateFeatureStatus(projectPath, featureId, 'backlog');
+            this.emitAutoModeEvent('auto_mode_error', {
+              featureId,
+              error: errorInfo.message,
+              errorType: 'execution',
+              projectPath,
+            });
+          }
+        } else {
+          // Feature not found - just log error
+          console.error(
+            `[AutoMode] Could not update failure tracking for ${featureId}: feature not found`
+          );
+          await this.updateFeatureStatus(projectPath, featureId, 'backlog');
+          this.emitAutoModeEvent('auto_mode_error', {
+            featureId,
+            error: errorInfo.message,
+            errorType: errorInfo.type,
+            projectPath,
+          });
+        }
       }
     } finally {
       console.log(`[AutoMode] Feature ${featureId} execution ended, cleaning up runningFeatures`);
@@ -1497,6 +1448,26 @@ Format your response as a structured markdown document.`;
     }
   }
 
+  /**
+   * Save feature metadata (failure tracking, etc.)
+   */
+  private async saveFeature(projectPath: string, feature: Feature): Promise<void> {
+    const featurePath = path.join(
+      projectPath,
+      '.automaker',
+      'features',
+      feature.id,
+      'feature.json'
+    );
+
+    try {
+      feature.updatedAt = new Date().toISOString();
+      await secureFs.writeFile(featurePath, JSON.stringify(feature, null, 2));
+    } catch (error) {
+      console.error(`[AutoMode] Failed to save feature ${feature.id}:`, error);
+    }
+  }
+
   private async loadPendingFeatures(projectPath: string): Promise<Feature[]> {
     // Features are stored in .automaker directory
     const featuresDir = getFeaturesDir(projectPath);
@@ -1565,23 +1536,31 @@ Format your response as a structured markdown document.`;
 
   /**
    * Get the planning prompt prefix based on feature's planning mode
+   * Uses customized prompts if available, otherwise uses defaults
    */
-  private getPlanningPromptPrefix(feature: Feature): string {
+  private async getPlanningPromptPrefix(feature: Feature): Promise<string> {
     const mode = feature.planningMode || 'skip';
 
     if (mode === 'skip') {
       return ''; // No planning phase
     }
 
-    // For lite mode, use the approval variant if requirePlanApproval is true
-    let promptKey: string = mode;
-    if (mode === 'lite' && feature.requirePlanApproval === true) {
-      promptKey = 'lite_with_approval';
-    }
+    // Get customized prompts (async for settings access)
+    const prompts = await getPromptCustomization(this.settingsService, '[AutoMode]');
+    const autoModePrompts = prompts.autoMode;
 
-    const planningPrompt = PLANNING_PROMPTS[promptKey as keyof typeof PLANNING_PROMPTS];
-    if (!planningPrompt) {
-      return '';
+    // For lite mode, use the approval variant if requirePlanApproval is true
+    let planningPrompt: string;
+    if (mode === 'lite' && feature.requirePlanApproval === true) {
+      planningPrompt = autoModePrompts.planningLiteWithApproval;
+    } else if (mode === 'lite') {
+      planningPrompt = autoModePrompts.planningLite;
+    } else if (mode === 'spec') {
+      planningPrompt = autoModePrompts.planningSpec;
+    } else if (mode === 'full') {
+      planningPrompt = autoModePrompts.planningFull;
+    } else {
+      return ''; // Unknown mode
     }
 
     return planningPrompt + '\n\n---\n\n## Feature Request\n\n';

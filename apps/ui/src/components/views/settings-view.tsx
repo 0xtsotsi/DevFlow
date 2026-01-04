@@ -11,6 +11,7 @@ import { ApiKeysSection } from './settings-view/api-keys/api-keys-section';
 import { ClaudeUsageSection } from './settings-view/api-keys/claude-usage-section';
 import { ClaudeCliStatus } from './settings-view/cli-status/claude-cli-status';
 import { AIEnhancementSection } from './settings-view/ai-enhancement';
+import { PromptCustomizationSection } from './settings-view/prompts';
 import { AppearanceSection } from './settings-view/appearance/appearance-section';
 import { TerminalSection } from './settings-view/terminal/terminal-section';
 import { AudioSection } from './settings-view/audio/audio-section';
@@ -105,6 +106,8 @@ export function SettingsView() {
         );
       case 'ai-enhancement':
         return <AIEnhancementSection />;
+      case 'prompts':
+        return <PromptCustomizationSection />;
       case 'appearance':
         return (
           <AppearanceSection

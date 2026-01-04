@@ -7,6 +7,7 @@
  */
 
 import type { AgentModel } from './model.js';
+import type { PromptCustomization } from './prompts.js';
 
 // Re-export AgentModel for convenience
 export type { AgentModel };
@@ -299,6 +300,10 @@ export interface GlobalSettings {
   // Window State (Electron only)
   /** Persisted window bounds for restoring position/size across sessions */
   windowBounds?: WindowBounds;
+
+  // Prompt Customization
+  /** User-customized AI prompts for different features */
+  promptCustomization?: PromptCustomization;
 }
 
 /**

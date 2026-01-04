@@ -60,7 +60,9 @@ import { createHooksRoutes } from './routes/hooks/index.js';
 import { BeadsLiveLinkService } from './services/beads-live-link-service.js';
 import { BeadsMemoryService } from './services/beads-memory-service.js';
 import { BeadsAgentCoordinator } from './services/beads-agent-coordinator.js';
+import { BeadsAgentWrapperService } from './services/beads-agent-wrapper.js';
 import { getMCPBridge } from './lib/mcp-bridge.js';
+import { getBeadsToolsHandler } from './lib/beads-tools.js';
 import { AgentRegistry } from './agents/agent-registry.js';
 import { SpecializedAgentService } from './agents/specialized-agent-service.js';
 import { HooksService } from './services/hooks-service.js';
@@ -180,10 +182,10 @@ const events: EventEmitter = createEventEmitter();
 // Create services
 const agentService = new AgentService(DATA_DIR, events);
 const featureLoader = new FeatureLoader();
-const autoModeService = new AutoModeService(events);
 const settingsService = new SettingsService(DATA_DIR);
-const claudeUsageService = new ClaudeUsageService();
 const beadsService = new BeadsService();
+const autoModeService = new AutoModeService(events, beadsService, settingsService);
+const claudeUsageService = new ClaudeUsageService();
 const prWatcherService = new PRWatcherService({
   webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
   dataDir: DATA_DIR,
@@ -236,7 +238,6 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     console.log('[Server] ✓ Beads LiveLink initialized');
 
     // Initialize Beads Memory Service (context for agents)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const beadsMemoryService = new BeadsMemoryService(beadsService, mcpBridge);
     console.log('[Server] ✓ Beads Memory Service initialized');
 
@@ -265,19 +266,25 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     // Set coordinator reference for routes that need it
     setBeadsCoordinator(beadsAgentCoordinator);
 
-    // Start coordination after server is ready
-    setTimeout(() => {
-      beadsAgentCoordinator.coordinateAgents(process.cwd()).catch((err) => {
-        console.error('[Server] Failed to start beads coordination:', err);
-      });
-    }, 5000); // Wait 5 seconds for server to stabilize
+    // Initialize Beads Tools Handler for custom tool support
+    const beadsToolsHandler = getBeadsToolsHandler(
+      beadsService,
+      beadsMemoryService,
+      beadsAgentCoordinator,
+      events
+    );
+    // Make available globally for agent wrapper
+    (global as { beadsToolsHandler?: unknown }).beadsToolsHandler = beadsToolsHandler;
+    console.log('[Server] ✓ Beads Tools Handler initialized');
 
-    // Periodic coordination loop
-    setInterval(() => {
-      beadsAgentCoordinator.coordinateAgents(process.cwd()).catch((err) => {
-        console.error('[Server] Beads coordination error:', err);
-      });
-    }, 30000);
+    // Initialize Beads Agent Wrapper (intercepts tool calls)
+    const beadsAgentWrapper = new BeadsAgentWrapperService(events);
+    beadsAgentWrapper.initialize();
+    console.log('[Server] ✓ Beads Agent Wrapper initialized');
+
+    // Start Beads Agent Coordinator with proper initialization
+    await beadsAgentCoordinator.start(process.cwd());
+    console.log('[Server] ✓ Beads Agent Coordinator started');
 
     // ============================================================================
     // Skills & Hooks System
@@ -415,13 +422,37 @@ wss.on('connection', (ws: WebSocket) => {
     }
   });
 
+  // Heartbeat: Send ping every 30 seconds to keep connection alive
+  const pingInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }));
+    } else {
+      clearInterval(pingInterval);
+    }
+  }, 30000);
+
+  // Handle pong responses from client
+  ws.on('message', (data: string) => {
+    try {
+      const msg = JSON.parse(data.toString());
+      if (msg.type === 'pong') {
+        // Client is alive, connection is good
+        // No action needed, just keeping connection alive
+      }
+    } catch {
+      // Ignore non-JSON messages or parsing errors
+    }
+  });
+
   ws.on('close', () => {
     console.log('[WebSocket] Client disconnected');
+    clearInterval(pingInterval);
     unsubscribe();
   });
 
   ws.on('error', (error) => {
     console.error('[WebSocket] Error:', error);
+    clearInterval(pingInterval);
     unsubscribe();
   });
 });

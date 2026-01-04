@@ -21,5 +21,36 @@ export {
   getAvailableEnhancementModes,
 } from './enhancement.js';
 
+// Default prompts for customization
+export {
+  DEFAULT_AUTO_MODE_PROMPTS,
+  DEFAULT_AGENT_PROMPTS,
+  DEFAULT_BACKLOG_PLAN_PROMPTS,
+  DEFAULT_ENHANCEMENT_PROMPTS,
+} from './defaults.js';
+
+// Merge utilities for prompt customization
+export {
+  mergeAutoModePrompts,
+  mergeAgentPrompts,
+  mergeBacklogPlanPrompts,
+  mergeEnhancementPrompts,
+  mergeAllPrompts,
+} from './merge.js';
+
 // Re-export types from @automaker/types
-export type { EnhancementMode, EnhancementExample } from '@automaker/types';
+export type {
+  EnhancementMode,
+  EnhancementExample,
+  CustomPrompt,
+  AutoModePrompts,
+  AgentPrompts,
+  BacklogPlanPrompts,
+  EnhancementPrompts,
+  PromptCustomization,
+  ResolvedAutoModePrompts,
+  ResolvedAgentPrompts,
+  ResolvedBacklogPlanPrompts,
+  ResolvedEnhancementPrompts,
+  ResolvedPrompts,
+} from '@automaker/types';
