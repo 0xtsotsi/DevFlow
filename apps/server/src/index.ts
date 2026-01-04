@@ -379,6 +379,28 @@ wss.on('connection', (ws: WebSocket) => {
     }
   });
 
+  // Heartbeat: Send ping every 30 seconds to keep connection alive
+  const pingInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }));
+    } else {
+      clearInterval(pingInterval);
+    }
+  }, 30000);
+
+  // Handle pong responses from client
+  ws.on('message', (data: string) => {
+    try {
+      const msg = JSON.parse(data.toString());
+      if (msg.type === 'pong') {
+        // Client is alive, connection is good
+        // No action needed, just keeping connection alive
+      }
+    } catch {
+      // Ignore non-JSON messages or parsing errors
+    }
+  });
+
   ws.on('close', () => {
     logger.info('Client disconnected');
     unsubscribe();

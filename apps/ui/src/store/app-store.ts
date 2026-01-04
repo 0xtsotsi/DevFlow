@@ -925,6 +925,11 @@ export interface AppActions {
   deletePipelineStep: (projectPath: string, stepId: string) => void;
   reorderPipelineSteps: (projectPath: string, stepIds: string[]) => void;
 
+  // Prompt Customization actions
+  setPromptCustomization: (customization: PromptCustomization) => void;
+  updatePromptCustomization: (updates: Partial<PromptCustomization>) => void;
+  resetPromptCustomization: () => void;
+
   // Reset
   reset: () => void;
 }
@@ -2879,6 +2884,20 @@ export const useAppStore = create<AppState & AppActions>()(
         });
       },
 
+      // Prompt Customization actions
+      setPromptCustomization: (customization) => set({ promptCustomization: customization }),
+
+      updatePromptCustomization: (updates) => {
+        set({
+          promptCustomization: {
+            ...get().promptCustomization,
+            ...updates,
+          },
+        });
+      },
+
+      resetPromptCustomization: () => set({ promptCustomization: {} }),
+
       // Reset
       reset: () => set(initialState),
     }),
@@ -3040,6 +3059,8 @@ export const useAppStore = create<AppState & AppActions>()(
           defaultPlanningMode: state.defaultPlanningMode,
           defaultRequirePlanApproval: state.defaultRequirePlanApproval,
           defaultAIProfileId: state.defaultAIProfileId,
+          // Prompt customization
+          promptCustomization: state.promptCustomization,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any,
     }

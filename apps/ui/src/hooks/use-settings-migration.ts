@@ -240,6 +240,7 @@ export async function syncSettingsToServer(): Promise<boolean> {
       projectHistory: state.projectHistory,
       projectHistoryIndex: state.projectHistoryIndex,
       lastSelectedSessionByProject: state.lastSelectedSessionByProject,
+      promptCustomization: state.promptCustomization,
     };
 
     const result = await api.settings.updateGlobal(updates);

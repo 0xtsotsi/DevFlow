@@ -430,6 +430,43 @@ export class AutoModeService {
       throw new Error('already running');
     }
 
+    // CIRCUIT BREAKER: Check if feature has failed too many times
+    const feature = await this.loadFeature(projectPath, featureId);
+    if (!feature) {
+      throw new Error(`Feature ${featureId} not found`);
+    }
+
+    const failureCount = feature.failureCount || 0;
+    const lastFailedAt = feature.lastFailedAt ? new Date(feature.lastFailedAt).getTime() : 0;
+    const now = Date.now();
+    const timeSinceLastFailure = now - lastFailedAt;
+
+    // If feature permanently failed, don't execute
+    if (feature.permanentlyFailed) {
+      console.warn(
+        `[AutoMode] Feature ${featureId} is permanently failed and will not be retried. ` +
+          `Reason: ${feature.permanentFailureReason || 'Unknown'}`
+      );
+      throw new Error(
+        `Feature ${featureId} is permanently failed: ${feature.permanentFailureReason}`
+      );
+    }
+
+    // If feature failed recently (within 15 minutes), skip execution to prevent rapid retry loop
+    const COOLDOWN_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
+    if (timeSinceLastFailure < COOLDOWN_PERIOD_MS && failureCount > 0) {
+      const cooldownRemaining = Math.ceil((COOLDOWN_PERIOD_MS - timeSinceLastFailure) / 1000 / 60);
+      console.warn(
+        `[AutoMode] Feature ${featureId} failed ${failureCount} time(s) recently. ` +
+          `Waiting ${cooldownRemaining} minutes before retry.`
+      );
+      throw new Error(
+        `Feature ${featureId} is in cooldown period. ` +
+          `Failed ${failureCount} time(s) recently. ` +
+          `Wait ${cooldownRemaining} minutes before retry or manually reset.`
+      );
+    }
+
     // Add to running features immediately to prevent race conditions
     const abortController = new AbortController();
     const tempRunningFeature: RunningFeature = {
@@ -471,11 +508,8 @@ export class AutoModeService {
           description: 'Feature is starting',
         },
       });
-      // Load feature details FIRST to get branchName
-      const feature = await this.loadFeature(projectPath, featureId);
-      if (!feature) {
-        throw new Error(`Feature ${featureId} not found`);
-      }
+      // Feature already loaded above for circuit breaker check
+      // No need to load again
 
       // Derive workDir from feature.branchName
       // Worktrees should already be created when the feature is added/edited
@@ -605,6 +639,14 @@ export class AutoModeService {
       // - skipTests=false (automated testing): go directly to 'verified' (no manual verify needed)
       // - skipTests=true (manual verification): go to 'waiting_approval' for manual review
       const finalStatus = feature.skipTests ? 'waiting_approval' : 'verified';
+
+      // Reset failure tracking on successful completion
+      feature.failureCount = 0;
+      feature.lastFailedAt = undefined;
+      feature.permanentlyFailed = false;
+      feature.permanentFailureReason = undefined;
+      await this.saveFeature(projectPath, feature);
+
       await this.updateFeatureStatus(projectPath, featureId, finalStatus);
 
       // Record success to reset consecutive failure tracking
@@ -1750,6 +1792,26 @@ Format your response as a structured markdown document.`;
     }
   }
 
+  /**
+   * Save feature metadata (failure tracking, etc.)
+   */
+  private async saveFeature(projectPath: string, feature: Feature): Promise<void> {
+    const featurePath = path.join(
+      projectPath,
+      '.automaker',
+      'features',
+      feature.id,
+      'feature.json'
+    );
+
+    try {
+      feature.updatedAt = new Date().toISOString();
+      await secureFs.writeFile(featurePath, JSON.stringify(feature, null, 2));
+    } catch (error) {
+      console.error(`[AutoMode] Failed to save feature ${feature.id}:`, error);
+    }
+  }
+
   private async loadPendingFeatures(projectPath: string): Promise<Feature[]> {
     // Features are stored in .automaker directory
     const featuresDir = getFeaturesDir(projectPath);
@@ -1818,6 +1880,7 @@ Format your response as a structured markdown document.`;
 
   /**
    * Get the planning prompt prefix based on feature's planning mode
+   * Uses customized prompts if available, otherwise uses defaults
    */
   private async getPlanningPromptPrefix(feature: Feature): Promise<string> {
     const mode = feature.planningMode || 'skip';
