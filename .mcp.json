@@ -2,11 +2,10 @@
   "mcpServers": {
     "exa": {
       "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcp.exa.ai/mcp?exaApiKey=9b2f9ab7-c27c-4763-b0ef-2c743232dab9"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-exa"],
+      "env": {
+        "EXA_API_KEY": "9b2f9ab7-c27c-4763-b0ef-2c743232dab9"
+      }
     }
   }
 }

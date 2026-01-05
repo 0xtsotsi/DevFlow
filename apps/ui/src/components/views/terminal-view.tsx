@@ -26,7 +26,7 @@ import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TERMINAL_FONT_OPTIONS } from '@/config/terminal-themes';
 import { toast } from 'sonner';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Panel, Group, Separator } from 'react-resizable-panels';
 import { TerminalPanel } from './terminal-view/terminal-panel';
 import { TerminalErrorBoundary } from './terminal-view/terminal-error-boundary';
 import {
@@ -1260,14 +1260,17 @@ export function TerminalView() {
     const isHorizontal = content.direction === 'horizontal';
     const defaultSizePerPanel = 100 / content.panels.length;
 
-    const handleLayoutChange = (sizes: number[]) => {
+    const handleLayoutChange = (layout: { [id: string]: number }) => {
       if (!activeTab) return;
       const panelKeys = content.panels.map(getPanelKey);
+      // v4 passes a Layout object mapping panelId -> percentage
+      // Extract sizes in the order of panels
+      const sizes = panelKeys.map((key) => layout[key] ?? 100 / panelKeys.length);
       updateTerminalPanelSizes(activeTab.id, panelKeys, sizes);
     };
 
     return (
-      <PanelGroup direction={content.direction} onLayout={handleLayoutChange}>
+      <Group orientation={content.direction} onLayoutChange={handleLayoutChange}>
         {content.panels.map((panel, index) => {
           const panelSize =
             panel.type === 'terminal' && panel.size ? panel.size : defaultSizePerPanel;
@@ -1276,7 +1279,7 @@ export function TerminalView() {
           return (
             <React.Fragment key={panelKey}>
               {index > 0 && (
-                <PanelResizeHandle
+                <Separator
                   key={`handle-${panelKey}`}
                   className={
                     isHorizontal
@@ -1285,13 +1288,13 @@ export function TerminalView() {
                   }
                 />
               )}
-              <Panel id={panelKey} order={index} defaultSize={panelSize} minSize={30}>
+              <Panel id={panelKey} defaultSize={panelSize} minSize={30}>
                 {renderPanelContent(panel)}
               </Panel>
             </React.Fragment>
           );
         })}
-      </PanelGroup>
+      </Group>
     );
   };
 

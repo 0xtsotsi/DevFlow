@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import {
   PointerSensor,
   useSensor,
@@ -23,7 +23,9 @@ import { BoardHeader } from './board-view/board-header';
 import { BoardSearchBar } from './board-view/board-search-bar';
 import { BoardControls } from './board-view/board-controls';
 import { KanbanBoard } from './board-view/kanban-board';
-import { GraphView } from './graph-view';
+
+// Lazy load GraphView (contains xyflow and dagre - heavy libraries)
+const GraphView = lazy(() => import('./graph-view').then((m) => ({ default: m.GraphView })));
 import {
   AddFeatureDialog,
   AgentOutputModal,
@@ -1033,20 +1035,28 @@ export function BoardView() {
             onArchiveAllVerified={() => setShowArchiveAllVerifiedDialog(true)}
           />
         ) : (
-          <GraphView
-            features={hookFeatures}
-            runningAutoTasks={runningAutoTasks}
-            currentWorktreePath={currentWorktreePath}
-            currentWorktreeBranch={currentWorktreeBranch}
-            projectPath={currentProject?.path || null}
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            onEditFeature={(feature) => setEditingFeature(feature)}
-            onViewOutput={handleViewOutput}
-            onStartTask={handleStartImplementation}
-            onStopTask={handleForceStopFeature}
-            onResumeTask={handleResumeFeature}
-          />
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center">
+                <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <GraphView
+              features={hookFeatures}
+              runningAutoTasks={runningAutoTasks}
+              currentWorktreePath={currentWorktreePath}
+              currentWorktreeBranch={currentWorktreeBranch}
+              projectPath={currentProject?.path || null}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              onEditFeature={(feature) => setEditingFeature(feature)}
+              onViewOutput={handleViewOutput}
+              onStartTask={handleStartImplementation}
+              onStopTask={handleForceStopFeature}
+              onResumeTask={handleResumeFeature}
+            />
+          </Suspense>
         )}
       </div>
 
