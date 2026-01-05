@@ -6,6 +6,7 @@ import type {
   FeatureImagePath,
   FeatureTextFilePath,
   AgentModel,
+  AgentType,
   PlanningMode,
   AIProfile,
   ThemeMode,
@@ -15,12 +16,16 @@ import type {
   BeadsIssueStatus,
   BeadsIssueType,
   PromptCustomization,
+  AgentModelSettings,
 } from '@automaker/types';
+import { DEFAULT_AGENT_MODELS } from '@automaker/types';
 
 // Re-export types for convenience
 export type {
   ThemeMode,
   AgentModel,
+  AgentType,
+  AgentModelSettings,
   ThinkingLevel,
   AIProfile,
   ModelProvider,
@@ -569,6 +574,10 @@ export interface AppState {
 
   // Prompt Customization
   promptCustomization: PromptCustomization;
+
+  // Agent Model Settings
+  /** Per-agent model preferences */
+  agentModelSettings: AgentModelSettings;
 }
 
 // Claude Usage interface matching the server response
@@ -906,6 +915,10 @@ export interface AppActions {
   updatePromptCustomization: (updates: Partial<PromptCustomization>) => void;
   resetPromptCustomization: () => void;
 
+  // Agent Model Settings actions
+  setAgentModel: (agentType: AgentType, model: AgentModel) => void;
+  resetAgentModels: () => void;
+
   // Reset
   reset: () => void;
 }
@@ -1018,6 +1031,12 @@ const initialState: AppState = {
   claudeUsageLastUpdated: null,
 
   promptCustomization: {},
+
+  // Agent Model Settings
+  agentModelSettings: {
+    version: 1,
+    agents: DEFAULT_AGENT_MODELS,
+  },
 };
 
 export const useAppStore = create<AppState & AppActions>()(
@@ -2797,6 +2816,28 @@ export const useAppStore = create<AppState & AppActions>()(
 
       resetPromptCustomization: () => set({ promptCustomization: {} }),
 
+      // Agent Model Settings actions
+      setAgentModel: (agentType, model) => {
+        set({
+          agentModelSettings: {
+            ...get().agentModelSettings,
+            agents: {
+              ...get().agentModelSettings.agents,
+              [agentType]: model,
+            },
+          },
+        });
+      },
+
+      resetAgentModels: () => {
+        set({
+          agentModelSettings: {
+            version: 1,
+            agents: DEFAULT_AGENT_MODELS,
+          },
+        });
+      },
+
       // Reset
       reset: () => set(initialState),
     }),
@@ -2948,6 +2989,10 @@ export const useAppStore = create<AppState & AppActions>()(
           defaultAIProfileId: state.defaultAIProfileId,
           // Prompt customization
           promptCustomization: state.promptCustomization,
+
+          // Agent Model Settings
+          agentModelSettings: state.agentModelSettings,
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any,
     }
