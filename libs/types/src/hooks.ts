@@ -17,7 +17,7 @@ export type HookType =
 /**
  * Hook execution mode
  */
-export type HookMode = 'blocking'; // Hook must pass before operation continues
+export type HookMode = 'blocking' | 'non-blocking'; // Hook must pass before operation continues
 
 /**
  * Hook status result

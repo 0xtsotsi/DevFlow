@@ -178,6 +178,29 @@ export class HooksService {
           }
         `,
       },
+      {
+        type: 'post-task',
+        name: 'Post-Task Reflection',
+        description: 'Generate reflection on task execution for continuous improvement',
+        mode: 'non-blocking',
+        enabled: true,
+        priority: 50,
+        timeout: 30000,
+        implementation: `
+          // Post-task reflection hook for continuous improvement
+          // This hook runs after task completion to generate insights
+          // Note: Full reflection requires conversation history which is
+          // available via the ReflectSkillService, not in hook context
+          return {
+            success: true,
+            message: 'Post-task reflection noted. Use /reflect skill for detailed analysis.',
+            data: {
+              hint: 'Run reflect skill with conversation history for detailed analysis',
+              sessionId: context.sessionId
+            }
+          };
+        `,
+      },
 
       // Pre-commit hooks
       {

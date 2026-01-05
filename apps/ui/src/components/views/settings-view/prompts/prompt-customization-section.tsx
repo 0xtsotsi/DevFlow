@@ -87,7 +87,10 @@ interface PromptCategoryProps {
   icon: React.ReactNode;
   customization: PromptCustomization;
   category: keyof PromptCustomization;
-  defaults: Record<string, { label: string; description?: string; critical?: boolean }>;
+  defaults: Record<
+    string,
+    { label: string; description?: string; defaultValue?: string; critical?: boolean }
+  >;
   onChange: (category: keyof PromptCustomization, field: string, value: string | boolean) => void;
   onResetCategory: (category: keyof PromptCustomization) => void;
 }

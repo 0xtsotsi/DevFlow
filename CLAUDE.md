@@ -6,6 +6,14 @@ An autonomous AI development studio where you describe features on a Kanban boar
 
 **Target Users:** Software developers and teams adopting agentic coding workflows with AI agents while maintaining control over architecture and business logic.
 
+## Table of Contents
+
+- [Project Structure](#project-structure)
+- [Organization Rules](#organization-rules)
+- [Code Quality - Zero Tolerance](#code-quality---zero-tolerance)
+- [Beads Autonomous Memory System](#beads-autonomous-memory-system)
+- [Gastown-Inspired Features](#gastown-inspired-features)
+
 ## Project Structure
 
 ```
@@ -274,3 +282,302 @@ Services emit events for monitoring:
 - `apps/server/tests/unit/services/beads-live-link-service.test.ts`
 - `apps/server/tests/unit/services/beads-memory-service.test.ts`
 - `apps/server/tests/unit/services/beads-agent-coordinator.test.ts`
+
+## Gastown-Inspired Features
+
+DevFlow includes a comprehensive automation system inspired by Gastown patterns, providing advanced workflow orchestration, custom hooks, and specialized AI skills.
+
+### Core Components
+
+The Gastown-inspired system consists of four major features:
+
+1. **Workflow Orchestration** - Multi-stage automated development pipelines
+2. **Hooks System** - Custom code execution at workflow checkpoints
+3. **Skills System** - Specialized AI capabilities for common tasks
+4. **Agent Coordination** - Intelligent agent selection and task assignment
+
+### Feature Overview
+
+#### 1. Workflow Orchestration
+
+Automates complex development processes with multiple stages:
+
+- **Research Stage** - Gather context from codebase, web, and memory
+- **Planning Stage** - Create implementation plans with AI
+- **Implementation Stage** - Write and modify code
+- **Validation Stage** - Run tests, linting, and build checks
+- **Documentation Stage** - Update documentation
+
+**Modes:**
+
+- `auto` - Fully automated execution (best for routine tasks)
+- `semi` - Automated with checkpoint approvals (best for important changes)
+
+**Documentation:** `/home/codespace/DevFlow/docs/WORKFLOW_ORCHESTRATION_GUIDE.md`
+
+#### 2. Hooks System
+
+Execute custom code at key workflow points:
+
+- **Pre-Task Hooks** - Run before starting tasks
+- **Post-Task Hooks** - Run after completing tasks
+- **Pre-Commit Hooks** - Run before committing changes
+
+**Features:**
+
+- Blocking and non-blocking modes
+- Priority-based execution
+- Timeout handling
+- Custom JavaScript implementations
+
+**Default Hooks:**
+
+- Check Git Status
+- Summarize Changes
+- Validate Tests
+- Run Type Check
+- Check for Debug Code
+
+**Documentation:** `/home/codespace/DevFlow/docs/HOOKS_GUIDE.md`
+
+#### 3. Skills System
+
+Specialized AI capabilities for common development tasks:
+
+**Research Skill:**
+
+- Parallel research using codebase, web, and memory
+- GitHub code search (via Grep MCP)
+- Web documentation search (via Exa MCP)
+- Beads memory queries
+
+**Implementation Skill:**
+
+- AI-powered code implementation
+- Automated code generation
+- Change tracking and summaries
+
+**CI/CD Skill:**
+
+- Automated testing
+- Linting validation
+- Build verification
+- Comprehensive reports
+
+**Workflow Orchestrator Skill:**
+
+- Multi-skill coordination
+- Checkpoint management
+- Error handling and retries
+- Progress tracking
+
+**Documentation:** `/home/codespace/DevFlow/docs/SKILLS_GUIDE.md`
+
+#### 4. Agent Coordination
+
+Intelligent agent selection and task assignment (part of Beads system):
+
+- Capability matching (40% weight)
+- Success rate tracking (40% weight)
+- Availability checking (20% weight)
+- Helper agent spawning for subtasks
+- Automatic issue assignment
+- Stale agent cleanup (2-hour timeout)
+
+### Implementation Status
+
+**Completed Features:**
+
+- [x] Workflow Orchestrator with multi-stage pipelines
+- [x] Hooks System with pre-task, post-task, and pre-commit hooks
+- [x] Research Skill with parallel agents
+- [x] Implementation Skill for code generation
+- [x] CI/CD Skill for validation
+- [x] Workflow Skill for orchestration
+- [x] Agent coordination and assignment
+- [x] Checkpoint approval system
+- [x] MCP integration (Exa, Grep)
+- [x] Event-based monitoring
+
+**File Locations:**
+
+**Services:**
+
+- `apps/server/src/services/workflow-orchestrator.ts` - Main workflow coordination
+- `apps/server/src/services/skills-service.ts` - Skills management
+- `apps/server/src/services/hooks-manager.ts` - Hooks execution
+- `apps/server/src/services/beads-agent-coordinator.ts` - Agent coordination
+
+**Routes:**
+
+- `apps/server/src/routes/skills.ts` - Skills API endpoints
+- `apps/server/src/routes/hooks.ts` - Hooks API endpoints
+- `apps/server/src/routes/workflow.ts` - Workflow API endpoints
+
+**Types:**
+
+- `libs/types/src/skills.ts` - Skill type definitions
+- `libs/types/src/hooks.ts` - Hook type definitions
+- `libs/types/src/workflow.ts` - Workflow type definitions
+
+**Tests:**
+
+- `apps/server/tests/unit/services/workflow-orchestrator.test.ts`
+- `apps/server/tests/unit/services/skills-service.test.ts`
+- `apps/server/tests/unit/lib/hooks-manager.test.ts`
+
+**Commands (Claude Skills):**
+
+- `/.claude/commands/research.md` - Run research skill
+- `/.claude/commands/implement.md` - Run implementation skill
+- `/.claude/commands/cicd.md` - Run CI/CD validation
+- `/.claude/commands/workflow-orchestrator.md` - Orchestrate workflows
+- `/.claude/commands/fix.md` - Fix linting and type errors
+- `/.claude/commands/commit.md` - Commit with AI-generated messages
+- `/.claude/commands/update-app.md` - Update dependencies
+- `/.claude/commands/cleanup-ai-slop.md` - Remove AI-generated code
+
+### Quick Start Guide
+
+**1. Enable Features:**
+
+```bash
+# .env configuration
+WORKFLOW_MODE=semi                    # or 'auto'
+WORKFLOW_AUTO_START=false
+WORKFLOW_CHECKPOINT_APPROVAL=true
+HOOKS_ENABLED=true
+SKILLS_ENABLED=true
+```
+
+**2. Use Claude Commands:**
+
+```bash
+# Research a topic
+/research How to implement OAuth2
+
+# Implement a feature
+/implement Add user authentication
+
+# Run CI/CD checks
+/cicd
+
+# Fix all issues
+/fix
+
+# Commit changes
+/commit
+```
+
+**3. API Usage:**
+
+```bash
+# Execute workflow
+curl -X POST http://localhost:3008/api/skills/workflow \
+  -H "Content-Type: application/json" \
+  -d '{
+    "issueId": "issue-123",
+    "projectPath": "/home/codespace/DevFlow",
+    "mode": "semi"
+  }'
+
+# List skills
+curl http://localhost:3008/api/skills
+
+# List hooks
+curl http://localhost:3008/api/hooks
+```
+
+**4. Monitor Events:**
+
+```typescript
+// Workflow events
+events.on('workflow:started', (data) => console.log('Workflow started'));
+events.on('workflow:completed', (data) => console.log('Workflow completed'));
+events.on('workflow:checkpoint', (data) => console.log('Checkpoint reached'));
+
+// Skill events
+events.on('skill:started', (data) => console.log('Skill started'));
+events.on('skill:completed', (data) => console.log('Skill completed'));
+
+// Hook events
+events.on('hook:executed', (data) => console.log('Hook executed'));
+```
+
+### Important Notes for AI Agents
+
+**When Working on This Codebase:**
+
+1. **Always Research First** - Use the Research skill before implementing features
+2. **Follow Workflow Stages** - Research → Plan → Implement → Validate → Document
+3. **Enable Hooks** - Hooks provide validation and quality checks
+4. **Use Semi-Auto Mode** - For important changes, enable checkpoint approvals
+5. **Monitor Events** - Listen to workflow/skill/hook events for progress tracking
+6. **Run Quality Checks** - Use the CI/CD skill before committing
+7. **Update Documentation** - Keep docs in sync with code changes
+
+**Code Quality Requirements:**
+
+- All features must have tests (unit and integration)
+- TypeScript strict mode enabled
+- ESLint and Prettier configured
+- Zero tolerance for linting errors
+- Test coverage > 80%
+
+**Testing Before Committing:**
+
+```bash
+# Run all checks
+npm run lint
+npm run test:all
+npm run build:packages
+npm run format
+
+# For server changes
+npm run lint --workspace=apps/server
+npm run test:server
+npx tsc -p apps/server/tsconfig.json --noEmit
+
+# For UI changes
+npm run lint
+npm run build --workspace=apps/ui
+```
+
+**Architecture Principles:**
+
+- Single responsibility per file
+- Clear separation of concerns
+- Event-driven architecture
+- Modular design (skills, hooks, workflows)
+- Type safety with TypeScript
+- Comprehensive error handling
+
+### Integration Points
+
+The Gastown-inspired features integrate with:
+
+- **Beads** - Issue tracking and agent coordination
+- **MCP Servers** - Exa (web search), Grep (code search)
+- **Events System** - All components emit events for monitoring
+- **Agent Service** - Underlying agent execution
+- **Research Service** - Codebase and web research capabilities
+
+### Documentation Links
+
+- [Workflow Orchestration Guide](/home/codespace/DevFlow/docs/WORKFLOW_ORCHESTRATION_GUIDE.md)
+- [Skills Guide](/home/codespace/DevFlow/docs/SKILLS_GUIDE.md)
+- [Hooks Guide](/home/codespace/DevFlow/docs/HOOKS_GUIDE.md)
+- [MCP Setup Guide](/home/codespace/DevFlow/docs/MCP_SETUP.md)
+
+### Future Enhancements
+
+Potential improvements to consider:
+
+- [ ] Custom workflow templates
+- [ ] Visual workflow editor
+- [ ] Hook marketplace/sharing
+- [ ] Skill composition and chaining
+- [ ] Advanced retry strategies
+- [ ] Workflow versioning
+- [ ] Performance analytics dashboard
+- [ ] Custom skill development kit

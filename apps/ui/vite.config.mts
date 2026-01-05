@@ -64,6 +64,84 @@ export default defineConfig(({ command }) => {
     },
     build: {
       outDir: 'dist',
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => {
+            // Vendor chunks for large libraries
+            // Split xterm terminal library
+            if (id.includes('@xterm') || id.includes('xterm')) {
+              return 'xterm';
+            }
+
+            // Split React and React DOM
+            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+              return 'react';
+            }
+
+            // Split TanStack Router
+            if (id.includes('@tanstack/react-router')) {
+              return 'tanstack-router';
+            }
+
+            // Split TanStack React Query
+            if (id.includes('@tanstack/react-query')) {
+              return 'tanstack-query';
+            }
+
+            // Split dagre (graph layout library)
+            if (id.includes('dagre')) {
+              return 'dagre';
+            }
+
+            // Split xyflow (React Flow library)
+            if (id.includes('@xyflow/react')) {
+              return 'xyflow';
+            }
+
+            // Split markdown libraries
+            if (id.includes('react-markdown') || id.includes('rehype')) {
+              return 'markdown';
+            }
+
+            // Split CodeMirror
+            if (id.includes('@codemirror') || id.includes('@uiw/react-codemirror')) {
+              return 'codemirror';
+            }
+
+            // Split DnD Kit
+            if (id.includes('@dnd-kit')) {
+              return 'dnd-kit';
+            }
+
+            // Split Radix UI components
+            if (id.includes('@radix-ui')) {
+              return 'radix-ui';
+            }
+
+            // Split Zustand
+            if (id.includes('zustand')) {
+              return 'zustand';
+            }
+
+            // Split Lucide React icons
+            if (id.includes('lucide-react')) {
+              return 'lucide-icons';
+            }
+
+            // Split sonner (toast notifications)
+            if (id.includes('sonner')) {
+              return 'sonner';
+            }
+
+            // Split resize panels
+            if (id.includes('react-resizable-panels')) {
+              return 'resize-panels';
+            }
+          },
+        },
+      },
+      // Increase chunk size warning limit to 500 kB
+      chunkSizeWarningLimit: 500,
     },
   };
 });

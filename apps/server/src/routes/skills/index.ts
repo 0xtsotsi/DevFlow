@@ -7,6 +7,7 @@ import type { ResearchSkillService } from '../../services/research-skill-service
 import type { ImplementationSkillService } from '../../services/implementation-skill-service.js';
 import type { CICDSkillService } from '../../services/cicd-skill-service.js';
 import type { WorkflowOrchestratorService } from '../../services/workflow-orchestrator-service.js';
+import type { ReflectSkillService } from '../../services/reflect-skill-service.js';
 import { getErrorMessage, logError } from '../agent/common.js';
 
 interface SkillServices {
@@ -14,6 +15,7 @@ interface SkillServices {
   implementationSkillService: ImplementationSkillService;
   cicdSkillService: CICDSkillService;
   workflowOrchestratorService: WorkflowOrchestratorService;
+  reflectSkillService: ReflectSkillService;
 }
 
 export function createSkillsRoutes(services: SkillServices): Router {
@@ -46,6 +48,12 @@ export function createSkillsRoutes(services: SkillServices): Router {
           name: 'Workflow Orchestrator',
           description: 'Orchestrates multi-step workflows',
           available: await services.workflowOrchestratorService.isAvailable(),
+        },
+        {
+          id: 'reflect',
+          name: 'Reflect',
+          description: 'Analyzes conversations and generates reflections for improvement',
+          available: await services.reflectSkillService.isAvailable(),
         },
       ];
 
@@ -171,6 +179,87 @@ export function createSkillsRoutes(services: SkillServices): Router {
       res.json({ success: true, result });
     } catch (error) {
       logError(error, 'Workflow execution failed');
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // POST /api/skills/reflect - Execute reflection on conversation
+  router.post('/reflect', async (req, res) => {
+    try {
+      const { projectPath, sessionId, conversation, taskDescription, maxInsights } = req.body;
+
+      if (!projectPath || !sessionId || !conversation) {
+        res.status(400).json({
+          success: false,
+          error: 'projectPath, sessionId, and conversation are required',
+        });
+        return;
+      }
+
+      if (!Array.isArray(conversation)) {
+        res.status(400).json({
+          success: false,
+          error: 'conversation must be an array of messages',
+        });
+        return;
+      }
+
+      const result = await services.reflectSkillService.execute({
+        projectPath,
+        sessionId,
+        conversation,
+        taskDescription,
+        maxInsights,
+        storeInBeads: true,
+      });
+
+      res.json({ success: true, result });
+    } catch (error) {
+      logError(error, 'Reflect execution failed');
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // GET /api/skills/reflect/history - Get reflection history for project
+  router.get('/reflect/history', async (req, res) => {
+    try {
+      const { projectPath } = req.query;
+
+      if (!projectPath || typeof projectPath !== 'string') {
+        res.status(400).json({
+          success: false,
+          error: 'projectPath query parameter is required',
+        });
+        return;
+      }
+
+      const history = services.reflectSkillService.getHistory(projectPath);
+
+      res.json({ success: true, history });
+    } catch (error) {
+      logError(error, 'Get reflection history failed');
+      res.status(500).json({ success: false, error: getErrorMessage(error) });
+    }
+  });
+
+  // DELETE /api/skills/reflect/history - Clear reflection history for project
+  router.delete('/reflect/history', async (req, res) => {
+    try {
+      const { projectPath } = req.query;
+
+      if (!projectPath || typeof projectPath !== 'string') {
+        res.status(400).json({
+          success: false,
+          error: 'projectPath query parameter is required',
+        });
+        return;
+      }
+
+      services.reflectSkillService.clearHistory(projectPath);
+
+      res.json({ success: true, message: 'Reflection history cleared' });
+    } catch (error) {
+      logError(error, 'Clear reflection history failed');
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }
   });

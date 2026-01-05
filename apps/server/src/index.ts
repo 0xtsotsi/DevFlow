@@ -60,9 +60,9 @@ import { createHooksRoutes } from './routes/hooks/index.js';
 import { BeadsLiveLinkService } from './services/beads-live-link-service.js';
 import { BeadsMemoryService } from './services/beads-memory-service.js';
 import { BeadsAgentCoordinator } from './services/beads-agent-coordinator.js';
-import { BeadsAgentWrapperService } from './services/beads-agent-wrapper.js';
+// import { BeadsAgentWrapperService } from './services/beads-agent-wrapper.js';
 import { getMCPBridge } from './lib/mcp-bridge.js';
-import { getBeadsToolsHandler } from './lib/beads-tools.js';
+// import { getBeadsToolsHandler } from './lib/beads-tools.js';
 import { AgentRegistry } from './agents/agent-registry.js';
 import { SpecializedAgentService } from './agents/specialized-agent-service.js';
 import { HooksService } from './services/hooks-service.js';
@@ -71,6 +71,7 @@ import { ResearchSkillService } from './services/research-skill-service.js';
 import { ImplementationSkillService } from './services/implementation-skill-service.js';
 import { CICDSkillService } from './services/cicd-skill-service.js';
 import { WorkflowOrchestratorService } from './services/workflow-orchestrator-service.js';
+import { ReflectSkillService } from './services/reflect-skill-service.js';
 import { PipelineService } from './services/pipeline-service.js';
 import { createPipelineRoutes } from './routes/pipeline/index.js';
 
@@ -201,6 +202,7 @@ let researchSkillService!: ResearchSkillService;
 let implementationSkillService!: ImplementationSkillService;
 let cicdSkillService!: CICDSkillService;
 let workflowOrchestratorService!: WorkflowOrchestratorService;
+let reflectSkillService!: ReflectSkillService;
 let hooksService!: HooksService;
 let beadsAgentCoordinator!: BeadsAgentCoordinator;
 
@@ -241,6 +243,7 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     console.log('[Server] ✓ Beads LiveLink initialized');
 
     // Initialize Beads Memory Service (context for agents)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const beadsMemoryService = new BeadsMemoryService(beadsService, mcpBridge);
     console.log('[Server] ✓ Beads Memory Service initialized');
 
@@ -270,20 +273,22 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     setBeadsCoordinator(beadsAgentCoordinator);
 
     // Initialize Beads Tools Handler for custom tool support
-    const beadsToolsHandler = getBeadsToolsHandler(
-      beadsService,
-      beadsMemoryService,
-      beadsAgentCoordinator,
-      events
-    );
-    // Make available globally for agent wrapper
-    (global as { beadsToolsHandler?: unknown }).beadsToolsHandler = beadsToolsHandler;
-    console.log('[Server] ✓ Beads Tools Handler initialized');
+    // TODO: Re-enable when beads-tools.js is available
+    // const beadsToolsHandler = getBeadsToolsHandler(
+    //   beadsService,
+    //   beadsMemoryService,
+    //   beadsAgentCoordinator,
+    //   events
+    // );
+    // // Make available globally for agent wrapper
+    // (global as { beadsToolsHandler?: unknown }).beadsToolsHandler = beadsToolsHandler;
+    console.log('[Server] ⚠ Beads Tools Handler disabled (module not available)');
 
     // Initialize Beads Agent Wrapper (intercepts tool calls)
-    const beadsAgentWrapper = new BeadsAgentWrapperService(events);
-    beadsAgentWrapper.initialize();
-    console.log('[Server] ✓ Beads Agent Wrapper initialized');
+    // TODO: Re-enable when beads-agent-wrapper.js is available
+    // const beadsAgentWrapper = new BeadsAgentWrapperService(events);
+    // beadsAgentWrapper.initialize();
+    console.log('[Server] ⚠ Beads Agent Wrapper disabled (module not available)');
 
     // Start Beads Agent Coordinator with proper initialization
     await beadsAgentCoordinator.start(process.cwd());
@@ -308,6 +313,7 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     implementationSkillService = new ImplementationSkillService(events);
     cicdSkillService = new CICDSkillService(events);
     workflowOrchestratorService = new WorkflowOrchestratorService(events);
+    reflectSkillService = new ReflectSkillService(events);
     console.log('[Server] ✓ Skill services initialized');
 
     // Wire up event listeners for skill coordination
@@ -386,6 +392,7 @@ app.use(
     implementationSkillService,
     cicdSkillService,
     workflowOrchestratorService,
+    reflectSkillService,
   })
 );
 app.use('/api/hooks', apiLimiter, createHooksRoutes(hooksService));
