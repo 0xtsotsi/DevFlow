@@ -8,6 +8,8 @@
 
 import type { AgentModel } from './model.js';
 import type { PromptCustomization } from './prompts.js';
+import type { AgentModelSettings } from './agent-models.js';
+import { DEFAULT_AGENT_MODELS } from './agent-models.js';
 
 // Re-export AgentModel for convenience
 export type { AgentModel };
@@ -304,6 +306,10 @@ export interface GlobalSettings {
   // Prompt Customization
   /** User-customized AI prompts for different features */
   promptCustomization?: PromptCustomization;
+
+  // Agent Model Preferences
+  /** Per-agent model preferences for cost optimization */
+  agentModelSettings?: AgentModelSettings;
 }
 
 /**
@@ -457,6 +463,10 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   recentFolders: [],
   worktreePanelCollapsed: false,
   lastSelectedSessionByProject: {},
+  agentModelSettings: {
+    version: 1,
+    agents: DEFAULT_AGENT_MODELS,
+  },
 };
 
 /** Default credentials (empty strings - user must provide API keys) */
