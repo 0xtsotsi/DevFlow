@@ -21,6 +21,21 @@ export {
   getAvailableEnhancementModes,
 } from './enhancement.js';
 
+// Reflect skill prompts
+export {
+  REFLECT_ANALYSIS_PROMPT,
+  REFLEXION_FEEDBACK_PROMPT,
+  SELF_EVALUATION_PROMPT,
+  CONVERSATION_ANALYSIS_PROMPT,
+  REFLECTION_SUMMARY_PROMPT,
+  TASK_REFLECTION_PROMPTS,
+  getTaskReflectionPrompt,
+  formatReflectionForDisplay,
+  formatFeedbackForNextAttempt,
+  type TaskReflectionPrompt,
+  type ReflectionDisplayData,
+} from './reflect.js';
+
 // Default prompts for customization
 export {
   DEFAULT_AUTO_MODE_PROMPTS,

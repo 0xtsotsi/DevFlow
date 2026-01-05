@@ -1,7 +1,10 @@
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
+import { lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
+
+// Lazy load the entire markdown renderer as a single chunk
+const MarkdownRenderer = lazy(() =>
+  import('./markdown-renderer').then((m) => ({ default: m.MarkdownRenderer }))
+);
 
 interface MarkdownProps {
   children: string;
@@ -45,7 +48,9 @@ export function Markdown({ children, className }: MarkdownProps) {
         className
       )}
     >
-      <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>{children}</ReactMarkdown>
+      <Suspense fallback={<div className="whitespace-pre-wrap">{children}</div>}>
+        <MarkdownRenderer>{children}</MarkdownRenderer>
+      </Suspense>
     </div>
   );
 }

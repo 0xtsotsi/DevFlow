@@ -352,8 +352,10 @@ export class AutoModeService {
       throw new Error(`Feature ${featureId} not found`);
     }
 
-    const failureCount = feature.failureCount || 0;
-    const lastFailedAt = feature.lastFailedAt ? new Date(feature.lastFailedAt).getTime() : 0;
+    const failureCount = (feature.failureCount as number | undefined) || 0;
+    const lastFailedAt = feature.lastFailedAt
+      ? new Date(feature.lastFailedAt as string).getTime()
+      : 0;
     const now = Date.now();
     const timeSinceLastFailure = now - lastFailedAt;
 
@@ -570,7 +572,7 @@ export class AutoModeService {
         console.error(`[AutoMode] Feature ${featureId} failed:`, error);
 
         // Track failure count and timestamp
-        const currentFailureCount = (feature.failureCount || 0) + 1;
+        const currentFailureCount = ((feature.failureCount as number | undefined) || 0) + 1;
         const MAX_FAILURES = 5;
 
         // Reload feature to get latest state before updating

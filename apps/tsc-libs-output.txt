@@ -1,0 +1,14 @@
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
+error TS5058: The specified path does not exist: 'libs//tsconfig.json'.
