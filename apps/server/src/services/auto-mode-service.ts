@@ -436,8 +436,10 @@ export class AutoModeService {
       throw new Error(`Feature ${featureId} not found`);
     }
 
-    const failureCount = feature.failureCount || 0;
-    const lastFailedAt = feature.lastFailedAt ? new Date(feature.lastFailedAt).getTime() : 0;
+    const failureCount = (feature.failureCount as number | undefined) || 0;
+    const lastFailedAt = feature.lastFailedAt
+      ? new Date(feature.lastFailedAt as string).getTime()
+      : 0;
     const now = Date.now();
     const timeSinceLastFailure = now - lastFailedAt;
 

@@ -222,6 +222,7 @@ let researchSkillService!: ResearchSkillService;
 let implementationSkillService!: ImplementationSkillService;
 let cicdSkillService!: CICDSkillService;
 let workflowOrchestratorService!: WorkflowOrchestratorService;
+let reflectSkillService!: ReflectSkillService;
 let hooksService!: HooksService;
 let beadsAgentCoordinator!: BeadsAgentCoordinator;
 

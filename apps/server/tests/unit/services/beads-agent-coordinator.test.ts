@@ -110,7 +110,6 @@ describe('BeadsAgentCoordinator', () => {
       // Wait for next tick
       await vi.runOnlyPendingTimersAsync();
 
-      // After advancing time, the interval fires again
       expect(mockBeadsService.getReadyWork).toHaveBeenCalledTimes(3);
     });
   });
@@ -198,16 +197,11 @@ describe('BeadsAgentCoordinator', () => {
 
       mockAgentRegistry.getAgentConfig.mockReturnValue({
         name: 'Generic Agent',
-        capabilities: [], // No capabilities = neutral score (0.5)
+        capabilities: [],
       });
 
-      // To get score below 0.5 threshold:
-      // 0.5 * 0.4 + successRate * 0.4 + 1 * 0.2 < 0.5
-      // 0.2 + 0.4 * successRate + 0.2 < 0.5
-      // 0.4 * successRate < 0.1
-      // successRate < 0.25
       mockAgentRegistry.getAgentStats.mockReturnValue({
-        successRate: 0.2, // Very low success rate to get below threshold
+        successRate: 0.2,
       });
 
       mockBeadsService.getReadyWork.mockResolvedValue([mockIssue]);
@@ -333,8 +327,6 @@ describe('BeadsAgentCoordinator', () => {
 
       await coordinator.start(testProjectPath);
 
-      // The availability is calculated based on active agents count
-      // We just verify the coordination happens without errors
       expect(mockBeadsService.getReadyWork).toHaveBeenCalled();
     });
   });
@@ -402,13 +394,11 @@ describe('BeadsAgentCoordinator', () => {
 
       await coordinator.start(testProjectPath);
 
-      // Wait for the async assignment to complete
       await vi.runOnlyPendingTimersAsync();
 
       const lockedIssues = coordinator.getLockedIssues();
       expect(lockedIssues.has('bd-1')).toBe(true);
 
-      // Clean up
       agentResolve!({ success: true });
     });
 
@@ -443,19 +433,16 @@ describe('BeadsAgentCoordinator', () => {
       await coordinator.start(testProjectPath);
       await vi.runOnlyPendingTimersAsync();
 
-      // Now verify it's locked
       const lockedIssues = coordinator.getLockedIssues();
       expect(lockedIssues.has('bd-1')).toBe(true);
 
-      // Try to assign again - should not create another session since it's already locked
+      // Try to assign again - should not create another session
       const initialCallCount = mockAgentService.createSession.mock.calls.length;
       await coordinator.triggerCoordination(testProjectPath);
       await vi.runOnlyPendingTimersAsync();
 
-      // Should not have created another session for the same locked issue
       expect(mockAgentService.createSession.mock.calls.length).toBe(initialCallCount);
 
-      // Clean up
       agentResolve!({ success: true });
     });
 

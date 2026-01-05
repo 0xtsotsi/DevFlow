@@ -27,7 +27,9 @@ import { BoardHeader } from './board-view/board-header';
 import { BoardSearchBar } from './board-view/board-search-bar';
 import { BoardControls } from './board-view/board-controls';
 import { KanbanBoard } from './board-view/kanban-board';
-import { GraphView } from './graph-view';
+
+// Lazy load GraphView (contains xyflow and dagre - heavy libraries)
+const GraphView = lazy(() => import('./graph-view').then((m) => ({ default: m.GraphView })));
 import {
   AddFeatureDialog,
   AgentOutputModal,
