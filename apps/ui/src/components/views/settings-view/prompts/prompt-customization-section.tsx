@@ -89,7 +89,7 @@ interface PromptCategoryProps {
   category: keyof PromptCustomization;
   defaults: Record<
     string,
-    { label: string; description?: string; defaultValue?: string; critical?: boolean }
+    { label: string; description?: string; critical?: boolean; defaultValue?: string }
   >;
   onChange: (category: keyof PromptCustomization, field: string, value: string | boolean) => void;
   onResetCategory: (category: keyof PromptCustomization) => void;
@@ -138,7 +138,7 @@ function PromptCategory({
               key={field}
               label={config.label}
               description={config.description}
-              defaultValue={config.defaultValue || ''}
+              defaultValue={config.defaultValue ?? ''}
               customValue={customValue}
               onChange={(value) => onChange(category, field, value)}
               onToggle={(enabled) => onChange(category, field, enabled)}
