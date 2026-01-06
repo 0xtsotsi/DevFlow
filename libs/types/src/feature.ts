@@ -54,6 +54,11 @@ export interface Feature {
   error?: string;
   summary?: string;
   startedAt?: string;
+  // Failure tracking for circuit breaker
+  failureCount?: number;
+  lastFailedAt?: string;
+  permanentlyFailed?: boolean;
+  permanentFailureReason?: string;
   [key: string]: unknown; // Keep catch-all for extensibility
 }
 
