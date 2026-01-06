@@ -15,6 +15,7 @@ import {
 } from '@devflow/utils';
 import { ProviderFactory } from '../providers/provider-factory.js';
 import { createChatOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
+import { incrementCounter, setGauge, recordDistribution } from '../lib/sentry.js';
 
 interface Message {
   id: string;
@@ -163,6 +164,9 @@ export class AgentService {
       timestamp: new Date().toISOString(),
     };
 
+    // Update active sessions gauge
+    setGauge('agent.sessions.active', this.sessions.size);
+
     // Build conversation history from existing messages BEFORE adding current message
     const conversationHistory = session.messages.map((msg) => ({
       role: msg.role,
@@ -180,6 +184,9 @@ export class AgentService {
     });
 
     await this.saveSession(sessionId, session.messages);
+
+    // Initialize effectiveModel with session/model default for error tracking
+    let effectiveModel = model || session.model || 'unknown';
 
     try {
       // Determine the effective working directory for context loading
@@ -207,7 +214,7 @@ export class AgentService {
       });
 
       // Extract model, maxTurns, and allowedTools from SDK options
-      const effectiveModel = sdkOptions.model!;
+      effectiveModel = sdkOptions.model!;
       const maxTurns = sdkOptions.maxTurns;
       const allowedTools = sdkOptions.allowedTools as string[] | undefined;
 
@@ -315,6 +322,28 @@ export class AgentService {
 
       await this.saveSession(sessionId, session.messages);
 
+      // Track agent completion metrics
+      incrementCounter('agent.execution.completed', 1, {
+        attributes: {
+          model: effectiveModel,
+          provider: provider.getName(),
+          has_tools: toolUses.length > 0 ? 'true' : 'false',
+        },
+      });
+      recordDistribution('agent.execution.tool_count', toolUses.length, {
+        attributes: {
+          model: effectiveModel,
+        },
+      });
+      for (const tool of toolUses) {
+        incrementCounter('agent.tool.use', 1, {
+          attributes: {
+            tool_name: tool.name,
+            model: effectiveModel,
+          },
+        });
+      }
+
       session.isRunning = false;
       session.abortController = null;
 
@@ -344,6 +373,14 @@ export class AgentService {
 
       session.messages.push(errorMessage);
       await this.saveSession(sessionId, session.messages);
+
+      // Track error metrics
+      incrementCounter('agent.execution.error', 1, {
+        attributes: {
+          model: effectiveModel,
+          error_type: (error as Error).name || 'Unknown',
+        },
+      });
 
       this.emitAgentEvent(sessionId, {
         type: 'error',

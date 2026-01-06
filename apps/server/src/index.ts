@@ -14,7 +14,7 @@ import { createServer } from 'http';
 import dotenv from 'dotenv';
 
 import { createEventEmitter, type EventEmitter } from './lib/events.js';
-import { initAllowedPaths } from '@automaker/platform';
+import { initAllowedPaths } from '@devflow/platform';
 import { authMiddleware, initializeAuth } from './lib/auth.js';
 import { setAuthConfig } from './lib/claude-auth-manager.js';
 import { apiLimiter, healthLimiter, beadsLimiter, strictLimiter } from './lib/rate-limiter.js';
@@ -74,9 +74,18 @@ import { WorkflowOrchestratorService } from './services/workflow-orchestrator-se
 import { ReflectSkillService } from './services/reflect-skill-service.js';
 import { PipelineService } from './services/pipeline-service.js';
 import { createPipelineRoutes } from './routes/pipeline/index.js';
+import { initSentry } from './lib/sentry.js';
+import { metricsMiddleware } from './lib/metrics-middleware.js';
 
 // Load environment variables
 dotenv.config();
+
+// ============================================================================
+// Sentry Initialization
+// ============================================================================
+
+// Initialize Sentry as early as possible to catch initialization errors
+initSentry();
 
 const PORT = parseInt(process.env.PORT || '3008', 10);
 const DATA_DIR = process.env.DATA_DIR || './data';
@@ -178,6 +187,9 @@ app.use(
   })
 );
 app.use(express.json({ limit: '50mb' }));
+
+// Metrics middleware for tracking HTTP requests
+app.use(metricsMiddleware);
 
 // Create shared event emitter for streaming
 const events: EventEmitter = createEventEmitter();
