@@ -7,6 +7,7 @@ interface UseCliStatusOptions {
   setCliStatus: (status: any) => void;
   setAuthStatus: (status: any) => void;
 }
+const logger = createLogger('CliStatus');
 
 // Create logger once outside the hook to prevent infinite re-renders
 const logger = createLogger('CliStatus');
