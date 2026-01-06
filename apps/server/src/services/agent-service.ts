@@ -6,13 +6,13 @@
 import path from 'path';
 import * as secureFs from '../lib/secure-fs.js';
 import type { EventEmitter } from '../lib/events.js';
-import type { ExecuteOptions } from '@automaker/types';
+import type { ExecuteOptions } from '@devflow/types';
 import {
   readImageAsBase64,
   buildPromptWithImages,
   isAbortError,
   loadContextFiles,
-} from '@automaker/utils';
+} from '@devflow/utils';
 import { ProviderFactory } from '../providers/provider-factory.js';
 import { createChatOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
 
@@ -557,7 +557,12 @@ export class AgentService {
   }
 
   private emitAgentEvent(sessionId: string, data: Record<string, unknown>): void {
-    this.events.emit('agent:stream', { sessionId, ...data });
+    const session = this.sessions.get(sessionId);
+    this.events.emit('agent:stream', {
+      sessionId,
+      workingDirectory: session?.workingDirectory,
+      ...data,
+    });
   }
 
   private getSystemPrompt(): string {

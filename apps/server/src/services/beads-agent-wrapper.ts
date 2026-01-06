@@ -17,13 +17,15 @@ interface ToolUseEvent {
   projectPath?: string;
 }
 
-interface SessionStartData {
+interface AgentStreamEvent {
   sessionId: string;
-  projectPath?: string;
-}
-
-interface SessionEndData {
-  sessionId: string;
+  workingDirectory?: string;
+  type: 'message' | 'stream' | 'tool_use' | 'complete';
+  tool?: { name: string; input: Record<string, unknown> };
+  messageId?: string;
+  content?: string;
+  isComplete?: boolean;
+  toolUses?: unknown[];
 }
 
 interface BeadsToolsHandler {
@@ -57,18 +59,22 @@ export class BeadsAgentWrapperService {
   initialize(): void {
     console.log('[BeadsAgentWrapper] Initializing agent wrapper service...');
 
-    // Subscribe to agent tool use events
+    // Subscribe to agent:stream events (emitted by AgentService.emitAgentEvent)
     this.unsubscribe = this.events.subscribe((type: string, payload: unknown) => {
-      if (type === 'agent:tool-use') {
-        this.handleToolUse(payload as ToolUseEvent).catch((error) => {
-          console.error('[BeadsAgentWrapper] Error handling tool use:', error);
-        });
-      } else if (type === 'agent:session-start') {
-        this.handleSessionStart(payload as SessionStartData).catch((error) => {
-          console.error('[BeadsAgentWrapper] Error handling session start:', error);
-        });
-      } else if (type === 'agent:session-end') {
-        this.handleSessionEnd(payload as SessionEndData);
+      if (type === 'agent:stream') {
+        const event = payload as AgentStreamEvent;
+
+        // Handle tool_use events
+        if (event.type === 'tool_use' && event.tool) {
+          this.handleToolUse({
+            name: event.tool.name,
+            input: event.tool.input as Record<string, unknown>,
+            sessionId: event.sessionId,
+            projectPath: event.workingDirectory,
+          }).catch((error) => {
+            console.error('[BeadsAgentWrapper] Error handling tool use:', error);
+          });
+        }
       }
     });
 
@@ -88,33 +94,13 @@ export class BeadsAgentWrapperService {
   }
 
   /**
-   * Handle session start - track project path for tool execution
-   */
-  private async handleSessionStart(data: SessionStartData): Promise<void> {
-    const { sessionId, projectPath } = data;
-    if (projectPath) {
-      this.activeSessions.set(sessionId, projectPath);
-      console.log(`[BeadsAgentWrapper] Tracking session ${sessionId} in ${projectPath}`);
-    }
-  }
-
-  /**
-   * Handle session end - cleanup tracking
-   */
-  private handleSessionEnd(data: SessionEndData): void {
-    this.activeSessions.delete(data.sessionId);
-    console.log(`[BeadsAgentWrapper] Stopped tracking session ${data.sessionId}`);
-  }
-
-  /**
    * Handle tool use from agent
    * Intercept Beads tools and execute them
    */
   private async handleToolUse(event: ToolUseEvent): Promise<void> {
-    const { name, input, sessionId, projectPath: explicitProjectPath } = event;
+    const { name, input, sessionId, projectPath } = event;
 
-    // Get project path from explicit or tracked session
-    const projectPath = explicitProjectPath || this.activeSessions.get(sessionId);
+    // Project path is now included in the event from AgentService
     if (!projectPath) {
       console.warn(
         `[BeadsAgentWrapper] No project path for session ${sessionId}, skipping tool ${name}`

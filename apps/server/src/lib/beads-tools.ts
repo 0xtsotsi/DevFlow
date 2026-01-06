@@ -14,7 +14,7 @@ import { BeadsService } from '../services/beads-service.js';
 import { BeadsMemoryService } from '../services/beads-memory-service.js';
 import type { BeadsAgentCoordinator } from '../services/beads-agent-coordinator.js';
 import type { EventEmitter } from './events.js';
-import type { CreateBeadsIssueInput, BeadsIssueType } from '@automaker/types';
+import type { CreateBeadsIssueInput, BeadsIssueType } from '@devflow/types';
 
 /**
  * Tool execution result
@@ -366,6 +366,13 @@ export class BeadsToolsHandler {
 
 /**
  * Get singleton instance of BeadsToolsHandler
+ *
+ * NOTE: This function caches the first created instance. Subsequent calls
+ * will return the cached instance and ignore new arguments. This is intentional
+ * for performance - the handler should only be initialized once at application startup.
+ *
+ * For tests or contexts requiring a fresh instance, create a new BeadsToolsHandler
+ * directly instead of using this function.
  */
 let beadsToolsHandlerInstance: BeadsToolsHandler | null = null;
 
@@ -382,6 +389,22 @@ export function getBeadsToolsHandler(
       beadsAgentCoordinator,
       events
     );
+    console.log('[BeadsToolsHandler] ✓ Initialized singleton instance');
+  } else {
+    console.warn(
+      '[BeadsToolsHandler] ⚠ Returning cached instance (arguments ignored). ' +
+        'For a fresh instance, create BeadsToolsHandler directly via `new BeadsToolsHandler(...)`.'
+    );
   }
   return beadsToolsHandlerInstance;
+}
+
+/**
+ * Reset the singleton instance (primarily for testing)
+ *
+ * WARNING: This should only be used in test contexts to reset state between tests.
+ * Production code should never call this function.
+ */
+export function resetBeadsToolsHandler(): void {
+  beadsToolsHandlerInstance = null;
 }
