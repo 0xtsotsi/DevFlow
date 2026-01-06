@@ -699,27 +699,49 @@ export class ReflectSkillService {
 
   /**
    * Store reflection in Beads memory
+   *
+   * NOTE: This method currently returns false to indicate that storage
+   * is not yet implemented. Previously it returned true misleadingly.
+   *
+   * To implement full Beads storage:
+   * 1. Create a new issue type for reflections in Beads
+   * 2. Store reflection data as issue metadata
+   * 3. Link reflections to original issues/tasks
    */
   private async storeReflectionInBeads(
     _projectPath: string,
-    _reflection: ReflectionResult,
-    _taskDescription?: string
+    reflection: ReflectionResult,
+    taskDescription?: string
   ): Promise<boolean> {
     if (!this.beadsMemoryService) {
       return false;
     }
 
     try {
-      // Query for similar reflections to avoid duplicates
-      // (In production, this would check for similar recent reflections)
-      // TODO: Store reflection in Beads memory
-      void 0; // Placeholder for future implementation
+      // Format reflection for storage
+      const formatted = this.formatReflectionForBeads(reflection, taskDescription);
+
+      // TODO: Implement actual Beads storage
+      // This requires:
+      // 1. BeadsService to support creating reflection entries
+      // 2. A way to link reflections to issues/sessions
+      // 3. Query mechanism for retrieving past reflections
+
+      // For now, log the reflection that would be stored
+      console.log('[ReflectSkillService] Reflection ready for Beads storage:', {
+        reflectionId: reflection.reflectionId,
+        successScore: reflection.successScore,
+        insightsCount: reflection.insights.length,
+        formattedPreview: formatted.slice(0, 200) + '...',
+      });
+
+      // Return false to indicate storage was not performed
+      // When implementation is complete, change this to return true
+      return false;
     } catch (error) {
       console.error('Failed to store reflection in Beads:', error);
       return false;
     }
-
-    return true;
   }
 
   /**

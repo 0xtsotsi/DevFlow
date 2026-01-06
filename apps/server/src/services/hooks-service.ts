@@ -3,6 +3,9 @@
  *
  * Manages hook lifecycle (register, update, remove) and provides default hooks
  * for common operations (pre-task, post-task, pre-commit).
+ *
+ * SECURITY: Default hooks use safe file system operations only.
+ * Shell commands and child_process are blocked for security.
  */
 
 import path from 'path';
@@ -85,31 +88,52 @@ export class HooksService {
 
   /**
    * Initialize default hooks
+   *
+   * SECURITY: These hooks use safe file system operations only.
+   * They do NOT use child_process or shell commands which could be
+   * exploited for command injection.
+   *
+   * Note: Hooks that previously used git commands now use placeholder
+   * implementations. To fully enable git-based hooks, implement a
+   * GitService that provides safe, wrapper methods for git operations.
    */
   private async initializeDefaultHooks(): Promise<void> {
     const defaultHooks: CreateHookInput[] = [
       // Pre-task hooks
       {
         type: 'pre-task',
-        name: 'Check Git Status',
-        description: 'Verify git repository is in clean state before starting task',
+        name: 'Check Project Path',
+        description: 'Verify project path exists and is accessible',
         mode: 'blocking',
         enabled: true,
         priority: 100,
         timeout: 10000,
         implementation: `
-          const { execSync } = require('child_process');
+          // Safe file system check only - no shell commands
+          const path = require('path');
+          const fs = require('fs');
+
           try {
-            const status = execSync('git status --porcelain', { cwd: context.projectPath, encoding: 'utf-8' });
-            if (status.trim()) {
+            const projectPath = context.projectPath;
+            if (!projectPath) {
               return {
                 success: false,
-                message: 'Working directory has uncommitted changes. Please commit or stash them first.'
+                message: 'Project path not provided in context'
               };
             }
-            return { success: true, message: 'Git status clean' };
+
+            // Check if path exists using safe fs operations
+            fs.accessSync(projectPath, fs.constants.R_OK);
+
+            return {
+              success: true,
+              message: 'Project path is accessible'
+            };
           } catch (error) {
-            return { success: false, message: \`Git check failed: \${error.message}\` };
+            return {
+              success: false,
+              message: \`Project path check failed: \${error.message}\`
+            };
           }
         `,
       },
@@ -117,67 +141,29 @@ export class HooksService {
         type: 'pre-task',
         name: 'Check MCP Availability',
         description: 'Verify required MCP servers are available',
-        mode: 'blocking',
+        mode: 'non-blocking',
         enabled: true,
         priority: 90,
         timeout: 5000,
         implementation: `
-          const fs = require('fs').promises;
           const path = require('path');
+          const fs = require('fs');
+
           try {
             const mcpPath = path.join(context.projectPath, '.mcp.json');
-            await fs.access(mcpPath);
+            fs.accessSync(mcpPath, fs.constants.R_OK);
             return { success: true, message: 'MCP configuration found' };
           } catch {
-            return { success: false, message: 'MCP configuration not found. Run MCP setup first.' };
+            // Not a blocking error - MCP may not be configured
+            return {
+              success: true,
+              message: 'MCP configuration not found (optional)'
+            };
           }
         `,
       },
 
       // Post-task hooks
-      {
-        type: 'post-task',
-        name: 'Summarize Changes',
-        description: 'Summarize files modified and lines changed',
-        mode: 'blocking',
-        enabled: true,
-        priority: 100,
-        timeout: 15000,
-        implementation: `
-          const { execSync } = require('child_process');
-          try {
-            const diff = execSync('git diff --stat', { cwd: context.projectPath, encoding: 'utf-8' });
-            return {
-              success: true,
-              message: 'Changes summarized',
-              data: { diff: diff.trim() }
-            };
-          } catch (error) {
-            return { success: true, message: 'No changes detected' };
-          }
-        `,
-      },
-      {
-        type: 'post-task',
-        name: 'Check Test Status',
-        description: 'Verify tests are passing after task completion',
-        mode: 'blocking',
-        enabled: true,
-        priority: 90,
-        timeout: 60000,
-        implementation: `
-          const { execSync } = require('child_process');
-          try {
-            execSync('npm run test:all', { cwd: context.projectPath, stdio: 'pipe' });
-            return { success: true, message: 'All tests passing' };
-          } catch (error) {
-            return {
-              success: false,
-              message: 'Tests failed. Please fix before committing.'
-            };
-          }
-        `,
-      },
       {
         type: 'post-task',
         name: 'Post-Task Reflection',
@@ -201,77 +187,94 @@ export class HooksService {
           };
         `,
       },
+      {
+        type: 'post-task',
+        name: 'Log Task Completion',
+        description: 'Log task completion metadata for monitoring',
+        mode: 'non-blocking',
+        enabled: true,
+        priority: 40,
+        timeout: 5000,
+        implementation: `
+          // Simple logging hook - no external commands
+          const timestamp = new Date().toISOString();
+          console.log(\`[Hook] Task completed at \${timestamp} for session: \${context.sessionId}\`);
 
-      // Pre-commit hooks
+          return {
+            success: true,
+            message: 'Task completion logged',
+            data: {
+              sessionId: context.sessionId,
+              timestamp
+            }
+          };
+        `,
+      },
+
+      // Pre-commit hooks - NOTE: These are now informational only
+      // Actual test/typecheck validation should be done via CI/CD pipeline
       {
         type: 'pre-commit',
-        name: 'Validate Tests',
-        description: 'Ensure all tests pass before committing',
-        mode: 'blocking',
+        name: 'Pre-Commit Checklist',
+        description: 'Display pre-commit checklist for developer verification',
+        mode: 'non-blocking',
         enabled: true,
         priority: 100,
-        timeout: 60000,
+        timeout: 5000,
         implementation: `
-          const { execSync } = require('child_process');
-          try {
-            execSync('npm run test:all', { cwd: context.projectPath, stdio: 'pipe' });
-            return { success: true, message: 'Tests validated' };
-          } catch (error) {
-            return {
-              success: false,
-              message: 'Tests failed. Cannot commit with failing tests.'
-            };
-          }
+          // Informational hook - reminds developer of best practices
+          // Actual validation should be done via CI/CD pipeline
+          return {
+            success: true,
+            message: 'Pre-commit checklist: Ensure tests pass, code is formatted, and no debug code remains.',
+            data: {
+              checklist: [
+                'Run tests: npm run test:all',
+                'Format code: npm run format',
+                'Typecheck: npm run typecheck',
+                'Remove debug code (console.log, debugger, etc.)'
+              ],
+              hint: 'For actual validation, use the /cicd skill or run CI/CD pipeline'
+            }
+          };
         `,
       },
       {
         type: 'pre-commit',
-        name: 'Run Type Check',
-        description: 'Run TypeScript type checking before commit',
-        mode: 'blocking',
+        name: 'Check Package Files',
+        description: 'Verify package.json and lockfile are present',
+        mode: 'non-blocking',
         enabled: true,
         priority: 90,
-        timeout: 30000,
+        timeout: 5000,
         implementation: `
-          const { execSync } = require('child_process');
+          const path = require('path');
+          const fs = require('fs');
+
+          const packageJsonPath = path.join(context.projectPath, 'package.json');
+          const lockfilePath = path.join(context.projectPath, 'package-lock.json');
+
+          const results = [];
+
           try {
-            execSync('npx tsc -p apps/server/tsconfig.json --noEmit', { cwd: context.projectPath, stdio: 'pipe' });
-            return { success: true, message: 'Type check passed' };
-          } catch (error) {
-            return {
-              success: false,
-              message: 'Type check failed. Please fix type errors before committing.'
-            };
+            fs.accessSync(packageJsonPath, fs.constants.R_OK);
+            results.push('package.json found');
+          } catch {
+            results.push('WARNING: package.json not found');
           }
-        `,
-      },
-      {
-        type: 'pre-commit',
-        name: 'Check for Debug Code',
-        description: 'Prevent commits with debug code (console.log, debugger, etc.)',
-        mode: 'blocking',
-        enabled: true,
-        priority: 80,
-        timeout: 10000,
-        implementation: `
-          const { execSync } = require('child_process');
+
           try {
-            const output = execSync('git grep -n "console\\.log\\|debugger\\|TODO\\|FIXME" -- .":!node_modules" .":!dist" .":!build"', { cwd: context.projectPath, encoding: 'utf-8' });
-            if (output.trim()) {
-              return {
-                success: false,
-                message: 'Debug code found in changes. Please remove before committing.',
-                data: { matches: output.trim() }
-              };
-            }
-            return { success: true, message: 'No debug code found' };
-          } catch (error) {
-            // grep returns non-zero exit code when no matches found, which is good
-            if (error.status === 1) {
-              return { success: true, message: 'No debug code found' };
-            }
-            return { success: false, message: \`Debug check failed: \${error.message}\` };
+            fs.accessSync(lockfilePath, fs.constants.R_OK);
+            results.push('package-lock.json found');
+          } catch {
+            results.push('WARNING: package-lock.json not found');
           }
+
+          return {
+            success: true,
+            message: results.join(', '),
+            data: { results }
+          };
         `,
       },
     ];

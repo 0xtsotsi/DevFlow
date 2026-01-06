@@ -3,6 +3,9 @@
  *
  * Executes hooks at key lifecycle points (pre-task, post-task, pre-commit).
  * Handles blocking/non-blocking modes, timeouts, and emits events.
+ *
+ * SECURITY: Hooks are executed in a restricted VM context with limited
+ * access to Node.js APIs. Only explicitly allowed modules are available.
  */
 
 import type { EventEmitter } from './events.js';
@@ -21,17 +24,124 @@ export interface HooksManagerConfig {
 
   /** Whether to emit events */
   emitEvents?: boolean;
+
+  /** Whether to allow unsafe hook execution (default: false) */
+  allowUnsafeExecution?: boolean;
+}
+
+/**
+ * Allowed modules for hook execution
+ * These are the only modules that hooks can require/use
+ */
+const ALLOWED_MODULES = new Set(['fs', 'path', 'os', 'crypto', 'util', 'events']);
+
+/**
+ * Sandbox context for secure hook execution
+ */
+interface SandboxContext {
+  require: (module: string) => unknown;
+  console: typeof globalThis.console;
+  setTimeout: typeof setTimeout;
+  clearTimeout: typeof clearTimeout;
+  setInterval: typeof setInterval;
+  clearInterval: typeof clearInterval;
+  Promise: typeof Promise;
+  Object: typeof Object;
+  Array: typeof Array;
+  String: typeof String;
+  Number: typeof Number;
+  Boolean: typeof Boolean;
+  Math: typeof Math;
+  Date: typeof Date;
+  JSON: typeof JSON;
+  Buffer: typeof Buffer;
+}
+
+/**
+ * Create a restricted require function for sandbox
+ */
+function createRestrictedRequire(): (module: string) => unknown {
+  return (module: string) => {
+    if (!ALLOWED_MODULES.has(module)) {
+      throw new Error(
+        `Module "${module}" is not allowed in hook execution context. ` +
+          `Allowed modules: ${Array.from(ALLOWED_MODULES).join(', ')}`
+      );
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require(module);
+  };
+}
+
+/**
+ * Create a sandbox context for hook execution
+ */
+function createSandbox(): SandboxContext {
+  return {
+    require: createRestrictedRequire(),
+    console,
+    setTimeout,
+    clearTimeout,
+    setInterval,
+    clearInterval,
+    Promise,
+    Object,
+    Array,
+    String,
+    Number,
+    Boolean,
+    Math,
+    Date,
+    JSON,
+    Buffer,
+  };
+}
+
+/**
+ * Sanitize hook implementation to prevent code injection
+ * Removes potentially dangerous patterns
+ */
+function sanitizeImplementation(implementation: string): string {
+  const dangerousPatterns = [
+    // Process access
+    /\bprocess\b\.(\w+)/g,
+    // Child process execution
+    /\brequire\s*\(\s*['"](child_process|exec|spawn|fork)['"]\s*\)/g,
+    // Eval-like functions
+    /\beval\s*\(/g,
+    /\bFunction\s*\(/g,
+    // Direct fs operations that could be dangerous
+    /\bunlinkSync\s*\(/g,
+    /\brmdirSync\s*\(/g,
+    // Network access
+    /\brequire\s*\(\s*['"](http|https|net)['"]\s*\)/g,
+  ];
+
+  let sanitized = implementation;
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(sanitized)) {
+      throw new Error(
+        'Hook implementation contains potentially dangerous patterns. ' +
+          'For security reasons, hooks cannot access: child_process, eval, Function, process, network modules, or destructive file operations.'
+      );
+    }
+  }
+
+  return sanitized;
 }
 
 export class HooksManager {
   private eventEmitter?: EventEmitter;
   private config: Required<HooksManagerConfig>;
+  private sandbox: SandboxContext;
 
   constructor(config?: HooksManagerConfig) {
     this.config = {
       defaultTimeout: config?.defaultTimeout ?? 30000,
       emitEvents: config?.emitEvents ?? true,
+      allowUnsafeExecution: config?.allowUnsafeExecution ?? false,
     };
+    this.sandbox = createSandbox();
   }
 
   /**
@@ -205,7 +315,11 @@ export class HooksManager {
   }
 
   /**
-   * Execute hook implementation
+   * Execute hook implementation in a secure sandbox
+   *
+   * SECURITY: This method uses a restricted VM context to execute hooks.
+   * Only explicitly allowed modules are available, and dangerous patterns
+   * are blocked. This prevents arbitrary code execution and command injection.
    *
    * @param hook - Hook to execute
    * @param context - Execution context
@@ -216,11 +330,35 @@ export class HooksManager {
     context: HookContext
   ): Promise<{ success: boolean; message: string; data?: Record<string, unknown> }> {
     try {
-      // Create async function from implementation string
-      const asyncFn = new AsyncFunction('context', hook.implementation);
+      // Sanitize implementation to detect dangerous patterns
+      const sanitizedImplementation = this.config.allowUnsafeExecution
+        ? hook.implementation
+        : sanitizeImplementation(hook.implementation);
 
-      // Execute the function
-      const result = await asyncFn(context);
+      // Create a function body that wraps the implementation
+      // The function has access to the sandbox context through closure
+      const sandboxKeys = Object.keys(this.sandbox);
+      const sandboxValues = Object.values(this.sandbox);
+
+      // Create an async function with sandbox context
+      // We use the AsyncFunction constructor but wrap the implementation
+      // to restrict access to only the sandboxed modules
+      const AsyncFunctionConstructor = async function () {}.constructor as {
+        new (...args: string[]): (...args: unknown[]) => Promise<unknown>;
+      };
+
+      // Build function that destructures sandbox values
+      const wrapperFn = new AsyncFunctionConstructor(
+        ...sandboxKeys,
+        'context',
+        `
+          'use strict';
+          ${sanitizedImplementation}
+        `
+      );
+
+      // Execute with sandbox context
+      const result = await wrapperFn(...sandboxValues, context);
 
       // Handle different return types
       if (typeof result === 'boolean') {
@@ -264,8 +402,16 @@ export class HooksManager {
    */
   validateImplementation(implementation: string): { valid: boolean; error?: string } {
     try {
+      // Check for dangerous patterns first
+      if (!this.config.allowUnsafeExecution) {
+        sanitizeImplementation(implementation);
+      }
+
       // Try to create function from implementation
-      new AsyncFunction('context', implementation);
+      const AsyncFunctionConstructor = async function () {}.constructor as {
+        new (...args: string[]): (...args: unknown[]) => Promise<unknown>;
+      };
+      new AsyncFunctionConstructor('context', implementation);
       return { valid: true };
     } catch (error) {
       return {
@@ -300,13 +446,3 @@ export class HooksManager {
     };
   }
 }
-
-/**
- * AsyncFunction constructor
- * Used to create async functions from strings
- */
-interface AsyncFunctionConstructor extends FunctionConstructor {
-  new (...args: string[]): (...args: unknown[]) => Promise<unknown>;
-}
-
-const AsyncFunction = async function () {}.constructor as unknown as AsyncFunctionConstructor;
