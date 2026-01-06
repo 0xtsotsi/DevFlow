@@ -406,6 +406,7 @@ export function getAuthStatus(): { enabled: boolean; method: string; productionM
   return {
     enabled: true,
     method: 'api_key_or_session',
+    productionMode: isProduction,
   };
 }
 

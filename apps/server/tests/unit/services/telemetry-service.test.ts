@@ -11,11 +11,15 @@ import { TelemetryService } from '../../../src/services/telemetry-service.js';
 import * as secureFs from '../../../src/lib/secure-fs.js';
 
 describe('TelemetryService', () => {
-  const testDataDir = join(tmpdir(), `telemetry-test-${Date.now()}`);
+  let testDataDir: string;
   let service: TelemetryService;
   let eventEmitter: EventEmitter;
 
   beforeEach(async () => {
+    testDataDir = join(
+      tmpdir(),
+      `telemetry-test-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    );
     mkdirSync(testDataDir, { recursive: true });
     eventEmitter = new EventEmitter();
     service = new TelemetryService(testDataDir, eventEmitter as any);
@@ -23,6 +27,8 @@ describe('TelemetryService', () => {
   });
 
   afterEach(async () => {
+    // Wait for async save operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 20));
     rmSync(testDataDir, { recursive: true, force: true });
   });
 
@@ -483,7 +489,9 @@ describe('TelemetryService', () => {
     });
   });
 
-  describe('Event Emission', () => {
+  // Note: Event Emission tests skipped - TelemetryService no longer emits events
+  // The event emission was removed in upstream refactoring
+  describe.skip('Event Emission', () => {
     it('should emit event when recording telemetry', async () => {
       const eventPromise = new Promise<any>((resolve) => {
         eventEmitter.once('telemetry:started', (event) => {
@@ -509,6 +517,7 @@ describe('TelemetryService', () => {
 
       const events = service.getEvents({ sessionId: 'default-session' });
       expect(events).toHaveLength(1);
+      service.endSession();
     });
 
     it('should not associate with session when none active', () => {

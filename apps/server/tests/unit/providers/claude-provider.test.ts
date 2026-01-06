@@ -96,19 +96,7 @@ describe('claude-provider.ts', () => {
       expect(sdk.query).toHaveBeenCalledWith({
         prompt: 'Test',
         options: expect.objectContaining({
-          allowedTools: [
-            'Read',
-            'Write',
-            'Edit',
-            'Glob',
-            'Grep',
-            'Bash',
-            'WebSearch',
-            'WebFetch',
-            'create_beads_issue',
-            'query_beads_memory',
-            'spawn_helper_agent',
-          ],
+          allowedTools: ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch'],
         }),
       });
     });

@@ -426,50 +426,12 @@ export class AutoModeService {
       continuationPrompt?: string;
     }
   ): Promise<void> {
+    // Add to running features immediately to prevent race conditions
+    // This must happen before loading the feature to catch duplicate calls
     if (this.runningFeatures.has(featureId)) {
       throw new Error('already running');
     }
 
-    // CIRCUIT BREAKER: Check if feature has failed too many times
-    const feature = await this.loadFeature(projectPath, featureId);
-    if (!feature) {
-      throw new Error(`Feature ${featureId} not found`);
-    }
-
-    const failureCount = (feature.failureCount as number | undefined) || 0;
-    const lastFailedAt = feature.lastFailedAt
-      ? new Date(feature.lastFailedAt as string).getTime()
-      : 0;
-    const now = Date.now();
-    const timeSinceLastFailure = now - lastFailedAt;
-
-    // If feature permanently failed, don't execute
-    if (feature.permanentlyFailed) {
-      console.warn(
-        `[AutoMode] Feature ${featureId} is permanently failed and will not be retried. ` +
-          `Reason: ${feature.permanentFailureReason || 'Unknown'}`
-      );
-      throw new Error(
-        `Feature ${featureId} is permanently failed: ${feature.permanentFailureReason}`
-      );
-    }
-
-    // If feature failed recently (within 15 minutes), skip execution to prevent rapid retry loop
-    const COOLDOWN_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
-    if (timeSinceLastFailure < COOLDOWN_PERIOD_MS && failureCount > 0) {
-      const cooldownRemaining = Math.ceil((COOLDOWN_PERIOD_MS - timeSinceLastFailure) / 1000 / 60);
-      console.warn(
-        `[AutoMode] Feature ${featureId} failed ${failureCount} time(s) recently. ` +
-          `Waiting ${cooldownRemaining} minutes before retry.`
-      );
-      throw new Error(
-        `Feature ${featureId} is in cooldown period. ` +
-          `Failed ${failureCount} time(s) recently. ` +
-          `Wait ${cooldownRemaining} minutes before retry or manually reset.`
-      );
-    }
-
-    // Add to running features immediately to prevent race conditions
     const abortController = new AbortController();
     const tempRunningFeature: RunningFeature = {
       featureId,
@@ -483,6 +445,69 @@ export class AutoModeService {
     this.runningFeatures.set(featureId, tempRunningFeature);
 
     try {
+      // CIRCUIT BREAKER: Check if feature has failed too many times
+      const feature = await this.loadFeature(projectPath, featureId);
+      if (!feature) {
+        // Emit error event instead of throwing
+        this.emitAutoModeEvent('auto_mode_error', {
+          featureId,
+          error: `Feature ${featureId} not found`,
+          errorType: 'feature_not_found',
+          projectPath,
+        });
+        return;
+      }
+
+      const failureCount = (feature.failureCount as number | undefined) || 0;
+      const lastFailedAt = feature.lastFailedAt
+        ? new Date(feature.lastFailedAt as string).getTime()
+        : 0;
+      const now = Date.now();
+      const timeSinceLastFailure = now - lastFailedAt;
+
+      // If feature permanently failed, don't execute
+      if (feature.permanentlyFailed) {
+        console.warn(
+          `[AutoMode] Feature ${featureId} is permanently failed and will not be retried. ` +
+            `Reason: ${feature.permanentFailureReason || 'Unknown'}`
+        );
+        // Emit error event instead of throwing
+        this.emitAutoModeEvent('auto_mode_error', {
+          featureId,
+          error: `Feature ${featureId} is permanently failed: ${feature.permanentFailureReason}`,
+          errorType: 'permanently_failed',
+          projectPath,
+        });
+        return;
+      }
+
+      // If feature failed recently (within 15 minutes), skip execution to prevent rapid retry loop
+      const COOLDOWN_PERIOD_MS = 15 * 60 * 1000; // 15 minutes
+      if (timeSinceLastFailure < COOLDOWN_PERIOD_MS && failureCount > 0) {
+        const cooldownRemaining = Math.ceil(
+          (COOLDOWN_PERIOD_MS - timeSinceLastFailure) / 1000 / 60
+        );
+        console.warn(
+          `[AutoMode] Feature ${featureId} failed ${failureCount} time(s) recently. ` +
+            `Waiting ${cooldownRemaining} minutes before retry.`
+        );
+        // Emit error event instead of throwing
+        this.emitAutoModeEvent('auto_mode_error', {
+          featureId,
+          error:
+            `Feature ${featureId} is in cooldown period. ` +
+            `Failed ${failureCount} time(s) recently. ` +
+            `Wait ${cooldownRemaining} minutes before retry or manually reset.`,
+          errorType: 'cooldown',
+          projectPath,
+        });
+        return;
+      }
+
+      // Update running feature with actual worktree info later when we know the branch
+      // For now, just update with the feature data we have
+      tempRunningFeature.model = feature.model;
+
       // Validate that project path is allowed using centralized validation
       validateWorkingDirectory(projectPath);
 

@@ -581,6 +581,8 @@ export class TelemetryService {
    * Clear all telemetry data
    */
   async clearAll(): Promise<void> {
+    // Ensure directory exists before writing
+    await secureFs.mkdir(this.telemetryDir, { recursive: true });
     this.events = [];
     this.sessions.clear();
     await secureFs.writeFile(this.eventsFile, '');
@@ -613,7 +615,7 @@ export class TelemetryService {
     }
 
     // Emit event for real-time monitoring
-    this.eventEmitter.emit('telemetry:started', event);
+    this.eventEmitter.emit('telemetry:event', event);
 
     // Persist to disk
     this.saveEvents();
@@ -625,13 +627,9 @@ export class TelemetryService {
   private async loadEvents(): Promise<void> {
     try {
       const content = await secureFs.readFile(this.eventsFile, 'utf-8');
-      if (typeof content === 'string') {
-        const lines = content.trim().split('\n').filter(Boolean);
-        this.events = lines.map((line: string) => JSON.parse(line));
-      } else {
-        this.events = [];
-      }
-    } catch {
+      const lines = content.trim().split('\n').filter(Boolean);
+      this.events = lines.map((line) => JSON.parse(line));
+    } catch (error) {
       // File doesn't exist yet, that's okay
       this.events = [];
     }
@@ -643,13 +641,9 @@ export class TelemetryService {
   private async loadSessions(): Promise<void> {
     try {
       const content = await secureFs.readFile(this.sessionsFile, 'utf-8');
-      if (typeof content === 'string') {
-        const sessionsObj = JSON.parse(content);
-        this.sessions = new Map(Object.entries(sessionsObj));
-      } else {
-        this.sessions = new Map();
-      }
-    } catch {
+      const sessionsObj = JSON.parse(content);
+      this.sessions = new Map(Object.entries(sessionsObj));
+    } catch (error) {
       // File doesn't exist yet, that's okay
       this.sessions = new Map();
     }
@@ -659,15 +653,37 @@ export class TelemetryService {
    * Save events to disk (JSONL format)
    */
   private async saveEvents(): Promise<void> {
-    const content = this.events.map((e) => JSON.stringify(e)).join('\n') + '\n';
-    await secureFs.writeFile(this.eventsFile, content);
+    try {
+      // Ensure directory exists before writing
+      await secureFs.mkdir(this.telemetryDir, { recursive: true });
+      const content = this.events.map((e) => JSON.stringify(e)).join('\n') + '\n';
+      await secureFs.writeFile(this.eventsFile, content);
+    } catch (error) {
+      // Silently fail if directory doesn't exist (e.g., during test cleanup)
+      // This is a fire-and-forget operation called without await
+      if ((error as any)?.code !== 'ENOENT') {
+        // Log unexpected errors but don't throw
+        console.error('[TelemetryService] Failed to save events:', error);
+      }
+    }
   }
 
   /**
    * Save sessions to disk
    */
   private async saveSessions(): Promise<void> {
-    const sessionsObj = Object.fromEntries(this.sessions);
-    await secureFs.writeFile(this.sessionsFile, JSON.stringify(sessionsObj, null, 2));
+    try {
+      // Ensure directory exists before writing
+      await secureFs.mkdir(this.telemetryDir, { recursive: true });
+      const sessionsObj = Object.fromEntries(this.sessions);
+      await secureFs.writeFile(this.sessionsFile, JSON.stringify(sessionsObj, null, 2));
+    } catch (error) {
+      // Silently fail if directory doesn't exist (e.g., during test cleanup)
+      // This is a fire-and-forget operation called without await
+      if ((error as any)?.code !== 'ENOENT') {
+        // Log unexpected errors but don't throw
+        console.error('[TelemetryService] Failed to save sessions:', error);
+      }
+    }
   }
 }
