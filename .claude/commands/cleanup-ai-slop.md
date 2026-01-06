@@ -90,7 +90,7 @@ For each affected file:
 
 Report a **1-3 sentence summary** of what was changed. Example format:
 
-> "Removed 3 AI-generated markdown files (_\_SUMMARY.md, _\_REPORT.md), stripped redundant comments from auth-service.ts and user-controller.ts, and removed unnecessary defensive checks from api-handler.ts. The branch now contains only substantive changes."
+> "Removed 3 AI-generated markdown files (**SUMMARY.md, **REPORT.md), stripped redundant comments from auth-service.ts and user-controller.ts, and removed unnecessary defensive checks from api-handler.ts. The branch now contains only substantive changes."
 
 ## Important Notes
 
