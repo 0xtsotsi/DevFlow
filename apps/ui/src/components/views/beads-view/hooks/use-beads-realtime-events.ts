@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getElectronAPI } from '@/lib/electron';
+import { useAppStore } from '@/store/app-store';
 import type {
   BeadsAgentEvent,
   BeadsAgentErrorEvent,
@@ -7,7 +8,7 @@ import type {
   BeadsIssueEvent,
   BeadsIssueDeletedEvent,
 } from '@/lib/electron';
-import type { AgentAssignment, BeadsIssue } from '@automaker/types';
+import type { AgentAssignment, BeadsIssue } from '@devflow/types';
 
 /**
  * Real-time Beads events and agent assignments
@@ -53,6 +54,11 @@ interface UseBeadsRealtimeEventsProps {
 export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealtimeEventsProps) {
   const [agentAssignments, setAgentAssignments] = useState<Map<string, AgentAssignment>>(new Map());
   const [agentActivity, setAgentActivity] = useState<BeadsAgentActivity[]>([]);
+
+  // Store methods for updating Beads issues
+  const updateBeadsIssue = useAppStore((state) => state.updateBeadsIssue);
+  const addBeadsIssue = useAppStore((state) => state.addBeadsIssue);
+  const removeBeadsIssue = useAppStore((state) => state.removeBeadsIssue);
 
   // Add activity event to the feed (keep only last 50)
   const addActivity = useCallback((activity: BeadsAgentActivity) => {
@@ -190,12 +196,26 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
       });
     });
 
+    // Handler: Issue created
+    const unsubIssueCreated = api.beads.onIssueCreated((event: BeadsIssueEvent) => {
+      console.log('[BeadsRealtime] Issue created:', event);
+
+      // Filter events by project
+      if (event.projectPath !== currentProject.path) return;
+
+      // Add to store
+      addBeadsIssue(currentProject.path, event.issue);
+    });
+
     // Handler: Issue updated (refresh assignments if status changed)
     const unsubIssueUpdated = api.beads.onIssueUpdated((event: BeadsIssueEvent) => {
       console.log('[BeadsRealtime] Issue updated:', event);
 
       // Filter events by project
       if (event.projectPath !== currentProject.path) return;
+
+      // Update the issue data in store
+      updateBeadsIssue(currentProject.path, event.issue.id, event.issue);
 
       // If issue was closed, remove assignment
       if (event.issue.status === 'closed') {
@@ -214,6 +234,9 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
       // Filter events by project
       if (event.projectPath !== currentProject.path) return;
 
+      // Remove from store
+      removeBeadsIssue(currentProject.path, event.issueId);
+
       // Remove assignment
       setAgentAssignments((prev) => {
         const updated = new Map(prev);
@@ -229,10 +252,19 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
       unsubAgentCompleted();
       unsubAgentFailed();
       unsubHelperSpawned();
+      unsubIssueCreated();
       unsubIssueUpdated();
       unsubIssueDeleted();
     };
-  }, [currentProject, issues, getIssueTitle, addActivity]);
+  }, [
+    currentProject,
+    issues,
+    getIssueTitle,
+    addActivity,
+    updateBeadsIssue,
+    addBeadsIssue,
+    removeBeadsIssue,
+  ]);
 
   return {
     agentAssignments,
