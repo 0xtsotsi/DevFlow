@@ -60,9 +60,9 @@ import { createHooksRoutes } from './routes/hooks/index.js';
 import { BeadsLiveLinkService } from './services/beads-live-link-service.js';
 import { BeadsMemoryService } from './services/beads-memory-service.js';
 import { BeadsAgentCoordinator } from './services/beads-agent-coordinator.js';
-// import { BeadsAgentWrapperService } from './services/beads-agent-wrapper.js';
+import { BeadsAgentWrapperService } from './services/beads-agent-wrapper.js';
 import { getMCPBridge } from './lib/mcp-bridge.js';
-// import { getBeadsToolsHandler } from './lib/beads-tools.js';
+import { getBeadsToolsHandler } from './lib/beads-tools.js';
 import { AgentRegistry } from './agents/agent-registry.js';
 import { SpecializedAgentService } from './agents/specialized-agent-service.js';
 import { HooksService } from './services/hooks-service.js';
@@ -285,22 +285,20 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     setBeadsCoordinator(beadsAgentCoordinator);
 
     // Initialize Beads Tools Handler for custom tool support
-    // TODO: Re-enable when beads-tools.js is available
-    // const beadsToolsHandler = getBeadsToolsHandler(
-    //   beadsService,
-    //   beadsMemoryService,
-    //   beadsAgentCoordinator,
-    //   events
-    // );
-    // // Make available globally for agent wrapper
-    // (global as { beadsToolsHandler?: unknown }).beadsToolsHandler = beadsToolsHandler;
-    console.log('[Server] ⚠ Beads Tools Handler disabled (module not available)');
+    const beadsToolsHandler = getBeadsToolsHandler(
+      beadsService,
+      beadsMemoryService,
+      beadsAgentCoordinator,
+      events
+    );
+    // Make available globally for agent wrapper
+    (global as { beadsToolsHandler?: unknown }).beadsToolsHandler = beadsToolsHandler;
+    console.log('[Server] ✓ Beads Tools Handler initialized');
 
     // Initialize Beads Agent Wrapper (intercepts tool calls)
-    // TODO: Re-enable when beads-agent-wrapper.js is available
-    // const beadsAgentWrapper = new BeadsAgentWrapperService(events);
-    // beadsAgentWrapper.initialize();
-    console.log('[Server] ⚠ Beads Agent Wrapper disabled (module not available)');
+    const beadsAgentWrapper = new BeadsAgentWrapperService(events);
+    beadsAgentWrapper.initialize();
+    console.log('[Server] ✓ Beads Agent Wrapper initialized');
 
     // Start Beads Agent Coordinator with proper initialization
     await beadsAgentCoordinator.start(process.cwd());
