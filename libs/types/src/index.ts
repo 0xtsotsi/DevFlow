@@ -114,6 +114,7 @@ export type {
   AgentRegistryEntry,
   TaskAnalysis,
 } from './agent-types.js';
+export { DEFAULT_AGENT_MODELS, AGENT_TYPE_METADATA, AGENT_MODEL_INFO } from './agent-models.js';
 
 // Orchestrator types
 export type {
@@ -172,3 +173,24 @@ export type {
   PipelineStatus,
   FeatureStatusWithPipeline,
 } from './pipeline.js';
+
+// CMS Integration types
+export type {
+  CMSPlatform,
+  CMSAuthMethod,
+  CMSConnectionStatus,
+  CMSContentStatus,
+  CMSConfig,
+  CMSContent,
+  CMSPublishResult,
+  CMSConnectionResult,
+  CMSValidationResult,
+  CMSCapabilities,
+  CMSEventType,
+  CMSEvent,
+  CMSListOptions,
+  CMSListResult,
+  CMSContentSummary,
+  CMSMediaUploadOptions,
+  CMSMediaUploadResult,
+} from './cms.js';

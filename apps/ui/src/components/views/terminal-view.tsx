@@ -26,7 +26,7 @@ import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TERMINAL_FONT_OPTIONS } from '@/config/terminal-themes';
 import { toast } from 'sonner';
-import { Panel, Group, Separator } from 'react-resizable-panels';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { TerminalPanel } from './terminal-view/terminal-panel';
 import { TerminalErrorBoundary } from './terminal-view/terminal-error-boundary';
 import {
@@ -1270,7 +1270,7 @@ export function TerminalView() {
     };
 
     return (
-      <Group orientation={content.direction} onLayoutChange={handleLayoutChange}>
+      <PanelGroup direction={content.direction} onLayout={handleLayoutChange}>
         {content.panels.map((panel, index) => {
           const panelSize =
             panel.type === 'terminal' && panel.size ? panel.size : defaultSizePerPanel;
@@ -1279,7 +1279,7 @@ export function TerminalView() {
           return (
             <React.Fragment key={panelKey}>
               {index > 0 && (
-                <Separator
+                <PanelResizeHandle
                   key={`handle-${panelKey}`}
                   className={
                     isHorizontal
@@ -1294,7 +1294,7 @@ export function TerminalView() {
             </React.Fragment>
           );
         })}
-      </Group>
+      </PanelGroup>
     );
   };
 

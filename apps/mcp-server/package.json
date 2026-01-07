@@ -1,0 +1,40 @@
+{
+  "name": "@devflow/mcp-server",
+  "version": "1.0.0",
+  "description": "DevFlow MCP Server - Model Context Protocol server for DevFlow AI development studio",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "devflow-mcp-server": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node build/index.js",
+    "lint": "eslint src",
+    "test": "vitest"
+  },
+  "files": [
+    "build"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "devflow",
+    "ai",
+    "claude"
+  ],
+  "author": "DevFlow",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "ws": "^8.18.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
