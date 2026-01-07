@@ -1,0 +1,134 @@
+# CI/CD Pipeline Report
+
+**Generated**: 2026-01-07 10:29:28 UTC
+**Status**: ✅ PASSED
+**Exit Code**: 0
+
+## Summary
+
+All CI/CD validation stages completed successfully with minor issues that were fixed during the run.
+
+---
+
+## Stage Results
+
+### 1. Linting
+**Status**: ✅ PASSED
+**Duration**: ~2s
+**Issues**: 0
+
+**Details**:
+- ESLint validation completed successfully
+- No linting errors or warnings found
+
+---
+
+### 2. Type Checking
+**Status**: ✅ PASSED
+**Duration**: ~5s
+**Issues**: 0
+
+**Details**:
+- TypeScript compilation check for server passed
+- All type definitions are valid
+- No type errors found
+
+---
+
+### 3. Unit Tests
+**Status**: ✅ PASSED
+**Duration**: ~13s
+**Issues**: 0 (after fixes)
+
+**Details**:
+- **Package Tests**: All passed (145 tests in utils, 59 in prompts, 74 in platform, 30 in dependency-resolver, 22 in git-utils)
+- **Server Tests**: 1065 tests passed
+- **Fixes Applied**:
+  1. Fixed `@devflow/model-resolver` test import from `@automaker/types` to `@devflow/types`
+  2. Fixed `auto-mode-service-planning.test.ts` to properly await async `getPlanningPromptPrefix()` function
+
+**Test Files**:
+- ✅ 53 test files passed
+- ⏭️ E2E tests: SKIPPED (Playwright not configured for CI/CD)
+
+---
+
+### 4. Build
+**Status**: ✅ PASSED
+**Duration**: ~7s
+**Issues**: 0
+
+**Details**:
+- **Packages**: All 7 packages built successfully
+  - @devflow/types
+  - @devflow/platform
+  - @devflow/utils
+  - @devflow/prompts
+  - @devflow/model-resolver
+  - @devflow/dependency-resolver
+  - @devflow/git-utils
+
+- **UI**: Built successfully with Vite
+  - Web build: 3173 modules transformed
+  - Electron main: 12.11 kB
+  - Electron preload: 0.87 kB
+  - Total build time: 6.75s
+
+**Warnings** (non-blocking):
+- Some chunks are larger than 500 kB after minification (expected for large dependencies like xterm, codemirror)
+
+---
+
+### 5. Security Audit
+**Status**: ⚠️ SKIPPED
+**Duration**: N/A
+**Issues**: Network error
+
+**Details**:
+- Security audit skipped due to network error (DNS lookup failure for registry.npmjs.org)
+- Error: `getaddrinfo EAI_AGAIN registry.npmjs.org`
+- This is a transient network issue, not a security vulnerability
+- Recommendation: Re-run security audit when network is stable
+
+---
+
+## Fixes Applied During Pipeline Run
+
+### Fix 1: Model Resolver Test Import
+**File**: `libs/model-resolver/tests/resolver.test.ts:3`
+**Issue**: Importing from `@automaker/types` instead of `@devflow/types`
+**Fix**: Updated import statement to use correct package name
+**Result**: Test now passes
+
+### Fix 2: Auto Mode Planning Tests
+**File**: `apps/server/tests/unit/services/auto-mode-service-planning.test.ts`
+**Issue**: Tests not awaiting async `getPlanningPromptPrefix()` function
+**Fix**: Made all test functions async and added await calls
+**Result**: All 28 planning tests now pass
+
+---
+
+## Code Quality Metrics
+
+- **Type Safety**: 100% (no TypeScript errors)
+- **Linting**: 100% (no ESLint errors)
+- **Test Coverage**: 1080+ tests passing
+- **Build Success**: 100% (all packages and UI build successfully)
+
+---
+
+## Recommendations
+
+1. **Security Audit**: Re-run `npm audit` when network connection is stable
+2. **Large Chunks**: Consider code splitting for chunks > 500 kB (warning only, not critical)
+3. **E2E Tests**: Configure Playwright for CI/CD if automated end-to-end testing is desired
+
+---
+
+## Conclusion
+
+The CI/CD pipeline executed successfully with all critical stages passing. The test failures identified during the run were quickly resolved by updating import statements and fixing async/await patterns in tests. The build completed successfully for all packages and the UI.
+
+**Overall Status**: ✅ PASSED
+
+**Total Duration**: ~27 seconds (excluding skipped stages)

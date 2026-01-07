@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resolveModelString, getEffectiveModel } from '../src/resolver';
-import { CLAUDE_MODEL_MAP, DEFAULT_MODELS } from '@automaker/types';
+import { CLAUDE_MODEL_MAP, DEFAULT_MODELS } from '@devflow/types';
 
 describe('model-resolver', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
