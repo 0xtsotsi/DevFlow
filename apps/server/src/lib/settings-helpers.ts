@@ -62,10 +62,10 @@ export function isValidModelId(modelId: string): boolean {
 
 /**
  * Validates the structure of agent model settings.
- * Ensures required fields exist and have valid types.
+ * Ensures required fields exist and ALL agent models have valid types.
  *
  * @param settings - Settings object to validate
- * @returns True if settings structure is valid
+ * @returns True if settings structure is valid AND all agent models are valid
  */
 export function isValidAgentModelSettings(
   settings: unknown
@@ -83,17 +83,18 @@ export function isValidAgentModelSettings(
 
   const agents = settingsObj.agents as Record<string, unknown>;
 
-  // Check at least one agent type with valid model
+  // Check that ALL agent types have valid models
   for (const [agentType, model] of Object.entries(agents)) {
     if (typeof agentType !== 'string') {
-      continue;
+      return false;
     }
-    if (isValidModelAlias(model)) {
-      return true;
+    if (!isValidModelAlias(model)) {
+      return false;
     }
   }
 
-  return false;
+  // Also ensure there's at least one agent defined
+  return Object.keys(agents).length > 0;
 }
 
 // ============================================================================
@@ -126,17 +127,9 @@ export function getModelForAgent(
   settings: GlobalSettings | undefined
 ): string {
   // Validate agent type
-  const validAgentTypes: AgentType[] = [
-    'planning',
-    'implementation',
-    'testing',
-    'review',
-    'debug',
-    'documentation',
-    'refactoring',
-    'orchestration',
-    'generic',
-  ];
+  // Derive valid agent types from DEFAULT_AGENT_MODELS to ensure single source of truth
+  // This prevents bugs when new agent types are added to the system
+  const validAgentTypes: AgentType[] = Object.keys(DEFAULT_AGENT_MODELS) as AgentType[];
 
   if (!validAgentTypes.includes(agentType)) {
     logger.warn(`Unknown agent type: ${agentType}, falling back to 'generic'`);
@@ -339,8 +332,8 @@ export function migrateAgentModelSettings(settings: unknown): {
       ...DEFAULT_AGENT_MODELS,
       // Preserve any valid user preferences
       ...(settingsObj.agents && typeof settingsObj.agents === 'object' ? settingsObj.agents : {}),
-    },
-  } as Record<AgentType, AgentModel>;
+    } as Record<AgentType, AgentModel>,
+  };
 
   // Validate all agent types have valid models
   for (const [agentType, model] of Object.entries(migrated.agents)) {

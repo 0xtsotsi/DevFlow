@@ -79,19 +79,6 @@ function createProjectScopedHandler<T extends { projectPath: string }>(
 }
 
 /**
- * Wraps an event handler with error boundary and logging.
- */
-function withErrorHandling<T>(handler: (event: T) => void, logPrefix: string): (event: T) => void {
-  return (event: T) => {
-    try {
-      handler(event);
-    } catch (error) {
-      console.error(`[BeadsRealtime] ${logPrefix} error:`, error);
-    }
-  };
-}
-
-/**
  * Creates an activity event for the feed.
  */
 function createActivityEvent(
