@@ -1,3 +1,9 @@
+/**
+ * Beads Real-Time Events Hook (Refactored for DRY Principle)
+ *
+ * Extracted duplicate event handler logic into reusable helpers.
+ */
+
 import { useEffect, useState, useCallback } from 'react';
 import { getElectronAPI } from '@/lib/electron';
 import { useAppStore } from '@/store/app-store';
@@ -41,6 +47,73 @@ interface UseBeadsRealtimeEventsProps {
   issues: BeadsIssue[];
 }
 
+// ============================================================================
+// HELPER FUNCTIONS (Extracted for DRY)
+// ============================================================================
+
+/**
+ * Creates a project-scoped event handler that filters events by project path.
+ * Provides error handling and logging.
+ *
+ * @param currentProject - Current project to filter events for
+ * @param handler - The actual event handler logic
+ * @returns A wrapped event handler with project filtering and error handling
+ */
+function createProjectScopedHandler<T extends { projectPath: string }>(
+  currentProject: { path: string; id: string } | null,
+  handler: (event: T) => void,
+  logPrefix: string
+): (event: T) => void {
+  return (event: T) => {
+    // Filter events by project
+    if (!currentProject || event.projectPath !== currentProject.path) {
+      return;
+    }
+
+    try {
+      handler(event);
+    } catch (error) {
+      console.error(`[BeadsRealtime] ${logPrefix} error:`, error);
+    }
+  };
+}
+
+/**
+ * Creates an activity event for the feed.
+ */
+function createActivityEvent(
+  type: BeadsAgentActivity['type'],
+  event: { sessionId: string; issueId: string; agentType: string },
+  issueTitle: string,
+  extra?: Partial<BeadsAgentActivity>
+): BeadsAgentActivity {
+  return {
+    id: `${type}-${event.sessionId}-${Date.now()}`,
+    type,
+    issueId: event.issueId,
+    issueTitle,
+    agentType: event.agentType,
+    timestamp: Date.now(),
+    ...extra,
+  };
+}
+
+/**
+ * Updates agent assignments map with proper immutability.
+ */
+function updateAgentAssignments(
+  prev: Map<string, AgentAssignment>,
+  updater: (map: Map<string, AgentAssignment>) => void
+): Map<string, AgentAssignment> {
+  const updated = new Map(prev);
+  updater(updated);
+  return updated;
+}
+
+// ============================================================================
+// MAIN HOOK
+// ============================================================================
+
 /**
  * Hook that subscribes to Beads real-time events via WebSocket.
  *
@@ -62,10 +135,7 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
 
   // Add activity event to the feed (keep only last 50)
   const addActivity = useCallback((activity: BeadsAgentActivity) => {
-    setAgentActivity((prev) => {
-      const updated = [activity, ...prev].slice(0, 50);
-      return updated;
-    });
+    setAgentActivity((prev) => [activity, ...prev].slice(0, 50));
   }, []);
 
   // Get issue title by ID
@@ -82,168 +152,186 @@ export function useBeadsRealtimeEvents({ currentProject, issues }: UseBeadsRealt
     if (!currentProject) return;
 
     const api = getElectronAPI();
-    if (!api.beads) return;
+    if (!api?.beads) return;
 
     console.log('[BeadsRealtime] Subscribing to Beads events for', currentProject.path);
 
-    // Handler: Agent assigned to an issue
-    const unsubAgentAssigned = api.beads.onAgentAssigned((event: BeadsAgentEvent) => {
-      console.log('[BeadsRealtime] Agent assigned:', event);
+    // ========================================================================
+    // AGENT ASSIGNED HANDLER
+    // ========================================================================
+    const unsubAgentAssigned = api.beads.onAgentAssigned(
+      createProjectScopedHandler(
+        currentProject,
+        (event: BeadsAgentEvent) => {
+          console.log('[BeadsRealtime] Agent assigned:', event);
 
-      // Filter events by project
-      if (event.projectPath !== currentProject.path) return;
+          // Create agent assignment
+          const assignment: AgentAssignment = {
+            issueId: event.issueId,
+            agentType: event.agentType,
+            sessionId: event.sessionId,
+            status: 'working',
+            assignedAt: event.timestamp || new Date().toISOString(),
+          };
 
-      // Create agent assignment
-      const assignment: AgentAssignment = {
-        issueId: event.issueId,
-        agentType: event.agentType,
-        sessionId: event.sessionId,
-        status: 'working',
-        assignedAt: event.timestamp || new Date().toISOString(),
-      };
+          // Update assignments map
+          setAgentAssignments((prev) =>
+            updateAgentAssignments(prev, (map) => {
+              map.set(event.issueId, assignment);
+            })
+          );
 
-      // Update assignments map
-      setAgentAssignments((prev) => {
-        const updated = new Map(prev);
-        updated.set(event.issueId, assignment);
-        return updated;
-      });
-
-      // Add to activity feed
-      addActivity({
-        id: `assigned-${event.sessionId}-${Date.now()}`,
-        type: 'agent-assigned',
-        issueId: event.issueId,
-        issueTitle: getIssueTitle(event.issueId),
-        agentType: event.agentType,
-        timestamp: Date.now(),
-      });
-    });
-
-    // Handler: Agent completed an issue
-    const unsubAgentCompleted = api.beads.onAgentCompleted((event: BeadsAgentEvent) => {
-      console.log('[BeadsRealtime] Agent completed:', event);
-
-      // Filter events by project
-      if (event.projectPath !== currentProject.path) return;
-
-      // Remove from assignments
-      setAgentAssignments((prev) => {
-        const updated = new Map(prev);
-        updated.delete(event.issueId);
-        return updated;
-      });
-
-      // Add to activity feed
-      addActivity({
-        id: `completed-${event.sessionId}-${Date.now()}`,
-        type: 'agent-completed',
-        issueId: event.issueId,
-        issueTitle: getIssueTitle(event.issueId),
-        agentType: event.agentType,
-        timestamp: Date.now(),
-        success: true,
-      });
-    });
-
-    // Handler: Agent failed on an issue
-    const unsubAgentFailed = api.beads.onAgentFailed((event: BeadsAgentErrorEvent) => {
-      console.error('[BeadsRealtime] Agent failed:', event);
-
-      // Filter events by project
-      if (event.projectPath !== currentProject.path) return;
-
-      // Remove from assignments
-      setAgentAssignments((prev) => {
-        const updated = new Map(prev);
-        updated.delete(event.issueId);
-        return updated;
-      });
-
-      // Add to activity feed
-      addActivity({
-        id: `failed-${event.sessionId}-${Date.now()}`,
-        type: 'agent-failed',
-        issueId: event.issueId,
-        issueTitle: getIssueTitle(event.issueId),
-        agentType: event.agentType,
-        timestamp: Date.now(),
-        success: false,
-        error: event.error,
-      });
-    });
-
-    // Handler: Helper agent spawned
-    const unsubHelperSpawned = api.beads.onHelperSpawned((event: BeadsHelperEvent) => {
-      console.log('[BeadsRealtime] Helper spawned:', event);
-
-      // Filter events by project
-      if (event.projectPath !== currentProject.path) return;
-
-      // Add to activity feed
-      addActivity({
-        id: `helper-${event.helperSessionId}-${Date.now()}`,
-        type: 'helper-spawned',
-        issueId: event.helperIssueId,
-        issueTitle: getIssueTitle(event.helperIssueId),
-        agentType: event.helperAgentType,
-        timestamp: Date.now(),
-        success: true,
-        helperInfo: {
-          parentIssueId: event.parentIssueId,
-          helperIssueId: event.helperIssueId,
+          // Add to activity feed
+          addActivity(createActivityEvent('agent-assigned', event, getIssueTitle(event.issueId)));
         },
-      });
-    });
+        'onAgentAssigned'
+      )
+    );
 
-    // Handler: Issue created
-    const unsubIssueCreated = api.beads.onIssueCreated((event: BeadsIssueEvent) => {
-      console.log('[BeadsRealtime] Issue created:', event);
+    // ========================================================================
+    // AGENT COMPLETED HANDLER
+    // ========================================================================
+    const unsubAgentCompleted = api.beads.onAgentCompleted(
+      createProjectScopedHandler(
+        currentProject,
+        (event: BeadsAgentEvent) => {
+          console.log('[BeadsRealtime] Agent completed:', event);
 
-      // Filter events by project
-      if (event.projectPath !== currentProject.path) return;
+          // Remove from assignments
+          setAgentAssignments((prev) =>
+            updateAgentAssignments(prev, (map) => {
+              map.delete(event.issueId);
+            })
+          );
 
-      // Add to store
-      addBeadsIssue(currentProject.path, event.issue);
-    });
+          // Add to activity feed
+          addActivity(
+            createActivityEvent('agent-completed', event, getIssueTitle(event.issueId), {
+              success: true,
+            })
+          );
+        },
+        'onAgentCompleted'
+      )
+    );
 
-    // Handler: Issue updated (refresh assignments if status changed)
-    const unsubIssueUpdated = api.beads.onIssueUpdated((event: BeadsIssueEvent) => {
-      console.log('[BeadsRealtime] Issue updated:', event);
+    // ========================================================================
+    // AGENT FAILED HANDLER
+    // ========================================================================
+    const unsubAgentFailed = api.beads.onAgentFailed(
+      createProjectScopedHandler(
+        currentProject,
+        (event: BeadsAgentErrorEvent) => {
+          console.error('[BeadsRealtime] Agent failed:', event);
 
-      // Filter events by project
-      if (event.projectPath !== currentProject.path) return;
+          // Remove from assignments
+          setAgentAssignments((prev) =>
+            updateAgentAssignments(prev, (map) => {
+              map.delete(event.issueId);
+            })
+          );
 
-      // Update the issue data in store
-      updateBeadsIssue(currentProject.path, event.issue.id, event.issue);
+          // Add to activity feed
+          addActivity(
+            createActivityEvent('agent-failed', event, getIssueTitle(event.issueId), {
+              success: false,
+              error: event.error,
+            })
+          );
+        },
+        'onAgentFailed'
+      )
+    );
 
-      // If issue was closed, remove assignment
-      if (event.issue.status === 'closed') {
-        setAgentAssignments((prev) => {
-          const updated = new Map(prev);
-          updated.delete(event.issue.id);
-          return updated;
-        });
-      }
-    });
+    // ========================================================================
+    // HELPER SPAWNED HANDLER
+    // ========================================================================
+    const unsubHelperSpawned = api.beads.onHelperSpawned(
+      createProjectScopedHandler(
+        currentProject,
+        (event: BeadsHelperEvent) => {
+          console.log('[BeadsRealtime] Helper spawned:', event);
 
-    // Handler: Issue deleted
-    const unsubIssueDeleted = api.beads.onIssueDeleted((event: BeadsIssueDeletedEvent) => {
-      console.log('[BeadsRealtime] Issue deleted:', event);
+          // Add to activity feed (helper agents don't get assignments)
+          addActivity({
+            id: `helper-${event.helperSessionId}-${Date.now()}`,
+            type: 'helper-spawned',
+            issueId: event.helperIssueId,
+            issueTitle: getIssueTitle(event.helperIssueId),
+            agentType: event.helperAgentType,
+            timestamp: Date.now(),
+            success: true,
+            helperInfo: {
+              parentIssueId: event.parentIssueId,
+              helperIssueId: event.helperIssueId,
+            },
+          });
+        },
+        'onHelperSpawned'
+      )
+    );
 
-      // Filter events by project
-      if (event.projectPath !== currentProject.path) return;
+    // ========================================================================
+    // ISSUE CREATED HANDLER
+    // ========================================================================
+    const unsubIssueCreated = api.beads.onIssueCreated(
+      createProjectScopedHandler(
+        currentProject,
+        (event: BeadsIssueEvent) => {
+          console.log('[BeadsRealtime] Issue created:', event);
+          addBeadsIssue(currentProject.path, event.issue);
+        },
+        'onIssueCreated'
+      )
+    );
 
-      // Remove from store
-      removeBeadsIssue(currentProject.path, event.issueId);
+    // ========================================================================
+    // ISSUE UPDATED HANDLER
+    // ========================================================================
+    const unsubIssueUpdated = api.beads.onIssueUpdated(
+      createProjectScopedHandler(
+        currentProject,
+        (event: BeadsIssueEvent) => {
+          console.log('[BeadsRealtime] Issue updated:', event);
 
-      // Remove assignment
-      setAgentAssignments((prev) => {
-        const updated = new Map(prev);
-        updated.delete(event.issueId);
-        return updated;
-      });
-    });
+          // Update the issue data in store
+          updateBeadsIssue(currentProject.path, event.issue.id, event.issue);
+
+          // If issue was closed, remove assignment
+          if (event.issue.status === 'closed') {
+            setAgentAssignments((prev) =>
+              updateAgentAssignments(prev, (map) => {
+                map.delete(event.issue.id);
+              })
+            );
+          }
+        },
+        'onIssueUpdated'
+      )
+    );
+
+    // ========================================================================
+    // ISSUE DELETED HANDLER
+    // ========================================================================
+    const unsubIssueDeleted = api.beads.onIssueDeleted(
+      createProjectScopedHandler(
+        currentProject,
+        (event: BeadsIssueDeletedEvent) => {
+          console.log('[BeadsRealtime] Issue deleted:', event);
+
+          // Remove from store
+          removeBeadsIssue(currentProject.path, event.issueId);
+
+          // Remove assignment
+          setAgentAssignments((prev) =>
+            updateAgentAssignments(prev, (map) => {
+              map.delete(event.issueId);
+            })
+          );
+        },
+        'onIssueDeleted'
+      )
+    );
 
     // Cleanup on unmount
     return () => {

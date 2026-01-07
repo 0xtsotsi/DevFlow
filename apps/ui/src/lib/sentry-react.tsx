@@ -9,12 +9,23 @@ import type { SeverityLevel } from './sentry';
 import { captureException as sentryCaptureException } from './sentry';
 import * as SentryReact from '@sentry/react';
 
+// Re-export Sentry's FallbackRender type for consistency
+type FallbackRender = SentryReact.FallbackRender;
+
+// Type for fallback render function parameters (matches Sentry's ErrorBoundary fallback props)
+// Note: Sentry v8+ uses 'error: unknown' instead of 'error: Error'
+type FallbackParams = Parameters<FallbackRender>[0];
+
+// Type for fallback prop - matches Sentry's ErrorBoundary API:
+// ReactElement | FallbackRender function | undefined
+type FallbackProp = React.ReactElement | FallbackRender;
+
 // Stub ErrorBoundary when Sentry is not enabled
 const StubErrorBoundary = ({
   children,
 }: {
-  children: React.ReactNode;
-  fallback?: (error: Error, eventId: string) => JSX.Element;
+  children?: React.ReactNode;
+  fallback?: FallbackProp;
 }) => <>{children}</>;
 
 // Use real Sentry if enabled
@@ -23,17 +34,54 @@ const SENTRY_ENABLED =
   (import.meta.env?.NODE_ENV as string) === 'production' ||
   !!(import.meta.env?.VITE_SENTRY_DSN as string);
 
-const Sentry = SENTRY_ENABLED ? SentryReact : createStubSentry();
+// Use conditional types to properly type stub vs real Sentry
+type SentryType = typeof SentryReact;
 
-function createStubSentry() {
+// Span interface for the new Sentry API (v8+)
+interface Span {
+  end(): void;
+  setAttribute(key: string, value: unknown): void;
+  spanContext(): {
+    traceId: string;
+    spanId: string;
+  };
+}
+
+type StubSentryType = {
+  ErrorBoundary: typeof StubErrorBoundary;
+  addBreadcrumb: () => void;
+  withSentryReactRouterV6Routing: undefined;
+  startSpan: <T>(
+    options: { name: string; op?: string; attributes?: Record<string, unknown> },
+    callback: (span: Span) => T
+  ) => T | null;
+  startSpanManual: <T>(
+    options: { name: string; op?: string; attributes?: Record<string, unknown> },
+    callback: (span: Span) => T
+  ) => T | null;
+  startInactiveSpan: (options: {
+    name: string;
+    op?: string;
+    attributes?: Record<string, unknown>;
+  }) => Span | null;
+};
+
+const Sentry = (SENTRY_ENABLED ? SentryReact : createStubSentry()) as SentryType | StubSentryType;
+
+function createStubSentry(): StubSentryType {
+  const noopSpan: Span = {
+    end: () => {},
+    setAttribute: () => {},
+    spanContext: () => ({ traceId: '', spanId: '' }),
+  };
+
   return {
-    ErrorBoundary: StubErrorBoundary as React.ComponentType<{
-      fallback?: (error: Error, eventId: string) => JSX.Element;
-      children: React.ReactNode;
-    }>,
+    ErrorBoundary: StubErrorBoundary,
     addBreadcrumb: () => {},
     withSentryReactRouterV6Routing: undefined,
-    startTransaction: () => null,
+    startSpan: (_options, callback) => callback(noopSpan),
+    startSpanManual: (_options, callback) => callback(noopSpan),
+    startInactiveSpan: () => noopSpan,
   };
 }
 
@@ -41,36 +89,39 @@ function createStubSentry() {
  * Sentry Error Boundary Component
  *
  * Wrap your app or specific components with this to capture React errors
+ *
+ * @example
+ * ```tsx
+ * // Simple fallback
+ * <SentryBoundary fallback={<p>Something went wrong</p>}>
+ *   <App />
+ * </SentryBoundary>
+ *
+ * // Fallback with reset function
+ * <SentryBoundary
+ *   fallback={({ error, resetError }) => (
+ *     <div>
+ *       <p>Error: {String(error)}</p>
+ *       <button onClick={resetError}>Try again</button>
+ *     </div>
+ *   )}
+ * >
+ *   <App />
+ * </SentryBoundary>
+ * ```
  */
 export function SentryBoundary({
   children,
   fallback,
 }: {
   children: React.ReactNode;
-  fallback?: (error: Error, eventId: string) => JSX.Element;
+  fallback?: FallbackProp;
 }) {
-  const ErrorBoundaryComp = Sentry.ErrorBoundary;
+  const ErrorBoundaryComp =
+    (Sentry as SentryType).ErrorBoundary ?? (Sentry as StubSentryType).ErrorBoundary;
 
-  // Use ErrorBoundary from Sentry if available
-  return (
-    <ErrorBoundaryComp
-      fallback={(error: Error, eventId: string) => {
-        console.error('[Sentry] Error caught by boundary:', error, eventId);
-        if (fallback) {
-          return fallback(error, eventId);
-        }
-        return (
-          <div style={{ padding: '20px', textAlign: 'center' }}>
-            <h2>Something went wrong</h2>
-            <p>Error ID: {eventId}</p>
-            <p>Please check the console for details.</p>
-          </div>
-        );
-      }}
-    >
-      {children}
-    </ErrorBoundaryComp>
-  );
+  // Pass fallback directly - types match Sentry's ErrorBoundary API
+  return <ErrorBoundaryComp fallback={fallback}>{children}</ErrorBoundaryComp>;
 }
 
 /**
@@ -91,11 +142,12 @@ export function useSentryTrack(
   dependencies: unknown[] = []
 ) {
   useEffect(() => {
-    Sentry.addBreadcrumb({
+    const sentry = SENTRY_ENABLED ? (Sentry as SentryType) : (Sentry as StubSentryType);
+    sentry.addBreadcrumb({
       message,
       category,
       level,
-    });
+    } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
   }, [message, category, level, ...dependencies]);
 }
 
@@ -124,13 +176,17 @@ export function useSentryCapture(error: Error | null, context?: Record<string, u
  * This component wraps the router and provides performance monitoring
  */
 export function SentryRoutingInstrumentation({ children }: { children: React.ReactNode }) {
-  const SentryRoutes = Sentry.withSentryReactRouterV6Routing;
+  const SentryRoutes = SENTRY_ENABLED
+    ? (Sentry as SentryType).withSentryReactRouterV6Routing
+    : (Sentry as StubSentryType).withSentryReactRouterV6Routing;
 
   if (!SentryRoutes) {
     return <>{children}</>;
   }
 
-  return <SentryRoutes>{children}</SentryRoutes>;
+  // Type assertion for FC with children
+  const RoutesComponent = SentryRoutes as React.FC<{ children: React.ReactNode }>;
+  return <RoutesComponent>{children}</RoutesComponent>;
 }
 
 /**
@@ -147,18 +203,19 @@ export function withSentryTracking<P extends object>(
     'Component';
 
   return function WithSentryTracking(props: P) {
+    const sentry = SENTRY_ENABLED ? (Sentry as SentryType) : (Sentry as StubSentryType);
     useEffect(() => {
-      Sentry.addBreadcrumb({
+      sentry.addBreadcrumb({
         message: `Component mounted: ${displayName}`,
         category: 'component',
         level: 'info',
-      });
+      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
       return () => {
-        Sentry.addBreadcrumb({
+        sentry.addBreadcrumb({
           message: `Component unmounted: ${displayName}`,
           category: 'component',
           level: 'info',
-        });
+        } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
       };
     }, [displayName]);
 
@@ -169,15 +226,18 @@ export function withSentryTracking<P extends object>(
 /**
  * Performance monitoring hook
  *
+ * Uses Sentry's new startSpanManual API (v8+) for manual span management.
+ * Returns an object with a span that you must manually end by calling .end()
+ *
  * Usage:
  * ```tsx
  * function MyComponent() {
- *   const startTransaction = useSentryPerformance();
+ *   const startSpan = useSentryPerformance();
  *
  *   const handleClick = () => {
- *     const transaction = startTransaction('button_click');
+ *     const span = startSpan('button_click', 'ui.action');
  *     // ... do work
- *     transaction?.finish();
+ *     span?.end();
  *   };
  *
  *   return <button onClick={handleClick}>Click me</button>;
@@ -185,22 +245,28 @@ export function withSentryTracking<P extends object>(
  * ```
  */
 export function useSentryPerformance() {
-  return (name: string, operation?: string) => {
+  return (name: string, operation: string = 'ui.action') => {
     if (!SENTRY_ENABLED) {
       return null;
     }
 
-    return Sentry.startTransaction({
+    const sentry = Sentry as SentryType;
+    // Use startInactiveSpan for manual span management
+    // This creates a span that doesn't require a callback and must be manually ended
+    return sentry.startInactiveSpan({
       name,
-      op: operation || 'ui.action',
+      op: operation,
     });
   };
 }
 
 // Export for routing instrumentation
-export const withSentryRouting = Sentry.withSentryReactRouterV6Routing
-  ? (props: { children: React.ReactNode }) => {
-      const SentryRoutes = Sentry.withSentryReactRouterV6Routing!;
-      return <SentryRoutes>{props.children}</SentryRoutes>;
-    }
-  : (props: { children: React.ReactNode }) => <>{props.children}</>;
+export const withSentryRouting =
+  SENTRY_ENABLED && (Sentry as SentryType).withSentryReactRouterV6Routing
+    ? (props: { children: React.ReactNode }) => {
+        const SentryRoutes = (Sentry as SentryType).withSentryReactRouterV6Routing as React.FC<{
+          children: React.ReactNode;
+        }>;
+        return <SentryRoutes>{props.children}</SentryRoutes>;
+      }
+    : (props: { children: React.ReactNode }) => <>{props.children}</>;

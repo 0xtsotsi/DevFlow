@@ -1260,12 +1260,77 @@ export function TerminalView() {
     const isHorizontal = content.direction === 'horizontal';
     const defaultSizePerPanel = 100 / content.panels.length;
 
-    const handleLayoutChange = (layout: { [id: string]: number }) => {
+    const handleLayoutChange = (layout: unknown) => {
       if (!activeTab) return;
       const panelKeys = content.panels.map(getPanelKey);
-      // v4 passes a Layout object mapping panelId -> percentage
-      // Extract sizes in the order of panels
-      const sizes = panelKeys.map((key) => layout[key] ?? 100 / panelKeys.length);
+
+      // Type guard for valid layout formats
+      const isValidLayout = (value: unknown): value is number[] | { [id: string]: number } => {
+        // Check for array format
+        if (Array.isArray(value)) {
+          // Validate all elements are numbers
+          return value.every((item) => typeof item === 'number' && !isNaN(item) && isFinite(item));
+        }
+        // Check for object format
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          // Validate all values are numbers
+          return Object.values(value).every(
+            (val) => typeof val === 'number' && !isNaN(val) && isFinite(val)
+          );
+        }
+        return false;
+      };
+
+      // Validate input type
+      if (!isValidLayout(layout)) {
+        console.error('[Terminal] Invalid layout format received:', layout);
+        return;
+      }
+
+      // Handle both array format (v3) and object format (v4)
+      let sizes: number[];
+      if (Array.isArray(layout)) {
+        // Validate array length matches panel count
+        if (layout.length !== panelKeys.length) {
+          console.error(
+            `[Terminal] Layout array length mismatch: expected ${panelKeys.length}, got ${layout.length}`
+          );
+          return;
+        }
+        // Validate size values are within reasonable range (0-100)
+        const invalidSizes = layout.filter((size) => size < 0 || size > 100);
+        if (invalidSizes.length > 0) {
+          console.error('[Terminal] Invalid size values (must be 0-100):', invalidSizes);
+          return;
+        }
+        sizes = layout;
+      } else {
+        // v4 passes a Layout object mapping panelId -> percentage
+        // Extract sizes in the order of panels
+        sizes = panelKeys.map((key) => {
+          const size = layout[key];
+          if (typeof size !== 'number' || isNaN(size) || !isFinite(size)) {
+            console.warn(`[Terminal] Missing or invalid size for panel ${key}, using default`);
+            return 100 / panelKeys.length;
+          }
+          if (size < 0 || size > 100) {
+            console.warn(
+              `[Terminal] Size ${size} for panel ${key} out of range (0-100), using default`
+            );
+            return 100 / panelKeys.length;
+          }
+          return size;
+        });
+      }
+
+      // Final validation: ensure we have the right number of sizes
+      if (sizes.length !== panelKeys.length) {
+        console.error(
+          `[Terminal] Final sizes array length mismatch: expected ${panelKeys.length}, got ${sizes.length}`
+        );
+        return;
+      }
+
       updateTerminalPanelSizes(activeTab.id, panelKeys, sizes);
     };
 

@@ -255,13 +255,12 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     console.log('[Server] ✓ Beads LiveLink initialized');
 
     // Initialize Beads Memory Service (context for agents)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const beadsMemoryService = new BeadsMemoryService(beadsService, mcpBridge);
     console.log('[Server] ✓ Beads Memory Service initialized');
 
     // Initialize Agent Registry and Specialized Agent Service
     const agentRegistry = new AgentRegistry();
-    const specializedAgentService = new SpecializedAgentService();
+    const specializedAgentService = new SpecializedAgentService(settingsService);
     console.log('[Server] ✓ Agent Registry and Specialized Agent Service initialized');
 
     // Initialize Beads Agent Coordinator (autonomous coordination)
@@ -323,7 +322,7 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     implementationSkillService = new ImplementationSkillService(events);
     cicdSkillService = new CICDSkillService(events);
     workflowOrchestratorService = new WorkflowOrchestratorService(events);
-    reflectSkillService = new ReflectSkillService(events);
+    reflectSkillService = new ReflectSkillService(events, beadsMemoryService, beadsService);
     console.log('[Server] ✓ Skill services initialized');
 
     // Wire up event listeners for skill coordination

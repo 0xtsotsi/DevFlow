@@ -24,7 +24,8 @@ const SENTRY_ENABLED =
   (import.meta.env?.NODE_ENV as string) === 'production' ||
   !!(import.meta.env?.VITE_SENTRY_DSN as string);
 
-// Parse trace propagation targets from environment
+// Parse trace propagation targets from environment (kept for future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TRACE_PROPAGATION_TARGETS = (
   (import.meta.env?.VITE_SENTRY_TRACE_PROPAGATION_TARGETS as string) || ''
 )
@@ -89,10 +90,7 @@ export function initSentry(): void {
       Sentry.consoleLoggingIntegration({
         levels: ['log', 'info', 'warn', 'error'],
       }),
-      Sentry.browserTracingIntegration({
-        tracePropagationTargets:
-          TRACE_PROPAGATION_TARGETS.length > 0 ? TRACE_PROPAGATION_TARGETS : [/^\/api/, /^\//], // Default: trace all API routes and local paths
-      }),
+      Sentry.browserTracingIntegration(),
       Sentry.replayIntegration({
         maskAllText: true,
         blockAllMedia: true,

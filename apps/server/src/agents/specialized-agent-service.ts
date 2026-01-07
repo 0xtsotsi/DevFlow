@@ -14,9 +14,11 @@ import type {
   AgentExecutionResult,
   ExecuteOptions,
   ConversationMessage,
-} from '@automaker/types';
+} from '@devflow/types';
 import { agentRegistry } from './agent-registry.js';
 import { taskClassifier } from './task-classifier.js';
+import type { SettingsService } from '../services/settings-service.js';
+import { getModelForAgentAsync } from '../lib/settings-helpers.js';
 
 /**
  * Specialized Agent Service
@@ -24,6 +26,12 @@ import { taskClassifier } from './task-classifier.js';
  * Manages the selection and execution of specialized worker agents.
  */
 export class SpecializedAgentService {
+  private settingsService?: SettingsService;
+
+  constructor(settingsService?: SettingsService) {
+    this.settingsService = settingsService;
+  }
+
   /**
    * Classify a task and recommend the best agent
    */
@@ -97,13 +105,20 @@ export class SpecializedAgentService {
     }
 
     try {
+      // Resolve model using agent preferences (Rails-style dependency injection)
+      const resolvedModel = await getModelForAgentAsync(
+        agentType,
+        model,
+        this.settingsService || null
+      );
+
       // Get provider
-      const provider = ProviderFactory.getProviderForModel(model || 'claude-sonnet-4-5-20250929');
+      const provider = ProviderFactory.getProviderForModel(resolvedModel);
 
       // Build execution options
       const executeOptions: ExecuteOptions = {
         prompt: taskPrompt,
-        model: model || 'claude-sonnet-4-5-20250929',
+        model: resolvedModel,
         cwd: context.cwd,
         systemPrompt: this.buildSystemPrompt(agentConfig, context),
         maxTurns: agentConfig.defaultMaxTurns,
@@ -342,5 +357,6 @@ export class SpecializedAgentService {
   }
 }
 
-// Export singleton instance
+// Export singleton instance (without settingsService for backward compatibility)
+// Note: In index.ts, we pass settingsService when creating the service for the app
 export const specializedAgentService = new SpecializedAgentService();
