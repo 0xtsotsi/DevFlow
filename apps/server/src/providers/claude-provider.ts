@@ -182,6 +182,9 @@ export class ClaudeProvider extends BaseProvider {
       'create_beads_issue', // NEW: Create Beads issues from agent tools
       'query_beads_memory', // NEW: Search past issues for context
       'spawn_helper_agent', // NEW: Spawn specialized helper agents
+      'get_sentry_issue', // NEW: Get Sentry issue details
+      'search_sentry_issues', // NEW: Search Sentry issues
+      'analyze_issue_with_seer', // NEW: AI-powered root cause analysis
     ];
     const toolsToUse = allowedTools || defaultTools;
 

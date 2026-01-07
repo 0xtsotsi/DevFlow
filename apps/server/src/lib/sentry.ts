@@ -26,10 +26,38 @@ type SentryWithMetrics = typeof Sentry & {
   metrics?: SentryMetrics;
 };
 
-// DSN from environment or use the provided default
-const SENTRY_DSN =
-  process.env.SENTRY_DSN ||
-  'https://da493bfc74876b98e41a2888b4aa24af@o4509264770236416.ingest.de.sentry.io/4510658901770320';
+/**
+ * Validate Sentry DSN format
+ *
+ * DSN format: https://examplePublicKey@o0.ingest.sentry.io/0
+ * Components: protocol://publicKey@host/projectId
+ *
+ * @throws Error if DSN is invalid
+ */
+export function validateDSN(dsn?: string): void {
+  if (!dsn) {
+    throw new Error(
+      'SENTRY_DSN is required in production. Set SENTRY_DSN environment variable or disable Sentry with SENTRY_ENABLED=false.'
+    );
+  }
+
+  const dsnPattern = /^https?:\/\/[a-zA-Z0-9_-]+@[a-zA-Z0-9.-]+\/[0-9]+$/;
+  if (!dsnPattern.test(dsn)) {
+    throw new Error(
+      `Invalid SENTRY_DSN format. Expected: https://publicKey@host/projectId, got: ${dsn}`
+    );
+  }
+}
+
+// Get DSN from environment (no hardcoded default)
+const SENTRY_DSN = process.env.SENTRY_DSN;
+
+// Validate DSN in production
+if (process.env.NODE_ENV === 'production' && !SENTRY_DSN) {
+  console.warn(
+    '[Sentry] SENTRY_DSN not set in production. Set SENTRY_DSN or disable with SENTRY_ENABLED=false'
+  );
+}
 
 // Environment (default to development)
 const ENVIRONMENT = process.env.NODE_ENV || process.env.SENTRY_ENVIRONMENT || 'development';
@@ -97,6 +125,19 @@ function createStubSentry() {
 export function initSentry(): void {
   if (!SENTRY_ENABLED) {
     console.log('[Sentry] Logging disabled (SENTRY_ENABLED=false or no DSN provided)');
+    return;
+  }
+
+  // Validate DSN if provided
+  if (SENTRY_DSN) {
+    try {
+      validateDSN(SENTRY_DSN);
+    } catch (error) {
+      console.error('[Sentry]', error);
+      return;
+    }
+  } else {
+    console.log('[Sentry] No DSN provided, skipping initialization');
     return;
   }
 

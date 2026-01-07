@@ -151,6 +151,12 @@ export type EventType =
   | 'workflow:checkpoint-created'
   | 'workflow:checkpoint-approved'
   | 'workflow:checkpoint-rejected'
+  // Research queue events
+  | 'research:cache-hit'
+  | 'research:enqueued'
+  | 'research:completed'
+  | 'research:failed'
+  | 'research:cache-cleared'
   // MCP configuration events
   | 'mcp:server-added'
   | 'mcp:server-removed'

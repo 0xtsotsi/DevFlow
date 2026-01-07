@@ -1,21 +1,23 @@
 /**
- * Beads Live Link Service
+ * Beads Live Link Service (Simplified)
  *
  * Subscribes to agent events and automatically creates Beads issues for errors and requests.
- * Provides autonomous agent memory by tracking problems and tasks in the dependency-aware issue tracker.
+ * Refactored to use domain models (Rails-style architecture) - models do the work,
+ * services coordinate.
  *
  * Features:
- * - Auto-create issues on agent errors (with severity assessment)
+ * - Auto-create issues on agent errors (using SentryError model)
  * - Auto-create issues on agent requests
  * - Rate limiting (max 20 issues/hour)
- * - Deduplication (24-hour cache)
- * - Smart priority assignment based on severity
+ * - Deduplication (24-hour cache using Sentry event IDs)
+ * - Smart priority assignment (delegated to SentryError model)
  */
 
-import * as crypto from 'crypto';
 import type { EventEmitter } from '../lib/events.js';
 import { BeadsService } from './beads-service.js';
-import type { BeadsIssue, CreateBeadsIssueInput } from '@automaker/types';
+import { SentryError } from '../models/sentry-error.js';
+import { BeadsIssueModel } from '../models/beads-issue.js';
+import type { BeadsIssue, CreateBeadsIssueInput } from '@devflow/types';
 
 interface Message {
   id: string;
@@ -76,7 +78,6 @@ export class BeadsLiveLinkService {
 
   /**
    * Initialize the live link service for a project
-   * Subscribes to agent events and validates Beads installation
    */
   async initialize(projectPath: string): Promise<void> {
     this.projectPath = projectPath;
@@ -121,7 +122,6 @@ export class BeadsLiveLinkService {
 
   /**
    * Handle incoming agent stream events
-   * Routes to appropriate handler based on event type
    */
   private async handleAgentStream(data: AgentErrorData | AgentRequestData): Promise<void> {
     if (!this.projectPath) {
@@ -142,7 +142,7 @@ export class BeadsLiveLinkService {
 
   /**
    * Handle agent error events
-   * Creates Beads issues for errors with appropriate priority
+   * Uses SentryError model for severity assessment and PII redaction
    */
   private async handleAgentError(data: AgentErrorData): Promise<BeadsIssue | null> {
     if (!this.projectPath) {
@@ -156,48 +156,36 @@ export class BeadsLiveLinkService {
         return null;
       }
 
-      // Check for duplicates if enabled
+      // Use SentryError model to process the error
+      const sentryError = SentryError.fromErrorString(data.error);
+
+      // Check for duplicates using Sentry event ID
       if (this.config.enableDeduplication) {
-        const existingIssue = await this.findExistingIssue(data.error);
+        const existingIssue = await this.findExistingIssue(sentryError.eventId);
         if (existingIssue) {
           console.log('[BeadsLiveLink] Duplicate error detected, skipping issue creation');
           return existingIssue;
         }
       }
 
-      // Assess error severity
-      const severity = this.assessErrorSeverity(data.error);
+      // Create BeadsIssueModel from SentryError
+      const issueModel = BeadsIssueModel.fromSentryError(sentryError, data.sessionId);
 
-      // Map severity to priority (critical->P0, high->P1, medium->P2, low->P3)
-      const priorityMap: Record<string, number> = {
-        critical: 0,
-        high: 1,
-        medium: 2,
-        low: 3,
-      };
-      const priority = priorityMap[severity] ?? 2;
+      // Create issue via BeadsService
+      const issue = await this.beadsService.createIssue(
+        this.projectPath,
+        issueModel.toCreateInput()
+      );
 
-      // Create issue
-      const issueInput: CreateBeadsIssueInput = {
-        title: this.extractErrorTitle(data.error),
-        description: this.formatErrorDescription(data),
-        type: 'bug',
-        priority,
-        labels: ['auto-created', 'agent-error', severity],
-      };
-
-      const issue = await this.beadsService.createIssue(this.projectPath, issueInput);
-
-      // Cache for deduplication
-      const errorHash = this.hashError(data.error);
-      this.errorCache.set(errorHash, {
+      // Cache for deduplication using Sentry event ID
+      this.errorCache.set(sentryError.eventId, {
         issueId: issue.id,
         timestamp: Date.now(),
       });
 
       this.autoIssueCount++;
       console.log(
-        `[BeadsLiveLink] Created issue ${issue.id} for ${severity} severity error (priority ${priority})`
+        `[BeadsLiveLink] Created issue ${issue.id} for ${sentryError.severity} severity error (priority ${sentryError.toBeadsPriority()})`
       );
 
       return issue;
@@ -209,7 +197,6 @@ export class BeadsLiveLinkService {
 
   /**
    * Handle agent request events
-   * Creates Beads issues when agents explicitly request them
    */
   private async handleAgentRequest(data: AgentRequestData): Promise<BeadsIssue | null> {
     if (!this.projectPath) {
@@ -245,71 +232,7 @@ export class BeadsLiveLinkService {
   }
 
   /**
-   * Assess error severity based on error message content
-   * Returns: 'low' | 'medium' | 'high' | 'critical'
-   */
-  private assessErrorSeverity(error: string): 'low' | 'medium' | 'high' | 'critical' {
-    const normalizedError = error.toLowerCase();
-
-    // Critical: System failures
-    const criticalPatterns = [
-      'segmentation fault',
-      'segfault',
-      'database corrupted',
-      'out of memory',
-      'fatal error',
-      'system cannot find',
-      'heap corruption',
-      'stack overflow',
-    ];
-
-    // High: Major failures
-    const highPatterns = [
-      'authentication failed',
-      'auth failed',
-      'econnrefused',
-      'connection refused',
-      'cannot find module',
-      'permission denied',
-      'eacces',
-      'enotfound',
-      'etimedout',
-      'unhandled exception',
-      'unhandled rejection',
-    ];
-
-    // Medium: Runtime errors
-    const mediumPatterns = [
-      'typeerror',
-      'referenceerror',
-      'syntaxerror',
-      'validation',
-      'parse error',
-      'invalid input',
-      'argument',
-      'undefined is not',
-      'cannot read',
-      'cannot set',
-    ];
-
-    // Check patterns in priority order
-    if (criticalPatterns.some((pattern) => normalizedError.includes(pattern))) {
-      return 'critical';
-    }
-    if (highPatterns.some((pattern) => normalizedError.includes(pattern))) {
-      return 'high';
-    }
-    if (mediumPatterns.some((pattern) => normalizedError.includes(pattern))) {
-      return 'medium';
-    }
-
-    // Default to low for warnings
-    return 'low';
-  }
-
-  /**
    * Check if auto-issue can be created based on rate limiting
-   * Resets counter after hour has elapsed
    */
   private canCreateAutoIssue(): boolean {
     const now = Date.now();
@@ -324,18 +247,15 @@ export class BeadsLiveLinkService {
   }
 
   /**
-   * Find existing issue for duplicate detection
-   * Checks cache first, then searches Beads for similar issues
+   * Find existing issue for duplicate detection using Sentry event ID
    */
-  private async findExistingIssue(error: string): Promise<BeadsIssue | null> {
+  private async findExistingIssue(eventId: string): Promise<BeadsIssue | null> {
     if (!this.projectPath) {
       return null;
     }
 
-    const errorHash = this.hashError(error);
-
     // Check cache first
-    const cached = this.errorCache.get(errorHash);
+    const cached = this.errorCache.get(eventId);
     if (cached) {
       const age = Date.now() - cached.timestamp;
       if (age < this.CACHE_TTL) {
@@ -347,126 +267,15 @@ export class BeadsLiveLinkService {
           }
         } catch {
           // Issue doesn't exist, remove from cache
-          this.errorCache.delete(errorHash);
+          this.errorCache.delete(eventId);
         }
       } else {
         // Cache expired
-        this.errorCache.delete(errorHash);
-      }
-    }
-
-    // Search for similar open issues by keywords
-    const keywords = this.extractKeywords(error);
-    for (const keyword of keywords) {
-      try {
-        const issues = await this.beadsService.searchIssues(this.projectPath, keyword, {
-          limit: 5,
-        });
-
-        // Find open issue with matching keyword
-        const matchingIssue = issues.find((issue) => {
-          return (
-            issue.status !== 'closed' &&
-            (issue.title.toLowerCase().includes(keyword) ||
-              issue.description.toLowerCase().includes(keyword))
-          );
-        });
-
-        if (matchingIssue) {
-          // Cache the match
-          this.errorCache.set(errorHash, {
-            issueId: matchingIssue.id,
-            timestamp: Date.now(),
-          });
-          return matchingIssue;
-        }
-      } catch {
-        // Search failed, continue
-        continue;
+        this.errorCache.delete(eventId);
       }
     }
 
     return null;
-  }
-
-  /**
-   * Hash error message for deduplication
-   * Normalizes error by removing numbers, paths, and line numbers
-   */
-  private hashError(error: string): string {
-    // Normalize: remove numbers, file paths, line numbers, memory addresses
-    const normalized = error
-      .toLowerCase()
-      .replace(/\b\d+\b/g, 'N') // Numbers
-      .replace(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi, 'UUID') // UUIDs
-      .replace(/0x[a-f0-9]+/gi, 'ADDR') // Memory addresses
-      .replace(/[/\\][\w./\\-]+/g, 'PATH') // File paths (both Unix and Windows)
-      .replace(/:\d+/g, ':LINE') // Line numbers
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .trim();
-
-    return crypto.createHash('sha256').update(normalized).digest('hex');
-  }
-
-  /**
-   * Extract keywords from error message for searching
-   * Returns meaningful error type identifiers
-   */
-  private extractKeywords(error: string): string[] {
-    const normalized = error.toLowerCase();
-    const keywords: string[] = [];
-
-    // Extract error type
-    const errorTypeMatch = normalized.match(/([a-z]+error|warning|exception)/i);
-    if (errorTypeMatch) {
-      keywords.push(errorTypeMatch[1]);
-    }
-
-    // Extract key phrases
-    const keyPhrases = [
-      'cannot find module',
-      'permission denied',
-      'authentication failed',
-      'connection refused',
-      'typeerror',
-      'referenceerror',
-      'validation',
-    ];
-
-    for (const phrase of keyPhrases) {
-      if (normalized.includes(phrase)) {
-        keywords.push(phrase);
-      }
-    }
-
-    return keywords.length > 0 ? keywords : ['error'];
-  }
-
-  /**
-   * Extract a short title from error message
-   */
-  private extractErrorTitle(error: string): string {
-    // First line or first 60 chars
-    const firstLine = error.split('\n')[0].trim();
-    return firstLine.length > 60 ? firstLine.substring(0, 57) + '...' : firstLine;
-  }
-
-  /**
-   * Format error description with context
-   */
-  private formatErrorDescription(data: AgentErrorData): string {
-    const timestamp = new Date(data.message.timestamp).toLocaleString();
-    return `**Error occurred at:** ${timestamp}
-
-**Session ID:** ${data.sessionId}
-
-**Error Message:**
-\`\`\`
-${data.error}
-\`\`\`
-
-**Context:**
-This issue was automatically created by the Beads Live Link service when an agent encountered an error during execution.`;
   }
 
   /**
