@@ -9,12 +9,15 @@ import type { SeverityLevel } from './sentry';
 import { captureException as sentryCaptureException } from './sentry';
 import * as SentryReact from '@sentry/react';
 
+// Type for fallback render function
+type FallbackRender = (error: Error, eventId: string) => JSX.Element;
+
 // Stub ErrorBoundary when Sentry is not enabled
 const StubErrorBoundary = ({
   children,
 }: {
   children: React.ReactNode;
-  fallback?: (error: Error, eventId: string) => JSX.Element;
+  fallback?: FallbackRender;
 }) => <>{children}</>;
 
 // Use real Sentry if enabled
@@ -23,14 +26,23 @@ const SENTRY_ENABLED =
   (import.meta.env?.NODE_ENV as string) === 'production' ||
   !!(import.meta.env?.VITE_SENTRY_DSN as string);
 
-const Sentry = SENTRY_ENABLED ? SentryReact : createStubSentry();
+// Use conditional types to properly type stub vs real Sentry
+type SentryType = typeof SentryReact;
+type StubSentryType = {
+  ErrorBoundary: React.ComponentType<{
+    fallback?: FallbackRender;
+    children: React.ReactNode;
+  }>;
+  addBreadcrumb: () => void;
+  withSentryReactRouterV6Routing: undefined;
+  startTransaction: (name: string, operation?: string) => null;
+};
 
-function createStubSentry() {
+const Sentry = (SENTRY_ENABLED ? SentryReact : createStubSentry()) as SentryType | StubSentryType;
+
+function createStubSentry(): StubSentryType {
   return {
-    ErrorBoundary: StubErrorBoundary as React.ComponentType<{
-      fallback?: (error: Error, eventId: string) => JSX.Element;
-      children: React.ReactNode;
-    }>,
+    ErrorBoundary: StubErrorBoundary,
     addBreadcrumb: () => {},
     withSentryReactRouterV6Routing: undefined,
     startTransaction: () => null,
@@ -47,26 +59,30 @@ export function SentryBoundary({
   fallback,
 }: {
   children: React.ReactNode;
-  fallback?: (error: Error, eventId: string) => JSX.Element;
+  fallback?: FallbackRender;
 }) {
-  const ErrorBoundaryComp = Sentry.ErrorBoundary;
+  const ErrorBoundaryComp =
+    (Sentry as SentryType).ErrorBoundary ?? (Sentry as StubSentryType).ErrorBoundary;
+
+  // Create fallback render function
+  const fallbackRender = (error: Error, eventId: string) => {
+    console.error('[Sentry] Error caught by boundary:', error, eventId);
+    if (fallback) {
+      return fallback(error, eventId);
+    }
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <h2>Something went wrong</h2>
+        <p>Error ID: {eventId}</p>
+        <p>Please check the console for details.</p>
+      </div>
+    );
+  };
 
   // Use ErrorBoundary from Sentry if available
   return (
     <ErrorBoundaryComp
-      fallback={(error: Error, eventId: string) => {
-        console.error('[Sentry] Error caught by boundary:', error, eventId);
-        if (fallback) {
-          return fallback(error, eventId);
-        }
-        return (
-          <div style={{ padding: '20px', textAlign: 'center' }}>
-            <h2>Something went wrong</h2>
-            <p>Error ID: {eventId}</p>
-            <p>Please check the console for details.</p>
-          </div>
-        );
-      }}
+      fallback={fallbackRender as any} // eslint-disable-line @typescript-eslint/no-explicit-any
     >
       {children}
     </ErrorBoundaryComp>
@@ -91,11 +107,12 @@ export function useSentryTrack(
   dependencies: unknown[] = []
 ) {
   useEffect(() => {
-    Sentry.addBreadcrumb({
+    const sentry = SENTRY_ENABLED ? (Sentry as SentryType) : (Sentry as StubSentryType);
+    sentry.addBreadcrumb({
       message,
       category,
       level,
-    });
+    } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
   }, [message, category, level, ...dependencies]);
 }
 
@@ -124,13 +141,17 @@ export function useSentryCapture(error: Error | null, context?: Record<string, u
  * This component wraps the router and provides performance monitoring
  */
 export function SentryRoutingInstrumentation({ children }: { children: React.ReactNode }) {
-  const SentryRoutes = Sentry.withSentryReactRouterV6Routing;
+  const SentryRoutes = SENTRY_ENABLED
+    ? (Sentry as SentryType).withSentryReactRouterV6Routing
+    : (Sentry as StubSentryType).withSentryReactRouterV6Routing;
 
   if (!SentryRoutes) {
     return <>{children}</>;
   }
 
-  return <SentryRoutes>{children}</SentryRoutes>;
+  // Type assertion for FC with children
+  const RoutesComponent = SentryRoutes as React.FC<{ children: React.ReactNode }>;
+  return <RoutesComponent>{children}</RoutesComponent>;
 }
 
 /**
@@ -147,18 +168,19 @@ export function withSentryTracking<P extends object>(
     'Component';
 
   return function WithSentryTracking(props: P) {
+    const sentry = SENTRY_ENABLED ? (Sentry as SentryType) : (Sentry as StubSentryType);
     useEffect(() => {
-      Sentry.addBreadcrumb({
+      sentry.addBreadcrumb({
         message: `Component mounted: ${displayName}`,
         category: 'component',
         level: 'info',
-      });
+      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
       return () => {
-        Sentry.addBreadcrumb({
+        sentry.addBreadcrumb({
           message: `Component unmounted: ${displayName}`,
           category: 'component',
           level: 'info',
-        });
+        } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
       };
     }, [displayName]);
 
@@ -190,17 +212,18 @@ export function useSentryPerformance() {
       return null;
     }
 
-    return Sentry.startTransaction({
-      name,
-      op: operation || 'ui.action',
-    });
+    const sentry = Sentry as StubSentryType;
+    return sentry.startTransaction(name, operation || 'ui.action');
   };
 }
 
 // Export for routing instrumentation
-export const withSentryRouting = Sentry.withSentryReactRouterV6Routing
-  ? (props: { children: React.ReactNode }) => {
-      const SentryRoutes = Sentry.withSentryReactRouterV6Routing!;
-      return <SentryRoutes>{props.children}</SentryRoutes>;
-    }
-  : (props: { children: React.ReactNode }) => <>{props.children}</>;
+export const withSentryRouting =
+  SENTRY_ENABLED && (Sentry as SentryType).withSentryReactRouterV6Routing
+    ? (props: { children: React.ReactNode }) => {
+        const SentryRoutes = (Sentry as SentryType).withSentryReactRouterV6Routing as React.FC<{
+          children: React.ReactNode;
+        }>;
+        return <SentryRoutes>{props.children}</SentryRoutes>;
+      }
+    : (props: { children: React.ReactNode }) => <>{props.children}</>;

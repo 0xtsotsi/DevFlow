@@ -1260,12 +1260,20 @@ export function TerminalView() {
     const isHorizontal = content.direction === 'horizontal';
     const defaultSizePerPanel = 100 / content.panels.length;
 
-    const handleLayoutChange = (layout: { [id: string]: number }) => {
+    const handleLayoutChange = (layout: number[] | { [id: string]: number }) => {
       if (!activeTab) return;
       const panelKeys = content.panels.map(getPanelKey);
-      // v4 passes a Layout object mapping panelId -> percentage
-      // Extract sizes in the order of panels
-      const sizes = panelKeys.map((key) => layout[key] ?? 100 / panelKeys.length);
+
+      // Handle both array format (v3) and object format (v4)
+      let sizes: number[];
+      if (Array.isArray(layout)) {
+        sizes = layout;
+      } else {
+        // v4 passes a Layout object mapping panelId -> percentage
+        // Extract sizes in the order of panels
+        sizes = panelKeys.map((key) => layout[key] ?? 100 / panelKeys.length);
+      }
+
       updateTerminalPanelSizes(activeTab.id, panelKeys, sizes);
     };
 

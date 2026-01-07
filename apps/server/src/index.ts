@@ -255,7 +255,6 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     console.log('[Server] ✓ Beads LiveLink initialized');
 
     // Initialize Beads Memory Service (context for agents)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const beadsMemoryService = new BeadsMemoryService(beadsService, mcpBridge);
     console.log('[Server] ✓ Beads Memory Service initialized');
 
@@ -309,7 +308,6 @@ let beadsAgentCoordinator!: BeadsAgentCoordinator;
     // ============================================================================
 
     // Initialize MCP Configuration Service
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const mcpConfigurationService = new MCPConfigurationService(DATA_DIR, events);
     console.log('[Server] ✓ MCP Configuration Service initialized');
 

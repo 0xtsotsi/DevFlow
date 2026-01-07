@@ -114,6 +114,7 @@ export type {
   AgentRegistryEntry,
   TaskAnalysis,
 } from './agent-types.js';
+export type { AgentModelConfig, AgentModelSettings } from './agent-models.js';
 export { DEFAULT_AGENT_MODELS, AGENT_TYPE_METADATA, AGENT_MODEL_INFO } from './agent-models.js';
 
 // Orchestrator types
