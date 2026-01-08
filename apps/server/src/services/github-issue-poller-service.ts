@@ -10,12 +10,10 @@
  * - Adds 'claimed' label to avoid re-claiming
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import type { EventEmitter } from '../lib/events.js';
 import { execEnv, logError } from '../routes/github/routes/common.js';
-
-const execAsyncCmd = promisify(exec);
+import { getVibeKanbanClient } from './vibe-kanban-client.js';
+import { execGh } from '@devflow/git-utils';
 
 // CRITICAL: Fork safety - only work on DevFlow, never automaker/upstream
 const DEVFLOW_REPO = '0xtsotsi/DevFlow';
@@ -245,20 +243,18 @@ export class GitHubIssuePollerService {
     const { projectPath } = this.config;
 
     // Fetch open issues with detailed info
-    const { stdout } = await execAsyncCmd(
+    const { stdout } = await execGh(
       'gh issue list --state open --json number,title,body,state,labels,assignee,html,url,repository --limit 100',
       {
         cwd: projectPath,
-        env: execEnv,
       }
     );
 
     const issues: GitHubIssue[] = JSON.parse(stdout || '[]');
 
     // Add repository info to each issue
-    const { stdout: repoInfo } = await execAsyncCmd('gh repo view --json owner,name', {
+    const { stdout: repoInfo } = await execGh('gh repo view --json owner,name', {
       cwd: projectPath,
-      env: execEnv,
     });
     const repo = JSON.parse(repoInfo);
 
@@ -375,20 +371,26 @@ export class GitHubIssuePollerService {
       throw new Error('Vibe project ID not configured');
     }
 
-    // Note: This is a placeholder - actual MCP integration would happen here
-    // For now, we'll generate a mock task ID
-    const taskId = `task-${issue.number}-${Date.now()}`;
+    try {
+      // Get Vibe Kanban client and set the project ID
+      const vibeClient = getVibeKanbanClient({ events: this.events });
+      vibeClient.setProjectId(this.config.vibeProjectId);
 
-    console.log(`[GitHubPoller] Created Vibe Kanban task ${taskId} for issue #${issue.number}`);
+      // Create the task using Vibe Kanban MCP
+      const task = await vibeClient.createTask({
+        title: issue.title,
+        description: this.buildTaskDescription(issue),
+      });
 
-    // TODO: Integrate with Vibe Kanban MCP when available
-    // const result = await mcp__vibe_kanban__create_task({
-    //   project_id: this.config.vibeProjectId,
-    //   title: issue.title,
-    //   description: this.buildTaskDescription(issue),
-    // });
+      console.log(`[GitHubPoller] Created Vibe Kanban task ${task.id} for issue #${issue.number}`);
 
-    return taskId;
+      return task.id;
+    } catch (error) {
+      // If Vibe Kanban is not available, fall back to mock ID
+      console.warn(`[GitHubPoller] Vibe Kanban integration failed, using mock ID:`, error);
+      const mockTaskId = `task-${issue.number}-${Date.now()}`;
+      return mockTaskId;
+    }
   }
 
   /**
@@ -408,20 +410,43 @@ export class GitHubIssuePollerService {
   /**
    * Start a workspace session for the issue
    */
-  private async startWorkspaceSession(issue: GitHubIssue, _taskId: string): Promise<void> {
+  private async startWorkspaceSession(issue: GitHubIssue, taskId: string): Promise<void> {
     if (!this.config) {
       throw new Error('Poller not configured');
     }
 
-    console.log(`[GitHubPoller] Starting workspace session for issue #${issue.number}`);
+    if (!this.config.vibeProjectId) {
+      console.warn(`[GitHubPoller] No Vibe project ID configured, skipping workspace session`);
+      return;
+    }
 
-    // Note: This is a placeholder - actual workspace startup would happen here
-    // TODO: Integrate with workspace session API when available
-    // await startWorkspaceSession({
-    //   task_id: taskId,
-    //   executor: 'CLAUDE_CODE',
-    //   repos: [{ repo_id: this.config.vibeProjectId, base_branch: 'main' }],
-    // });
+    try {
+      console.log(`[GitHubPoller] Starting workspace session for issue #${issue.number}`);
+
+      // Get Vibe Kanban client and set the project ID
+      const vibeClient = getVibeKanbanClient({ events: this.events });
+      vibeClient.setProjectId(this.config.vibeProjectId);
+
+      // Start workspace session using Vibe Kanban MCP
+      await vibeClient.startWorkspaceSession({
+        taskId,
+        executor: 'CLAUDE_CODE',
+        repos: [
+          {
+            repoId: this.config.vibeProjectId,
+            baseBranch: 'main',
+          },
+        ],
+      });
+
+      console.log(`[GitHubPoller] Started workspace session for task ${taskId}`);
+    } catch (error) {
+      console.warn(
+        `[GitHubPoller] Failed to start workspace session for issue #${issue.number}:`,
+        error
+      );
+      // Don't throw - workspace session startup is optional
+    }
   }
 
   /**
@@ -435,25 +460,22 @@ export class GitHubIssuePollerService {
     const { projectPath } = this.config;
 
     try {
-      await execAsyncCmd(`gh issue edit ${issueNumber} --add-label "${CLAIMED_LABEL}"`, {
+      await execGh(`gh issue edit ${issueNumber} --add-label "${CLAIMED_LABEL}"`, {
         cwd: projectPath,
-        env: execEnv,
       });
 
       console.log(`[GitHubPoller] Added '${CLAIMED_LABEL}' label to issue #${issueNumber}`);
     } catch {
       // If label doesn't exist, create it first
-      await execAsyncCmd(`gh label create "${CLAIMED_LABEL}" --color "0366d6"`, {
+      await execGh(`gh label create "${CLAIMED_LABEL}" --color "0366d6"`, {
         cwd: projectPath,
-        env: execEnv,
       }).catch(() => {
         // Label might already exist, ignore error
       });
 
       // Try adding the label again
-      await execAsyncCmd(`gh issue edit ${issueNumber} --add-label "${CLAIMED_LABEL}"`, {
+      await execGh(`gh issue edit ${issueNumber} --add-label "${CLAIMED_LABEL}"`, {
         cwd: projectPath,
-        env: execEnv,
       });
     }
   }
@@ -475,9 +497,8 @@ export class GitHubIssuePollerService {
 
 The issue will be processed automatically.`;
 
-    await execAsyncCmd(`gh issue comment ${issueNumber} --body "${comment}"`, {
+    await execGh(`gh issue comment ${issueNumber} --body "${comment}"`, {
       cwd: projectPath,
-      env: execEnv,
     });
 
     console.log(`[GitHubPoller] Added claim comment to issue #${issueNumber}`);

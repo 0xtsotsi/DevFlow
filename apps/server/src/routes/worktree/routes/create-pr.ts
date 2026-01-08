@@ -12,6 +12,7 @@ import {
   isGhCliAvailable,
 } from '../common.js';
 import { updateWorktreePRInfo } from '../../../lib/worktree-metadata.js';
+import { execGh, execWithRetry } from '@devflow/git-utils';
 
 export function createCreatePRHandler() {
   return async (req: Request, res: Response): Promise<void> => {
@@ -87,16 +88,14 @@ export function createCreatePRHandler() {
       // Push the branch to remote
       let pushError: string | null = null;
       try {
-        await execAsync(`git push -u origin ${branchName}`, {
+        await execWithRetry(`git push -u origin ${branchName}`, {
           cwd: worktreePath,
-          env: execEnv,
         });
       } catch {
         // If push fails, try with --set-upstream
         try {
-          await execAsync(`git push --set-upstream origin ${branchName}`, {
+          await execWithRetry(`git push --set-upstream origin ${branchName}`, {
             cwd: worktreePath,
-            env: execEnv,
           });
         } catch (error2: unknown) {
           // Capture push error for reporting
@@ -284,9 +283,8 @@ export function createCreatePRHandler() {
             prCmd = prCmd.trim();
 
             console.log(`[CreatePR] Creating PR with command: ${prCmd}`);
-            const { stdout: prOutput } = await execAsync(prCmd, {
+            const { stdout: prOutput } = await execGh(prCmd, {
               cwd: worktreePath,
-              env: execEnv,
             });
             prUrl = prOutput.trim();
             console.log(`[CreatePR] PR created: ${prUrl}`);
@@ -323,9 +321,9 @@ export function createCreatePRHandler() {
             if (errorMessage.toLowerCase().includes('already exists')) {
               console.log(`[CreatePR] PR already exists error - trying to fetch existing PR`);
               try {
-                const { stdout: viewOutput } = await execAsync(
+                const { stdout: viewOutput } = await execGh(
                   `gh pr view --json number,title,url,state`,
-                  { cwd: worktreePath, env: execEnv }
+                  { cwd: worktreePath }
                 );
                 const existingPr = JSON.parse(viewOutput);
                 if (existingPr.url) {

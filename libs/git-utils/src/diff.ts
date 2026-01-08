@@ -2,15 +2,13 @@
  * Git diff generation utilities
  */
 
-import { createLogger } from '@automaker/utils';
-import { secureFs } from '@automaker/platform';
+import { createLogger } from '@devflow/utils';
+import { secureFs } from '@devflow/platform';
 import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { BINARY_EXTENSIONS, type FileStatus } from './types.js';
 import { isGitRepo, parseGitStatus } from './status.js';
+import { execWithRetry } from './reliability.js';
 
-const execAsync = promisify(exec);
 const logger = createLogger('GitUtils');
 
 // Max file size for generating synthetic diffs (1MB)
@@ -235,11 +233,10 @@ export async function getGitRepositoryDiffs(
   }
 
   // Get git diff and status
-  const { stdout: diff } = await execAsync('git diff HEAD', {
+  const { stdout: diff } = await execWithRetry('git diff HEAD', {
     cwd: repoPath,
-    maxBuffer: 10 * 1024 * 1024,
   });
-  const { stdout: status } = await execAsync('git status --porcelain', {
+  const { stdout: status } = await execWithRetry('git status --porcelain', {
     cwd: repoPath,
   });
 
