@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# PR Comment Fetcher
+# Fetches and displays all comments for a PR
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Functions
+info() { echo -e "${BLUE}ℹ${NC} $1"; }
+success() { echo -e "${GREEN}✓${NC} $1"; }
+warning() { echo -e "${YELLOW}⚠${NC} $1"; }
+error() { echo -e "${RED}✗${NC} $1"; }
+
+# Get PR number
+PR_NUMBER="$1"
+
+if [ -z "$PR_NUMBER" ]; then
+    # Try to get PR from current branch
+    BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+    if [ -n "$BRANCH" ]; then
+        PR_NUMBER=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
+    fi
+fi
+
+if [ -z "$PR_NUMBER" ]; then
+    error "No PR number provided and no PR found for current branch"
+    echo "Usage: $0 <PR_NUMBER>"
+    exit 1
+fi
+
+info "Fetching comments for PR #${PR_NUMBER}..."
+
+# Get review comments (line-level)
+echo -e "\n${BLUE}=== Review Comments (Line-Level) ===${NC}"
+REVIEW_COMMENTS=$(gh api "/repos/:owner/:repo/pulls/${PR_NUMBER}/comments" 2>/dev/null || echo "[]")
+
+REVIEW_COUNT=$(echo "$REVIEW_COMMENTS" | jq '. | length')
+echo "$REVIEW_COMMENTS" | jq -r '.[] | select(.state != "DELETED") |
+  "\(.user.login) on \(.path)#\(.line | tostring):\n  \(.body)\n  Thread ID: \(.id)\n"'
+
+# Get issue comments
+echo -e "\n${BLUE}=== Issue Comments ===${NC}"
+ISSUE_COMMENTS=$(gh api "/repos/:owner/:repo/issues/${PR_NUMBER}/comments" 2>/dev/null || echo "[]")
+
+echo "$ISSUE_COMMENTS" | jq -r '.[] |
+  "\(.user.login):\n  \(.body)\n"'
+
+# Get reviews
+echo -e "\n${BLUE}=== Reviews ===${NC}"
+REVIEWS=$(gh pr view "$PR_NUMBER" --json reviews --jq '.reviews' 2>/dev/null || echo "[]")
+
+echo "$REVIEWS" | jq -r '.[] |
+  "\(.author.login) - \(.state):\n  \(.body // "No body")\n"'
+
+# Count unresolved
+UNRESOLVED_COUNT=$(echo "$REVIEW_COMMENTS" | jq '[.[] | select(.state != "DELETED" and .state != "RESOLVED")] | length')
+
+echo -e "\n${BLUE}=== Summary ===${NC}"
+echo "Review Comments: $REVIEW_COUNT"
+echo "Unresolved: $UNRESOLVED_COUNT"
+
+if [ "$UNRESOLVED_COUNT" -gt 0 ]; then
+    warning "There are $UNRESOLVED_COUNT unresolved comment(s)"
+else
+    success "All comments resolved!"
+fi

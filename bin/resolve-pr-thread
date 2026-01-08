@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# PR Comment Thread Resolver
+# Resolves a PR review comment thread with optional reply
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Functions
+info() { echo -e "${BLUE}ℹ${NC} $1"; }
+success() { echo -e "${GREEN}✓${NC} $1"; }
+warning() { echo -e "${YELLOW}⚠${NC} $1"; }
+error() { echo -e "${RED}✗${NC} $1"; }
+
+# Check arguments
+if [ -z "$1" ]; then
+    error "Thread ID is required"
+    echo "Usage: $0 <THREAD_ID> [REPLY_MESSAGE]"
+    echo "Example: $0 1234567890"
+    echo "Example: $0 1234567890 'Fixed the issue by adding validation'"
+    exit 1
+fi
+
+THREAD_ID="$1"
+REPLY_MESSAGE="$2"
+
+info "Resolving thread ${THREAD_ID}..."
+
+# Get PR number from current branch or use PR #43
+PR_NUMBER="${3:-$(gh pr view --json number --jq '.number' 2>/dev/null || echo "43")}"
+
+# Post reply if provided
+if [ -n "$REPLY_MESSAGE" ]; then
+    info "Posting reply..."
+    gh api "/repos/:owner/:repo/pulls/${PR_NUMBER}/comments/${THREAD_ID}/replies" \
+      -f body="$REPLY_MESSAGE" >/dev/null 2>&1 || warning "Failed to post reply"
+fi
+
+# Resolve thread
+info "Marking thread as resolved..."
+gh api \
+  --method PUT \
+  "/repos/:owner/:repo/pulls/${PR_NUMBER}/comments/${THREAD_ID}/threads" \
+  -F thread_resolved=true >/dev/null 2>&1 || error "Failed to resolve thread"
+
+success "Thread ${THREAD_ID} resolved!"
+
+# Show remaining unresolved count
+UNRESOLVED=$(gh api "/repos/:owner/:repo/pulls/${PR_NUMBER}/comments" 2>/dev/null | \
+  jq '[.[] | select(.state != "DELETED" and .state != "RESOLVED")] | length' || echo "0")
+
+if [ "$UNRESOLVED" -gt 0 ]; then
+    warning "$UNRESOLVED unresolved comment(s) remaining"
+else
+    success "All comments resolved!"
+fi

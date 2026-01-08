@@ -1,0 +1,104 @@
+#!/bin/bash
+
+# Push with PR
+# Stages changes, commits, pushes, and optionally creates a PR
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Functions
+info() { echo -e "${BLUE}ℹ${NC} $1"; }
+success() { echo -e "${GREEN}✓${NC} $1"; }
+warning() { echo -e "${YELLOW}⚠${NC} $1"; }
+error() { echo -e "${RED}✗${NC} $1"; }
+
+# Parse arguments
+COMMIT_MSG="$1"
+CREATE_PR=false
+DRAFT=false
+
+shift || true
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --create-pr)
+            CREATE_PR=true
+            shift
+            ;;
+        --draft)
+            DRAFT=true
+            shift
+            ;;
+        *)
+            error "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Get commit message
+if [ -z "$COMMIT_MSG" ]; then
+    read -p "Enter commit message: " COMMIT_MSG
+    if [ -z "$COMMIT_MSG" ]; then
+        error "Commit message is required"
+        exit 1
+    fi
+fi
+
+BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+if [ -z "$BRANCH" ]; then
+    error "Not on a branch"
+    exit 1
+fi
+
+# Stage all changes
+info "Staging all changes..."
+git add -A
+
+# Check if there are changes to commit
+if git diff --cached --quiet; then
+    warning "No changes to commit"
+    exit 0
+fi
+
+# Commit
+info "Committing changes..."
+git commit -m "$COMMIT_MSG"
+success "Changes committed"
+
+# Push
+info "Pushing to remote..."
+git push -u origin "$BRANCH" 2>/dev/null || \
+  git push "$BRANCH" 2>/dev/null || \
+  { error "Failed to push to remote"; exit 1; }
+success "Pushed to origin/$BRANCH"
+
+# Create PR if requested
+if [ "$CREATE_PR" = true ]; then
+    info "Checking if PR already exists..."
+    EXISTING_PR=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+    if [ -n "$EXISTING_PR" ]; then
+        warning "PR already exists: #$EXISTING_PR"
+        info "View: $(gh pr view "$EXISTING_PR" --json url --jq '.url')"
+        exit 0
+    fi
+
+    info "Creating PR..."
+    PR_ARGS=()
+    [ "$DRAFT" = true ] && PR_ARGS+=("--draft")
+
+    gh pr create \
+      --title "$COMMIT_MSG" \
+      --body "Automatically created by bin/push-with-pr" \
+      "${PR_ARGS[@]}" \
+      2>/dev/null || { error "Failed to create PR"; exit 1; }
+
+    success "PR created!"
+fi
