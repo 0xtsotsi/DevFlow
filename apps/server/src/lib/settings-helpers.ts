@@ -57,7 +57,7 @@ export function isValidModelId(modelId: string): boolean {
   }
 
   // Check if it's a valid full model ID
-  return Object.values(CLAUDE_MODEL_MAP).includes(modelId as any);
+  return Object.values(CLAUDE_MODEL_MAP).some((v) => v === modelId);
 }
 
 /**
@@ -104,16 +104,13 @@ export function isValidAgentModelSettings(
 /**
  * Get the full model ID for an agent based on settings.
  *
- * Priority:
- * 1. Explicit model provided (validated)
- * 2. Agent preference from settings (validated)
- * 3. Default model for agent type (validated)
+ * Priority: 1) Explicit model (validated) → 2) Settings preference (validated) → 3) Default
  *
  * @param agentType - The type of agent
  * @param explicitModel - Optional explicit model override
  * @param settings - Global settings containing agent model preferences
- * @returns Full model ID (e.g., "claude-sonnet-4-5-20250929")
- * @throws Error if explicit model is invalid (for fail-fast behavior)
+ * @returns The validated model ID, or the input as-is for unknown models (backward compatibility)
+ * @description Logs warnings for invalid models but never throws (backward compatibility)
  *
  * @example
  * ```ts
