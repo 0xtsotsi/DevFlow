@@ -1,6 +1,6 @@
 /**
- * @automaker/git-utils
- * Git operations utilities for AutoMaker
+ * @devflow/git-utils
+ * Git operations utilities for DevFlow
  */
 
 // Export types and constants
@@ -17,3 +17,7 @@ export {
   generateDiffsForNonGitDirectory,
   getGitRepositoryDiffs,
 } from './diff.js';
+
+// Export reliability utilities
+export { execWithRetry, execGh } from './reliability.js';
+export type { ExecResult, ExecRetryOptions } from './reliability.js';

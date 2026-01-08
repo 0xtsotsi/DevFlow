@@ -680,6 +680,32 @@ terminalWss.on('connection', (ws: WebSocket, req: import('http').IncomingMessage
 
 // Start server with error handling for port conflicts
 const startServer = (port: number) => {
+  // Configure Git for slow networks (do this once on startup)
+  try {
+    const { execSync } = require('node:child_process');
+
+    console.log('[Server] Configuring Git for network reliability...');
+
+    // Disable low-speed limits (prevents timeout on slow networks)
+    execSync('git config --global http.lowSpeedLimit 0', { stdio: 'ignore' });
+    execSync('git config --global http.lowSpeedTime 999999', { stdio: 'ignore' });
+
+    // Increase HTTP buffer size to 500MB for large pushes
+    execSync('git config --global http.postBuffer 524288000', { stdio: 'ignore' });
+
+    // Configure SSH keepalive for long-running operations
+    execSync(
+      'git config --global core.sshCommand "ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3"',
+      {
+        stdio: 'ignore',
+      }
+    );
+
+    console.log('[Server] ✓ Git configured for slow networks');
+  } catch (error) {
+    console.warn('[Server] ⚠️  Failed to configure Git:', (error as Error).message);
+  }
+
   server.listen(port, () => {
     const terminalStatus = isTerminalEnabled()
       ? isTerminalPasswordRequired()

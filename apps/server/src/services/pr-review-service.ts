@@ -13,11 +13,9 @@
  */
 
 import type { EventEmitter } from '../lib/events.js';
-import type { PRCommentAnalysis } from '@automaker/types';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import type { PRCommentAnalysis, GreptileSearchResult } from '@devflow/types';
+import { getGreptileClient } from './greptile-client.js';
+import { execGh } from '@devflow/git-utils';
 
 /**
  * PR comment as returned by GitHub
@@ -95,6 +93,8 @@ export interface PRReviewServiceOptions {
   githubRepository: string;
   /** Default base branch */
   defaultBaseBranch?: string;
+  /** Enable Greptile MCP integration (default: true) */
+  enableGreptile?: boolean;
 }
 
 /**
@@ -118,12 +118,29 @@ export class PRReviewService {
   private events: EventEmitter;
   private githubRepository: string;
   private defaultBaseBranch: string;
+  private enableGreptile: boolean;
   private prCache: Map<number, PRReviewState> = new Map();
+  private greptileClient?: ReturnType<typeof getGreptileClient>;
 
   constructor(options: PRReviewServiceOptions & { events: EventEmitter }) {
     this.events = options.events;
     this.githubRepository = options.githubRepository;
     this.defaultBaseBranch = options.defaultBaseBranch || 'main';
+    this.enableGreptile = options.enableGreptile ?? true;
+
+    // Initialize Greptile client if enabled
+    if (this.enableGreptile) {
+      try {
+        this.greptileClient = getGreptileClient({
+          repository: this.githubRepository,
+          branch: this.defaultBaseBranch,
+          events: this.events,
+        });
+      } catch (error) {
+        console.warn('[PRReviewService] Failed to initialize Greptile client:', error);
+        this.greptileClient = undefined;
+      }
+    }
   }
 
   /**
@@ -132,27 +149,31 @@ export class PRReviewService {
   async getPRState(prNumber: number): Promise<PRReviewState> {
     try {
       // Use gh CLI to get PR details
-      const { stdout: prData } = await execAsync(
-        `gh pr view ${prNumber} --json title,state,mergeable,mergeableStatus,headRefOid,baseRefOid,headRefName,baseRefName --repo ${this.githubRepository}`
+      const { stdout: prData } = await execGh(
+        `gh pr view ${prNumber} --json title,state,mergeable,mergeableStatus,headRefOid,baseRefOid,headRefName,baseRefName --repo ${this.githubRepository}`,
+        { cwd: this.projectPath }
       );
 
       const pr = JSON.parse(prData);
 
       // Get comments
-      const { stdout: commentsData } = await execAsync(
-        `gh pr view ${prNumber} --json comments --repo ${this.githubRepository} -q '.comments'`
+      const { stdout: commentsData } = await execGh(
+        `gh pr view ${prNumber} --json comments --repo ${this.githubRepository} -q '.comments'`,
+        { cwd: this.projectPath }
       );
       const comments: PRComment[] = JSON.parse(commentsData || '[]');
 
       // Get review comments
-      const { stdout: reviewCommentsData } = await execAsync(
-        `gh pr view ${prNumber} --json comments --repo ${this.githubRepository} -q '.comments[] | select(.reviewId != null)'`
+      const { stdout: reviewCommentsData } = await execGh(
+        `gh pr view ${prNumber} --json comments --repo ${this.githubRepository} -q '.comments[] | select(.reviewId != null)'`,
+        { cwd: this.projectPath }
       );
       const reviewComments: PRComment[] = JSON.parse(reviewCommentsData || '[]');
 
       // Get reviews
-      const { stdout: reviewsData } = await execAsync(
-        `gh pr reviews ${prNumber} --json author,state,body,submittedAt --repo ${this.githubRepository}`
+      const { stdout: reviewsData } = await execGh(
+        `gh pr reviews ${prNumber} --json author,state,body,submittedAt --repo ${this.githubRepository}`,
+        { cwd: this.projectPath }
       );
       const reviews: PRReview[] = JSON.parse(reviewsData || '[]');
 
@@ -193,9 +214,9 @@ export class PRReviewService {
    */
   private async getPRStatusChecks(prNumber: number): Promise<PRStatusCheck[]> {
     try {
-      const { stdout } = await execAsync(
-        `gh pr checks ${prNumber} --repo ${this.githubRepository}`
-      );
+      const { stdout } = await execGh(`gh pr checks ${prNumber} --repo ${this.githubRepository}`, {
+        cwd: this.projectPath,
+      });
 
       // Parse the output (format varies by gh version)
       const checks: PRStatusCheck[] = [];
@@ -452,20 +473,160 @@ export class PRReviewService {
   }
 
   /**
-   * Search for conflict resolution strategies
+   * Search for conflict resolution strategies using Greptile MCP
+   *
+   * Searches past PRs and code comments for similar conflict resolution patterns.
+   * Provides actual resolutions from the codebase history when available.
+   *
+   * @param file - File path with conflicts
+   * @param prNumber - Current PR number for context
+   * @returns Conflict resolution suggestion or null
    */
   private async searchConflictResolution(file: string, _prNumber: number): Promise<string | null> {
-    // TODO: Use Greptile MCP to search for similar conflict resolutions
-    // For now, return a generic suggestion
-    return `Consider using "git checkout --theirs ${file}" or "git checkout --ours ${file}" to resolve conflicts manually.`;
+    try {
+      // Get Greptile client
+      const greptile = getGreptileClient({
+        repository: this.githubRepository,
+        branch: this.defaultBaseBranch,
+        events: this.events,
+      });
+
+      // Search for past conflict resolution comments and strategies
+      const comments = await greptile.searchComments(`merge conflict resolution ${file}`, {
+        limit: 5,
+        addressed: true, // Focus on resolved conflicts
+      });
+
+      // If no results, return generic suggestion
+      if (!comments || comments.length === 0) {
+        console.warn(`[PRReviewService] No conflict resolution history found for ${file}`);
+        return this.getGenericConflictResolution(file);
+      }
+
+      // Extract actionable resolution strategies from comments
+      const resolutions = comments
+        .filter((comment) => {
+          const body = comment.body.toLowerCase();
+          return (
+            body.includes('resolve') ||
+            body.includes('fixed') ||
+            body.includes('resolved by') ||
+            body.includes('used') ||
+            body.includes('applied')
+          );
+        })
+        .map((comment) => {
+          const body = comment.body;
+
+          // Extract git commands if present
+          if (body.includes('git checkout')) {
+            const match = body.match(/git checkout (--[a-z]+)+\s+\S+/g);
+            if (match) {
+              return `Try: ${match.join(' or ')}`;
+            }
+          }
+
+          // Extract resolution descriptions
+          if (body.includes('resolved by')) {
+            const match = body.match(/resolved by (.+?)(?:\.|\n|$)/i);
+            return match ? `Resolution: ${match[1].trim()}` : null;
+          }
+
+          if (body.includes('fixed by')) {
+            const match = body.match(/fixed by (.+?)(?:\.|\n|$)/i);
+            return match ? `Fix: ${match[1].trim()}` : null;
+          }
+
+          // Return truncated body as fallback
+          return body.length > 150 ? `${body.substring(0, 150)}...` : body;
+        })
+        .filter(Boolean) as string[];
+
+      if (resolutions.length > 0) {
+        const resolution = `Past conflict resolutions for this file:\n${resolutions.join('\n')}`;
+        console.log(
+          `[PRReviewService] Found ${resolutions.length} conflict resolution patterns for ${file}`
+        );
+        return resolution;
+      }
+
+      return this.getGenericConflictResolution(file);
+    } catch (error) {
+      // Log error but don't fail - return generic suggestion
+      console.warn(`[PRReviewService] Failed to search conflict resolutions for ${file}:`, error);
+      return this.getGenericConflictResolution(file);
+    }
   }
 
   /**
-   * Search for similar code patterns
+   * Get generic conflict resolution suggestions
+   *
+   * Provides fallback guidance when Greptile search is unavailable or returns no results.
+   *
+   * @param file - File path with conflicts
+   * @returns Generic resolution suggestion
    */
-  private async searchSimilarPatterns(_file: string): Promise<string[]> {
-    // TODO: Use Greptile MCP to find similar patterns
-    return [];
+  private getGenericConflictResolution(file: string): string {
+    return `Consider using "git checkout --theirs ${file}" or "git checkout --ours ${file}" to resolve conflicts manually. Alternatively, use "git mergetool" for an interactive resolution.`;
+  }
+
+  /**
+   * Search for similar code patterns using Greptile MCP
+   *
+   * Uses semantic code search to find similar implementation patterns
+   * in the codebase that can be used as reference for resolving suggestions.
+   *
+   * @param file - File path to search for similar patterns
+   * @returns Array of formatted code examples with context
+   */
+  private async searchSimilarPatterns(file: string): Promise<string[]> {
+    try {
+      // Get Greptile client
+      const greptile = getGreptileClient({
+        repository: this.githubRepository,
+        branch: this.defaultBaseBranch,
+        events: this.events,
+      });
+
+      // Build semantic search query based on file path
+      const searchQuery = `similar implementation patterns in ${file}`;
+
+      // Search for similar code patterns
+      const results = await greptile.semanticSearch(searchQuery, {
+        filePath: file,
+        limit: 5,
+      });
+
+      // If no results found, return empty array
+      if (!results || results.length === 0) {
+        console.warn(`[PRReviewService] No similar patterns found for ${file}`);
+        return [];
+      }
+
+      // Format results as readable strings with context
+      const formattedPatterns: string[] = results.map((result: GreptileSearchResult) => {
+        const pattern: string[] = [
+          `File: ${result.filePath}:${result.lineNumber}`,
+          result.symbolName ? `Symbol: ${result.symbolName}` : '',
+          `Relevance: ${(result.relevanceScore * 100).toFixed(1)}%`,
+          '',
+          '```typescript',
+          result.code.trim(),
+          '```',
+        ];
+        return pattern.filter(Boolean).join('\n');
+      });
+
+      console.log(
+        `[PRReviewService] Found ${formattedPatterns.length} similar patterns for ${file}`
+      );
+
+      return formattedPatterns;
+    } catch (error) {
+      // Log error but don't fail - return empty array
+      console.warn(`[PRReviewService] Failed to search similar patterns for ${file}:`, error);
+      return [];
+    }
   }
 
   /**

@@ -1,8 +1,8 @@
 {
-  "name": "@automaker/git-utils",
+  "name": "@devflow/git-utils",
   "version": "1.0.0",
   "type": "module",
-  "description": "Git operations utilities for AutoMaker",
+  "description": "Git operations utilities for DevFlow",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -12,15 +12,15 @@
     "test:watch": "vitest"
   },
   "keywords": [
-    "automaker",
+    "devflow",
     "git",
     "utils"
   ],
-  "author": "AutoMaker Team",
+  "author": "0xtsotsi",
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
-    "@automaker/types": "^1.0.0",
-    "@automaker/utils": "^1.0.0"
+    "@devflow/types": "^1.0.0",
+    "@devflow/utils": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
