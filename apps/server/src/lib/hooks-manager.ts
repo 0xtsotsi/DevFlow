@@ -216,11 +216,50 @@ export class HooksManager {
     context: HookContext
   ): Promise<{ success: boolean; message: string; data?: Record<string, unknown> }> {
     try {
-      // Create async function from implementation string
-      const asyncFn = new AsyncFunction('context', hook.implementation);
+      // Create a restricted sandbox environment
+      const sandbox = {
+        // Safe console methods (read-only)
+        console: Object.freeze({
+          log: console.log.bind(console),
+          info: console.info.bind(console),
+          warn: console.warn.bind(console),
+          error: console.error.bind(console),
+          debug: console.debug.bind(console),
+        }),
+        // Provide context as the only external variable
+        context,
+        // Safe constructors
+        Object,
+        Array,
+        String,
+        Number,
+        Boolean,
+        Date,
+        Math,
+        JSON,
+        // Safe Error constructors
+        Error,
+        TypeError,
+        RangeError,
+        SyntaxError,
+        ReferenceError,
+      };
 
-      // Execute the function
-      const result = await asyncFn(context);
+      // Create VM context from sandbox
+      const vmContext = createContext(sandbox);
+
+      // Wrap the hook implementation in an async IIFE
+      const wrappedCode = `
+        (async () => {
+          ${hook.implementation}
+        })()
+      `;
+
+      // Execute in VM sandbox with timeout
+      const result = await runInContext(wrappedCode, vmContext, {
+        displayErrors: true,
+        timeout: this.config.defaultTimeout,
+      });
 
       // Handle different return types
       if (typeof result === 'boolean') {
