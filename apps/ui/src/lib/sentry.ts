@@ -7,10 +7,13 @@
 
 import * as SentryReact from '@sentry/react';
 
-// DSN from environment or use the provided default
-const SENTRY_DSN =
-  (import.meta.env?.VITE_SENTRY_DSN as string) ||
-  'https://da493bfc74876b98e41a2888b4aa24af@o4509264770236416.ingest.de.sentry.io/4510658901770320';
+// DSN from environment (required in production)
+const SENTRY_DSN = import.meta.env?.VITE_SENTRY_DSN as string;
+
+// Validate production DSN is set
+if (!SENTRY_DSN && import.meta.env?.NODE_ENV === 'production') {
+  throw new Error('VITE_SENTRY_DSN must be set in production environment');
+}
 
 // Environment (default to development)
 const ENVIRONMENT =

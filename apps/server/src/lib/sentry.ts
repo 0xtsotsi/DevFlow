@@ -7,6 +7,7 @@
 
 import * as Sentry from '@sentry/node';
 import type { SeverityLevel } from '@sentry/node';
+import { piiRedactor } from './pii-redaction.js';
 
 // Forward declaration of MetricsOptions (defined below)
 export interface MetricsOptions {
@@ -185,6 +186,13 @@ export function initSentry(): void {
       return log;
     },
     beforeSend(event, hint) {
+      try {
+        // Redact PII from event before sending
+        event = piiRedactor.redactEvent(event);
+      } catch (error) {
+        console.error('[Sentry] Failed to redact PII from event:', error);
+      }
+
       if (event.exception) {
         const error = hint.originalException;
         if (ENVIRONMENT === 'development' && error instanceof Error) {
@@ -194,6 +202,15 @@ export function initSentry(): void {
         }
       }
       return event;
+    },
+    beforeBreadcrumb(breadcrumb) {
+      try {
+        // Redact PII from breadcrumb before sending
+        breadcrumb = piiRedactor.redactBreadcrumb(breadcrumb);
+      } catch (error) {
+        console.error('[Sentry] Failed to redact PII from breadcrumb:', error);
+      }
+      return breadcrumb;
     },
     initialScope: {
       tags: {

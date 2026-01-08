@@ -257,7 +257,7 @@ export class PIIRedactor {
    * Fast path: redact by field names
    * 10x faster than full regex scan
    */
-  private redactByFields(obj: any, visited = new WeakSet()): void {
+  private redactByFields(obj: any, visited = new Set<object>()): void {
     if (!obj || typeof obj !== 'object' || visited.has(obj)) {
       return;
     }
@@ -265,7 +265,7 @@ export class PIIRedactor {
     visited.add(obj);
 
     for (const key in obj) {
-      if (!obj.hasOwnProperty(key)) {
+      if (!Object.prototype.hasOwnProperty.call(obj, key)) {
         continue;
       }
 
@@ -317,7 +317,7 @@ export class PIIRedactor {
    * Fallback: redact by regex patterns
    * Slower but catches PII in unknown fields
    */
-  private redactByRegex(obj: any, visited = new WeakSet()): void {
+  private redactByRegex(obj: any, visited = new Set<object>()): void {
     if (!obj || typeof obj !== 'object' || visited.has(obj)) {
       return;
     }
@@ -325,7 +325,7 @@ export class PIIRedactor {
     visited.add(obj);
 
     for (const key in obj) {
-      if (!obj.hasOwnProperty(key)) {
+      if (!Object.prototype.hasOwnProperty.call(obj, key)) {
         continue;
       }
 
