@@ -2,9 +2,11 @@
  * Authentication middleware for API security
  *
  * Supports API key authentication via header or environment variable.
+ * Uses constant-time comparison to prevent timing attacks.
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import { timingSafeEqual } from 'crypto';
 
 // API key from environment (optional - if not set, auth is disabled)
 const API_KEY = process.env.AUTOMAKER_API_KEY;
@@ -31,10 +33,37 @@ export function initializeAuth(): void {
 }
 
 /**
+ * Timing-safe string comparison for API keys
+ *
+ * Prevents timing attacks where attackers can guess API keys
+ * character-by-character by measuring response times.
+ *
+ * @param a - First string (provided API key)
+ * @param b - Second string (stored API key)
+ * @returns True if strings match, false otherwise
+ */
+function timingSafeEqualString(a: string, b: string): boolean {
+  // Check length first (still timing-safe with Buffer comparison)
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  // Use crypto.timingSafeEqual for constant-time comparison
+  try {
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
+    // If comparison fails for any reason, return false
+    return false;
+  }
+}
+
+/**
  * Authentication middleware
  *
  * If AUTOMAKER_API_KEY is set, requires matching key in X-API-Key header.
  * If not set, allows all requests (development mode).
+ *
+ * Uses constant-time comparison to prevent timing attacks on API keys.
  */
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   // If no API key is configured, allow all requests
@@ -54,7 +83,11 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     return;
   }
 
-  if (providedKey !== API_KEY) {
+  // Use constant-time comparison to prevent timing attacks
+  if (!timingSafeEqualString(providedKey, API_KEY)) {
+    // Log failed attempt for monitoring
+    console.warn(`[Auth] Failed authentication attempt from ${req.ip}`);
+
     res.status(403).json({
       success: false,
       error: 'Invalid API key.',
